@@ -1,0 +1,29 @@
+# Identity Mappings (Personal)
+
+> Personal identity mappings — describe your multiple git identities and
+> when each should be active. This file is .gitignored; never committed.
+> Read by `~/.claude/hooks/git-identity-check.sh` at session start.
+
+## Identities
+
+### Identity 1: [e.g., Work — Acme Corp]
+
+- Git name: `Your Name`
+- Git email: `you@acme.com`
+- Path patterns (case-insensitive substring match in cwd):
+  - `acme-corp/`
+  - `Cowork/acme-`
+
+### Identity 2: [e.g., Personal Brand]
+
+- Git name: `Your Name`
+- Git email: `you@personal.dev`
+- Path patterns:
+  - `personal-brand/`
+  - `Developer-Brand/`
+
+## Notes
+
+- If cwd matches no pattern → hook does nothing (ambiguous context, you verify manually)
+- If cwd matches a pattern AND git config matches → hook does nothing (correct identity)
+- If cwd matches a pattern AND git config mismatches → hook warns at SessionStart

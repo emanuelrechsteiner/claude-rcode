@@ -1,0 +1,26 @@
+# scrub-allowlist.txt — exemptions for scripts/scrub-check.sh
+#
+# Format (one per line): path:line:signature
+#   path      — repo-relative path, exactly as `git grep` reports it
+#   line      — 1-indexed line number, exactly as `git grep -n` reports it
+#   signature — a short, exact substring of that line's content
+#
+# A finding is suppressed ONLY when file, line, AND signature all still
+# match. If the line moves or its wording changes (e.g. during a docs
+# rewrite), the entry goes stale on purpose and scrub-check re-flags the
+# new location — update the coordinates here rather than widening the
+# match. Blank lines and lines starting with # are ignored.
+#
+# Per D7 (wave2-plan.md): real-name authorship attribution is intentional
+# in exactly two places — the MIT license holder and one README credit
+# line. Every other personal-data/secret finding is a real bug, not an
+# allowlist candidate.
+#
+# Signatures below deliberately reference each target line's non-PII
+# prefix (not the name itself) — this file is also excluded from
+# scrub-check.sh's own PII/rebrand scans (see SELF_EXCLUDE), but the
+# signature choice is a second, independent line of defense against this
+# file quoting the exact PII it exists to allowlist.
+
+LICENSE:3:Copyright (c) 2026
+README.md:118:Maintained by [

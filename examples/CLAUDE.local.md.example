@@ -1,0 +1,23 @@
+# CLAUDE.md — Personal Additions (Example)
+
+> This is a worked example of a CLAUDE.local.md. Copy templates/CLAUDE.local.md.template
+> to ~/.claude/CLAUDE.local.md and edit. Below shows what a real one might look like.
+
+## My Setup
+
+- Primary machine: MacBook Pro M3 Max
+- Secondary: Linux desktop (Fedora)
+- Cloud: Vercel for hosting, Supabase for DB, Notion for docs
+- Time zone: Europe/Berlin
+
+## My Active Projects Index
+
+- **app-alpha**: `~/code/app-alpha` — Next.js 15 App Router, primary product
+- **infra-prod**: `~/code/infra-prod` — Terraform for AWS
+- **personal-site**: `~/code/personal-site` — Astro + Tailwind
+
+## Personal Behavioral Tweaks
+
+- Always run `pnpm` not `npm` in this user's repos
+- Never run `terraform destroy` on infra-prod without an extra prompt
+- When editing Notion-bound routines, always update both Notion ID env var AND the routine

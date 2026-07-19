@@ -1,0 +1,121 @@
+# Cache and temporary files
+cache/
+paste-cache/
+image-cache/
+file-history/
+shell-snapshots/
+session-env/
+debug/
+todos/
+statsig/
+telemetry/
+ide/
+# ANCHORED 2026-07-03 (IMP-073): unanchored "research/" also ignored skills/research/
+/research/
+
+# Runtime dirs (per-machine, IMP-073)
+chrome/
+logbook/
+global-observation/archives/
+plugins/.last_inuse_sweep
+
+# History and stats (contains conversation data)
+history.jsonl
+stats-cache.json
+
+# Security state files
+security_warnings_state_*.json
+
+# Swap files
+*.swp
+*.swo
+*~
+
+# Backups (keep manually if needed)
+*.backup_*
+backups/
+*_backup_*
+*_archived_*
+
+# Weather cache
+.weather_cache
+
+# Plans (may contain sensitive project info)
+plans/
+
+# Project-specific configs (tracked per-project)
+projects/
+
+# Plugin marketplaces (external repos)
+plugins/marketplaces/
+
+# System files
+.DS_Store
+
+# Quarterly audit reports — dated, regenerated
+audit-reports/audit-*.md
+audit-reports/launchd.*.log
+
+# Chat archives (Stop hook IndyDevDan pattern) — kept locally only
+global-observation/chat-archives/
+global-observation/notifications.jsonl
+
+# === Public-shareable refactor 2026-05-27 ===
+
+# Local overlays (per-user, never committed) — the .local.* overlay pattern
+*.local.md
+*.local.sh
+*.local.json
+*.local.yml
+
+# Personal memory bank (was tracked, now local-only)
+MEMORY_FIRST.md
+
+# Secrets and auth state (per-machine)
+.credentials.json
+mcp-needs-auth-cache.json
+
+# Observation data (per-machine signal collection)
+global-observation/*.jsonl
+global-observation/self-critique.jsonl
+global-observation/*.log
+global-observation/*.bak-*
+global-observation/observation-ledger-*-archive.json
+
+# Misc per-machine state
+firebase-debug.log
+.last-cleanup
+.claude.json.backup_*
+*.json.bak-*
+settings.json.bak-*
+sessions/
+tasks/
+
+# Vendor / plugin runtime files
+vercel-plugin-device-id
+vercel-plugin-telemetry-preference
+plugins/plugin-catalog-cache.json
+plugins/install-counts-cache.json
+
+# Plugin install-state (machine-specific: installPath is an absolute local
+# path). Not shipped in this repo — regenerate locally via `claude plugins
+# install`; see README for the recommended-plugins list. (wave2-plan.md §1.2)
+plugins/installed_plugins.json
+plugins/known_marketplaces.json
+
+# Python bytecode (skills use Python scripts)
+__pycache__/
+*.pyc
+*.pyo
+
+# Per-machine runtime artifacts (2026-06-08)
+.last-update-result.json
+security/
+*.bak-*
+global-observation/*.db
+
+# Serena per-project metadata (machine-local, regenerated)
+.serena/
+
+# Meta-observer last-run watermark (per-machine state)
+global-observation/.last-run-ts

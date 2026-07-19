@@ -1,0 +1,24 @@
+# CLAUDE.md — Personal Additions
+
+> Personal additions to the global Claude Code framework. Loaded alongside
+> ~/.claude/CLAUDE.md (note: there is no auto-include yet; reference this
+> file from CLAUDE.md or include manually in your workflow).
+> This file is .gitignored; never committed.
+
+## My Setup
+
+- [Brief notes about your machine setup, paths, preferences]
+
+## My Active Projects Index
+
+- [Project A]: `~/path/to/project-a` — [one-line description]
+- [Project B]: `~/path/to/project-b` — [one-line description]
+
+## Personal Behavioral Tweaks
+
+- [e.g., "Always confirm before destructive operations on /mnt/external"]
+- [e.g., "Use my fork of X library at github.com/me/x-fork"]
+
+## Recent History
+
+- [Optional: notes about recent framework changes, decisions, incidents]

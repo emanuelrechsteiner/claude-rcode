@@ -1,0 +1,114 @@
+<!--
+Status: ACTIVE
+Purpose: Reusable Controller-Contract preamble blocks for R.Code command
+files (commands/*.md). Copy the appropriate block below into a new or edited
+command, immediately after its YAML frontmatter. This is the raw text the
+linter checks for — see scripts/command-contract-lint.sh (checks #1, #2, #3)
+and the meta-proposal
+~/.claude/plans/meta-proposal-2026-07-15-controller-first-enforcement.md
+(IMP-089, layer L2) for the full rationale. Not a full command file by itself
+— see templates/commands/ for a complete command skeleton that already
+embeds this block. Reconciled against the linter's actual behavior 2026-07-16
+(IMP-098/099) — the shapes below are copy-pasteable and verified to pass.
+-->
+
+# Controller-Contract Preamble — Template (v1)
+
+There are exactly two valid shapes for a R.Code command file. Pick ONE.
+
+## 1. Substantial commands (the default)
+
+Any command that decomposes work and dispatches mutating sub-work (most
+`/issue`-style, `/brainstorm`-style, `/rcode-*` commands) uses the full
+contract. Paste this block verbatim, right after the closing `---` of the
+YAML frontmatter. The linter does not match on marker syntax alone — it also
+requires three specific prose lines inside the body (see "What the linter
+checks" below). The block below is the real shape used by `commands/meta.md`
+and `commands/team-lead.md`, both of which pass the linter today; adapt only
+the surrounding instructional prose to the command's actual flow, not the
+three bolded lines themselves.
+
+```
+<!-- controller-contract:v1 -->
+> **Controller-First.** This is a substantial R.Code entry point: decompose the work via the controller before mutating anything (see `agents/control-agent.md` §1-2).
+> **Model×Effort per spawn** is assigned via `agents/control-agent.md` §2 — the single canonical dispatch spec; do not re-derive it here.
+> **Second-order checkpoints** run after every delegation wave per `agents/control-agent.md` §4.
+```
+
+Why these exact three lines: the linter greps for `Controller-First`,
+`Effort per spawn.*agents/control-agent\.md.*§2`, and
+`Second-order checkpoints` (checks #3 below) — reword the surrounding prose
+freely, but keep those three substrings intact and in the order shown, on
+lines that still contain their required neighbors (the "Effort per spawn"
+line must still mention `agents/control-agent.md` and `§2` on the SAME
+line).
+
+There is no separate `2ND-ORDER-CHECKPOINT` marker pair — the third bolded
+line above is what the linter checks; a distinct closing/opening marker for
+the same fact does not exist in any command on disk and is not required.
+
+## 2. Read-only / mechanical commands (exempt)
+
+Commands that only read state and never dispatch mutating work (e.g.
+`handoff`, `simple-onboard`, `status-sync`) declare exemption via an inline
+`exempt="<reason>"` attribute on the SAME `controller-contract:v1` marker —
+there is no separate exemption marker. This is the real shape used by
+`commands/handoff.md`, `commands/simple-onboard.md`, and
+`commands/status-sync.md`, all of which pass the linter today:
+
+```
+<!-- controller-contract:v1 exempt="read-only/mechanical, no agent dispatch" -->
+```
+
+Replace the reason text with a real one-line justification specific to the
+command. The linter extracts and stores the reason (it does not validate its
+content), but a real reason is what makes the exemption reviewable by a
+human later. When the marker carries `exempt="..."`, checks #1, #2, and #3
+below are skipped entirely for that command — checks #4 and #5 still run.
+
+## Frontmatter requirements (both shapes)
+
+Every command file needs YAML frontmatter with, at minimum:
+
+```yaml
+---
+description: <one line>
+model: claude-fable-5[1m]   # substrate pin — IMP-092 landed; every command
+                             # on disk today is pinned to claude-fable-5[1m]
+                             # (agents/control-agent.md is pinned to the same
+                             # value). Other values remain syntactically
+                             # legal per command-contract-lint.sh's
+                             # allowed-substrate pattern (short aliases
+                             # opus/sonnet/haiku/fable, or full
+                             # claude-<family>-<n>[1m] ids) — override via
+                             # CLAUDE_CONTRACT_MODEL_RE if a command
+                             # genuinely needs a different substrate — but
+                             # claude-fable-5[1m] is the default to copy.
+allowed-tools:               # for the SUBSTANTIAL shape, must include one of:
+  - Task                     #   Task, TaskCreate, or TaskUpdate
+  - Read
+  - ...
+---
+```
+
+The exempt shape does not require `Task`/`TaskCreate`/`TaskUpdate` in
+`allowed-tools` (check #2 is skipped when the marker carries
+`exempt="..."`), but still needs `model:` if the command should run on a
+specific substrate — it is simply not linter-enforced for exempt commands.
+
+## What the linter checks (scripts/command-contract-lint.sh)
+
+| # | Check | Exempt commands |
+|---|-------|------------------|
+| M | `<!-- controller-contract:v1 -->` marker present (lowercase, HTML comment); its optional `exempt="<reason>"` attribute is the only exemption signal | still runs — the marker itself must be present either way |
+| 1 | `model:` frontmatter present, value matches the allowed-substrate pattern | skipped |
+| 2 | `allowed-tools` contains `Task`/`TaskCreate`/`TaskUpdate` | skipped |
+| 3 | Body contains all three mandatory lines: `Controller-First`, `Effort per spawn.*agents/control-agent\.md.*§2`, `Second-order checkpoints` | skipped |
+| 4 | No stale references (`autonomy-arbiter.md`, `excessive-agency-gate.md`, `ux-agent`, `frontend-agent`) — a line that historically explains a stale reference (contains `archiv`/`superseded`/`retired`/`ersetzt` on the same line) is exempted | still runs |
+| 5 | Every `**<name>-agent**` mention resolves to a real `agents/<name>-agent.md` | still runs |
+
+Run it: `bash scripts/command-contract-lint.sh commands/`
+
+Note the linter takes a **directory** argument (defaults to
+`~/.claude/commands` if omitted), not a single file — point it at the
+directory containing the command file(s) you want checked.

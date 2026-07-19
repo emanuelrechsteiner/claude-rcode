@@ -1,0 +1,300 @@
+{
+  "env": {
+    "MAX_THINKING_TOKENS": "30000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "90",
+    "CLAUDE_CONTROLLER_GATE_MODE": "note"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Agent(*)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(su:*)",
+      "Bash(rm -rf /*:*)",
+      "Bash(rm -rf ~/*:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)",
+      "Bash(> /dev/*:*)",
+      "Bash(nc:*)",
+      "Bash(netcat:*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/.aws/credentials)",
+      "Read(**/.ssh/id_*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Edit(**/secrets/**)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Write(**/secrets/**)"
+    ],
+    "ask": [
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(npm publish:*)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '🚀 Claude Code session started - $(date)'"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-start-context.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/git-identity-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/sandbox-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/guard-unsafe.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/git-state-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/git-identity-enforce.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/excessive-agency-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/web-fetch-safety-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/controller-first-mutation-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/web-fetch-safety-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/mcp-agency-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/web-fetch-safety-gate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/parallel-lock-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/gateguard.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pretool-auto-read.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/config-protection.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/file-protection.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/security-audit.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/controller-first-mutation-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "echo '📝 File modification detected - remember to commit within 60 minutes'"
+          },
+          {
+            "type": "command",
+            "command": "if [ -d .rcode ] && [ -f .rcode/scope-manifest.json ]; then BRANCH=$(git branch --show-current 2>/dev/null); if echo \"$BRANCH\" | grep -q 'issue-'; then echo 'R.Code: Scope guard active. Ensure changes are within issue scope.'; fi; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/auto-format.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/post-edit-validate.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/observation-capture.sh"
+          },
+          {
+            "type": "command",
+            "command": "if [ -d .rcode ]; then echo 'R.Code: Remember to update PROJECT-STATUS.md if this completes an issue.'; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/posttool-track-read.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-end-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/stop-batched-checks.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/self-critique-log.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-handoff-write.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/scripts/config-drift-check.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/subagent-lock-release.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/controller-first-subagent-flag.sh"
+          },
+          {
+            "type": "command",
+            "command": "echo '✅ Sub-agent completed task'"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/postbash-failure-recovery.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/notification-tts.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/parallel-analyze-prompt.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/controller-first-prompt-gate.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline-command.sh"
+  },
+  "sandbox": {
+    "enabled": false,
+    "autoAllowBashIfSandboxed": true,
+    "network": {
+      "allowUnixSockets": [
+        "~/.ssh/agent-socket",
+        "/var/run/docker.sock"
+      ],
+      "allowLocalBinding": true
+    },
+    "excludedCommands": [
+      "git",
+      "docker",
+      "npm",
+      "node"
+    ]
+  }
+}

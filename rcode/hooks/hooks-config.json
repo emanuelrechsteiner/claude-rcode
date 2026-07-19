@@ -1,0 +1,44 @@
+{
+  "_comment": "R.Code Workflow v2.0 — Hook Configuration",
+  "_instructions": "Merge these hooks into your project's .claude/settings.json or ~/.claude/settings.json under the 'hooks' key. These hooks enforce R.Code workflow discipline automatically.",
+
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if there are uncommitted changes that should be committed. If significant work was done (code written, files modified) but not committed, respond with {\"ok\": false, \"reason\": \"Uncommitted changes detected. Please commit before stopping.\"}. Otherwise respond with {\"ok\": true}."
+          },
+          {
+            "type": "prompt",
+            "prompt": "Check if the project has a .rcode/ directory. If yes, check if .rcode/agent-log.md was updated this session. If the agent worked on code or issues but did NOT append to the agent log, respond with {\"ok\": false, \"reason\": \"This is a R.Code project. Please run /handoff before ending your session to preserve context for the next agent.\"}. If the log was updated or no significant work was done, respond with {\"ok\": true}."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -d .rcode ]; then echo 'R.Code: Remember to update PROJECT-STATUS.md if this completes an issue.'; fi"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -d .rcode ] && [ -f .rcode/scope-manifest.json ]; then BRANCH=$(git branch --show-current 2>/dev/null); if echo \"$BRANCH\" | grep -q 'issue-'; then echo 'R.Code: Scope guard active. Ensure changes are within issue scope.'; fi; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

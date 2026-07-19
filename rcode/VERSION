@@ -1,0 +1,2 @@
+2026-07-03
+Global R.Code rail version (first line, YYYY-MM-DD). Stamped into .rcode/config.json as "framework_version" by /rcode-init, /rcode-migrate, and /brainstorm; compared and bumped by /rcode-upgrade.

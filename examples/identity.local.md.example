@@ -1,0 +1,32 @@
+# Identity Mappings (Example)
+
+> Example identity.local.md for a developer with three identities. Copy
+> templates/identity.local.md.template to ~/.claude/rules/identity.local.md
+> and adapt.
+
+## Identities
+
+### Identity 1: Work — Acme Corp
+
+- Git name: `Jane Doe`
+- Git email: `jane@acme.com`
+- Path patterns:
+  - `acme-corp/`
+  - `Cowork/acme-`
+  - `~/code/work/`
+
+### Identity 2: Personal projects
+
+- Git name: `Jane Doe`
+- Git email: `jane@janedoe.dev`
+- Path patterns:
+  - `~/code/personal/`
+  - `personal-site/`
+
+### Identity 3: Open source
+
+- Git name: `jdoe`
+- Git email: `12345+jdoe@users.noreply.github.com`
+- Path patterns:
+  - `~/code/oss/`
+  - `forks/`

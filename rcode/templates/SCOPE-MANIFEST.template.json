@@ -1,0 +1,26 @@
+{
+  "project_name": "[PROJECT_NAME]",
+  "created_date": "[YYYY-MM-DD]",
+  "version": "1.0.0",
+  "locked": false,
+  "locked_date": null,
+  "total_issues": 0,
+  "total_features": 0,
+  "features": [
+    {
+      "id": "F001",
+      "name": "[Feature Name]",
+      "description": "[What this feature does]",
+      "phase": 1,
+      "issues": [],
+      "status": "planned",
+      "scope_boundary": "[What this feature does NOT include]"
+    }
+  ],
+  "scope_changes": [],
+  "metadata": {
+    "created_by": "rcode-brainstorm",
+    "last_updated": "[YYYY-MM-DD]",
+    "last_updated_by": "[agent/human]"
+  }
+}

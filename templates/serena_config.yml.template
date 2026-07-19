@@ -1,0 +1,131 @@
+# Serena — die NICHT versionierbaren Teile dieses Setups
+#
+# ⚠️  Diese Datei ist ein TEMPLATE, kein Live-Config.
+#     Ziel: ~/.serena/serena_config.yml  (liegt AUSSERHALB dieses Repos und kann
+#     deshalb nicht mitversioniert werden — Serena schreibt die Datei selbst und
+#     legt beim Start eigene Felder wie `projects:` an).
+#
+# Beim Aufsetzen auf einem neuen Rechner: Serena einmal starten (erzeugt die Datei),
+# dann die zwei unten dokumentierten Bloecke UEBERNEHMEN. Ohne sie reproduziert das
+# Repo den Setup NICHT — die Rules und Hooks kommen mit, die Absicherung nicht.
+#
+# Hintergrund + Messwerte: IMP-104/105 in global-observation/improvement-ledger.json
+# Regel-Doku: rules/mcp-tool-usage.md → "Serena: read-only by design"
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# TEIL 1 — MCP-Registrierung (NICHT in dieser Datei, sondern in ~/.claude.json)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Serena MUSS mit `--context claude-code` starten. Das Plugin
+# (serena@claude-plugins-official) startet OHNE dieses Flag und faellt damit auf
+# den Default-Context `desktop-app` zurueck — deshalb ist das Plugin in
+# settings.json bewusst auf `false` gesetzt und Serena stattdessen user-scope
+# registriert:
+#
+#   claude mcp add serena --scope user -- \
+#     uvx --from git+https://github.com/oraios/serena \
+#     serena start-mcp-server --context claude-code
+#
+# KEIN --project-Flag: der claude-code-Context setzt `single_project: true`, was
+# bei fixiertem Projekt `activate_project` abschaltet. Ohne das Flag bleibt Serena
+# projekt-beweglich (16 registrierte Projekte).
+#
+# Was `--context claude-code` gegenueber `desktop-app` bewirkt:
+#   1. schliesst 6 Tools aus, die native Tools duplizieren:
+#      read_file, create_text_file, execute_shell_command, find_file, list_dir,
+#      search_for_pattern
+#      → execute_shell_command ist der sicherheitsrelevante: die Hook-Matcher und
+#        permissions.deny binden an den Tool-NAMEN "Bash". Kein mcp__*-Name matcht.
+#        Das Tool war damit ein offener Weg um guard-unsafe.sh, excessive-agency-gate.sh
+#        und deny: Bash(rm -rf ~/*). mcp-agency-gate.sh faengt es NICHT
+#        (nicht in dessen ESCALATE_RE).
+#   2. structured_tool_output: false — dokumentierter Claude-Code-Bug (entpackt
+#      strukturierte Outputs nicht → massives Escaping → Token-Verschwendung)
+#   3. korrigiert den System-Prompt (desktop-app behauptet, der Nutzer sitze vor
+#      einem vom Code getrennten Chat-Interface — fuer Claude Code schlicht falsch)
+#
+# Verifikation nach dem Setup:
+#   mcp__serena__get_current_config  →  "Active context: claude-code", 12 aktive Tools
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# TEIL 2 — die zwei Bloecke fuer ~/.serena/serena_config.yml
+# ─────────────────────────────────────────────────────────────────────────────
+
+# --- Block A: alle schreibenden Serena-Tools global abschalten -----------------
+#
+# WARUM GLOBAL: Das Problem ist keine Projekt-Eigenschaft, sondern eine Eigenschaft
+# der Hook-Architektur — die Matcher in settings.json binden an Tool-NAMEN
+# ("Write|Edit"). Kein mcp__serena__*-Name matcht. Serena-Edits liefen daher an
+# ALLEN 10 Write|Edit-Hooks vorbei, in JEDEM Projekt:
+#   PreToolUse:  parallel-lock-check, gateguard, pretool-auto-read, config-protection,
+#                file-protection, security-audit (!), controller-first-mutation-gate
+#   PostToolUse: auto-format, post-edit-validate, observation-capture (!)
+# Die beiden mit (!) sind die teuersten: security-audit.sh blockt Secrets,
+# observation-capture.sh speist die signals.jsonl → meta-observer-Pipeline (die war
+# auf Serena-Edits blind). Auch deny: Edit(**/.env) greift nicht.
+#
+# WARUM KEIN ADAPTER (3:0-Gutachten, siehe IMP-104): Alle 10 Hooks sind fail-open
+# (exit 0 bei fehlendem file_path/content). Mehrere Serena-Tools koennen ihre
+# Zieldateien konstruktionsbedingt nicht vorab nennen — rename_symbol nennt nur die
+# Definitionsdatei, waehrend das LSP N Dateien schreibt; replace_in_files hat gar
+# keinen Pfad im Input. Ein Adapter haette die Hooks still GRUEN melden lassen, ohne
+# zu pruefen. Falsche Sicherheit ist schlimmer als bekannt fehlende.
+#
+# PREIS, bewusst akzeptiert: Serenas reference-aware rename_symbol entfaellt.
+#
+# BEI AENDERUNG: zwingend die Hook-Matcher in ~/.claude/settings.json mit anpassen.
+excluded_tools:
+  # --- Code-Schreiber: nicht auf (file_path, content) abbildbar ---
+  - replace_symbol_body
+  - insert_after_symbol
+  - insert_before_symbol
+  - replace_content
+  - replace_in_files
+  - rename_symbol
+  - safe_delete_symbol
+  # --- Memory-Schreiber: kein Pfad im Input; write_memory kann via "global/"-Praefix
+  #     sogar projektuebergreifend schreiben ---
+  - write_memory
+  - edit_memory
+  - delete_memory
+  - rename_memory
+
+# --- Block B: Worktree-Kopien global aus dem Symbol-Index halten ---------------
+#
+# WARUM GLOBAL: `.claude/worktrees/` ist eine Claude-Code-KONVENTION, kein
+# Projekt-Spezifikum — jedes Projekt kann dort Worktrees anlegen (belegt: Project-A,
+# Project-B, Project-C). Ein projektlokaler Ausschluss haette 1 von 16 Projekten
+# geloest.
+#
+# DAS PROBLEM: Worktrees enthalten vollstaendige, oft DIVERGENTE Kopien des
+# Quellcodes. In Project-A lieferte find_symbol("lintLens") DREI Treffer — einer davon
+# eine veraltete Fassung (217 statt 244 Zeilen). Ein Edit haette in der falschen
+# Kopie auf einem fremden Branch landen koennen: unsichtbar fuer den aktiven Branch,
+# Tests dort weiterhin gruen. 872 veraltete Quell-Duplikate gegen 458 echte Dateien
+# = ~65 % des Index war Muell.
+#
+# WARUM ignore_all_files_in_gitignore DAS NICHT FAENGT: `.claude/worktrees/` ist per
+# `.git/info/exclude` ausgeschlossen, nicht per `.gitignore`-DATEI. Serena parst
+# .gitignore-Dateien; `.git/info/exclude` ist keine. Der verlaessliche Test ist
+# immer `git check-ignore -v <pfad>` — der loest alle 4 Ignore-Quellen auf.
+#
+# Serena merged globale und projektlokale ignored_paths ADDITIV. Projektspezifisches
+# (z.B. grosse docs-/artifacts-Ordner) gehoert weiterhin in .serena/project.yml.
+ignored_paths:
+  - ".claude/worktrees"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIKATION — Fallen, in die wir schon getappt sind
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ✅ effektive Tool-Liste:  mcp__serena__get_current_config
+#                           (erwartet: "Active context: claude-code", 12 aktive Tools)
+# ✅ ohne Neustart pruefbar: JSON-RPC tools/list gegen einen frisch gespawnten
+#                           `serena start-mcp-server --context claude-code`
+# ✅ Ignore-Regeln:         serena project is_ignored_path <ECHTER pfad>
+#
+# ❌ `serena tools list` taugt NICHT — zeigt laut eigener Hilfe die per Default
+#    aktiven Tools, nicht die effektiv aktiven. Meldete faelschlich
+#    execute_shell_command als vorhanden, obwohl der Context es ausschliesst.
+# ❌ `is_ignored_path` mit ERFUNDENEN Pfaden taugt nicht — nicht-existente Pfade
+#    melden immer "IS NOT ignored". Zwei Testlaeufe liefen deshalb falsch-negativ.

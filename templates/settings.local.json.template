@@ -1,0 +1,41 @@
+{
+  "_comment": "Machine-specific settings overlay. Merged with settings.json. Gitignored.",
+  "env": {
+    "_comment": "Env vars used by routines and hooks. Replace placeholders with your values.",
+    "NOTION_PARENT_PAGE_ID": "your-notion-page-id-here",
+    "CLAUDE_HISTORICAL_SOURCES": "$HOME/.claude/projects"
+  },
+  "permissions": {
+    "_comment": "Per-machine permission tweaks. Most permissions live in settings.json (committed).",
+    "allow": [],
+    "deny": []
+  },
+  "_comment_preferences": "The keys below are PERSONAL preferences the public settings.json intentionally omits (they don't belong in a shared, committed file). Uncomment + set the ones you want; delete the rest. JSON has no real comments, so keys prefixed with an underscore are documentation only — remove them once you've read them, they are not read by Claude Code.",
+  "_comment_model": "Pin a specific model/effort for this machine instead of the interactive picker.",
+  "model": "sonnet",
+  "effortLevel": "high",
+  "_comment_editor": "Editor keybinding mode inside the TUI.",
+  "editorMode": "normal",
+  "_comment_editor_alt": "or \"vim\"",
+  "_comment_tui": "TUI rendering mode.",
+  "tui": "fullscreen",
+  "_comment_voice": "Voice input/output toggle.",
+  "voice": {
+    "enabled": false
+  },
+  "_comment_thinking": "Show extended-thinking traces by default.",
+  "alwaysThinkingEnabled": false,
+  "_comment_dangerous_skip": "Skip the confirmation prompt before entering --dangerously-skip-permissions mode. Leave false unless you understand the tradeoff in rules/agency-bands.md.",
+  "skipDangerousModePermissionPrompt": false,
+  "_comment_workflow_warning": "Suppress the workflow-usage warning banner.",
+  "skipWorkflowUsageWarning": false,
+  "_comment_notif": "Preferred channel for push notifications: \"auto\", \"push\", or \"none\".",
+  "preferredNotifChannel": "auto",
+  "_comment_remote": "Enable the remote-control companion app at startup.",
+  "remoteControlAtStartup": false,
+  "_comment_agent_push": "Send a push notification when a background agent run finishes.",
+  "agentPushNotifEnabled": false,
+  "_comment_plugins": "Plugin marketplace + enablement state is machine-specific (installPath is absolute per-user). Configure via `claude plugins` on this machine instead of copying someone else's enabledPlugins/extraKnownMarketplaces block.",
+  "enabledPlugins": {},
+  "extraKnownMarketplaces": {}
+}
