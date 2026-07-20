@@ -71,6 +71,9 @@ Modes:
                     - settings.json                 : NEVER replaced whole —
                       only hook registrations are merged in (jq); your env/
                       permissions/model stay untouched
+                  Conflict prompts accept: y (replace this one), n/Enter
+                  (keep yours), a (replace ALL remaining), k (keep ALL
+                  remaining), d (show diff, re-ask), q (abort merge).
                   Use --dry-run to print the report without changing anything.
 
 Flags:
@@ -147,6 +150,52 @@ confirm() {
       ;;
     *) return 1 ;;
   esac
+}
+
+# Sticky answer for conflict prompts: "" (ask each), "all" (replace all
+# remaining), "keep" (keep yours for all remaining). Set by confirm_conflict
+# when the user answers a/k; reset at the start of every merge_augment run.
+AUG_STICKY=""
+
+confirm_conflict() {
+  # confirm_conflict "unit label" "repo path" "local path" -> 0 = replace
+  #
+  # Interactive conflict prompt with bulk answers (git add -p style):
+  #   y = replace this one          n/Enter = keep yours (default)
+  #   a = replace ALL remaining     k = keep yours for ALL remaining
+  #   d = show diff, then re-ask    q = abort the merge here
+  # Under --yes this behaves exactly like confirm default-n (keep yours) —
+  # the documented "--yes accepts the default" semantics are unchanged.
+  local label="$1" src="$2" dst="$3"
+  case "$AUG_STICKY" in
+    all)  log "  -> a (all): replacing $label"; return 0 ;;
+    keep) log "  -> k (all): keeping yours: $label"; return 1 ;;
+  esac
+  if [ "$ASSUME_YES" -eq 1 ]; then
+    log "  -> --yes: auto-declining (default keep yours): $label"
+    return 1
+  fi
+  local reply
+  while :; do
+    read -r -p "$label differs from yours — replace with R.Code's version? [y/n/a/k/d/q] (default: keep yours) " reply < /dev/tty || reply=""
+    case "$reply" in
+      y|Y|yes|YES) return 0 ;;
+      n|N|no|NO|"") return 1 ;;
+      a|A) AUG_STICKY="all";  return 0 ;;
+      k|K) AUG_STICKY="keep"; return 1 ;;
+      d|D)
+        log "--- diff: yours (-) vs R.Code (+) — $label ---"
+        if [ -d "$src" ]; then diff -ru "$dst" "$src" || true
+        else diff -u "$dst" "$src" || true; fi
+        log "--- end diff ---"
+        ;;
+      q|Q)
+        warn "merge aborted by user at $label — units merged so far are kept, the rest is untouched. Re-run --augment to continue."
+        exit 1
+        ;;
+      *) log "  (y = replace, n = keep yours, a = replace all, k = keep all, d = diff, q = quit)" ;;
+    esac
+  done
 }
 
 unique_backup_path() {
@@ -485,6 +534,17 @@ recommend_augment() {
   fi
 
   log "Report: $total_new new, $total_conflict conflicting, $((total - total_new - total_conflict)) identical (of $total R.Code units)"
+
+  # List the conflicting units so a "conflict pass" can be planned without
+  # re-deriving the list by hand (previously only the counts were printed).
+  if [ "$total_conflict" -gt 0 ]; then
+    log ""
+    log "Conflicting units (yours differs from R.Code's):"
+    local c
+    for c in "${AUG_CONFLICT_RULES[@]:-}"; do [ -n "$c" ] && log "  rules/$c"; done
+    for c in "${AUG_CONFLICT_HOOKS[@]:-}"; do [ -n "$c" ] && log "  hooks/$c"; done
+    for c in "${AUG_CONFLICT_UNITS[@]:-}"; do [ -n "$c" ] && log "  $c"; done
+  fi
   log ""
 
   if [ "$has_existing_rules_hooks" -eq 0 ]; then
@@ -548,6 +608,7 @@ merge_augment() {
 
   log ""
   log "Merging..."
+  AUG_STICKY=""
 
   # rules/*.md — per file, conflicts ask (default keep-yours)
   local base
@@ -559,7 +620,7 @@ merge_augment() {
   done
   for base in "${AUG_CONFLICT_RULES[@]:-}"; do
     [ -z "$base" ] && continue
-    if confirm "rules/$base differs from yours — replace with R.Code's version? (default: keep yours)"; then
+    if confirm_conflict "rules/$base" "$repo_root/rules/$base" "$CLAUDE_DIR/rules/$base"; then
       cp "$repo_root/rules/$base" "$CLAUDE_DIR/rules/$base"
       log "  ~ rules/$base (replaced)"
     else
@@ -577,7 +638,7 @@ merge_augment() {
   done
   for base in "${AUG_CONFLICT_HOOKS[@]:-}"; do
     [ -z "$base" ] && continue
-    if confirm "hooks/$base differs from yours — replace with R.Code's version? (default: keep yours)"; then
+    if confirm_conflict "hooks/$base" "$repo_root/hooks/$base" "$CLAUDE_DIR/hooks/$base"; then
       cp "$repo_root/hooks/$base" "$CLAUDE_DIR/hooks/$base"
       chmod +x "$CLAUDE_DIR/hooks/$base"
       log "  ~ hooks/$base (replaced)"
@@ -596,7 +657,7 @@ merge_augment() {
   done
   for base in "${AUG_CONFLICT_UNITS[@]:-}"; do
     [ -z "$base" ] && continue
-    if confirm "$base differs from yours — replace with R.Code's version? (default: keep yours)"; then
+    if confirm_conflict "$base" "$repo_root/$base" "$CLAUDE_DIR/$base"; then
       rm -rf "${CLAUDE_DIR:?}/$base"
       cp -R "$repo_root/$base" "$CLAUDE_DIR/$base"
       log "  ~ $base (replaced)"
