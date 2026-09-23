@@ -1,0 +1,99 @@
+<!--
+Status: ACTIVE
+Last Updated: 2026-08-24
+Purpose: Pflichtform für Aufträge an Subagenten und für Handoffs — fünf
+Pflichtfelder plus zwei belegte Zusätze. Referenziert von
+agents/control-agent.md §2/§3, commands/handoff.md, rules/foundation.md.
+Herkunft: IMP-161, plans/meta-proposal-2026-08-24-august-vollanalyse.md §3.5.
+-->
+
+# Auftragsbrief — Vorlage (v1)
+
+Ein Auftragsbrief ist der **eine** Eingangs-Turn, mit dem ein Subagent oder der
+nächste Agent losläuft. Er ersetzt das Nachsteuern: wo er vollständig war, liefen
+im August-Korpus **6 Sitzungen mit 79–266 Agenten-Schritten ohne eine einzige
+Korrektur**; die Gegenprobe mit halbfertigen Zahlen brauchte **24 Korrektur-Turns**.
+
+**Fehlt eines der fünf Pflichtfelder: einmal nachfragen, nicht raten.** Genau das
+Raten ist der belegte Kostentreiber — und ein Zahlendreher im Auftrag (5 statt 50
+Cent) lief 1 h 41 min und 97 Edits über 8 Dateien unwidersprochen durch.
+
+## Die fünf Pflichtfelder
+
+| Feld | Was hineingehört |
+|---|---|
+| **Pfad / Ort** | Absoluter Pfad, Datei plus Abschnitt/Symbol. Kein „irgendwo im Modul". |
+| **Symptom** | Was beobachtbar falsch ist — was man sieht, nicht was man vermutet. |
+| **Ursache, soweit bekannt** | Der Root Cause, wenn er bekannt ist; sonst ausdrücklich „unbekannt", nie eine als Tatsache getarnte Vermutung. |
+| **Messwert / Beleg** | Die Zahl oder das Artefakt, an dem das Symptom hängt — mit der Messtiefe. |
+| **Akzeptanzkriterium** | Woran der Auftrag als erledigt erkennbar ist — prüfbar am Artefakt, nicht am Mechanismus (siehe `rules/slop-prevention.md` Trigger 3). |
+
+## Die zwei Zusätze
+
+- **„gemessen, nicht vermutet — BITTE SELBST NACHPRÜFEN."** Nennt die Messtiefe
+  und gibt die Prüfungslast ausdrücklich zurück, statt Sicherheit zu suggerieren.
+  Zehn Worktree-Aufträge in diesem Format liefen **alle einturnig durch**, und
+  zwei davon verweigerten begründet eine Aufweichung bzw. einen unbeauftragten
+  Refactor — die Verweigerung wurde akzeptiert.
+- **„Was ausdrücklich NICHT Auftrag ist."** Die Negativliste ist die billigste
+  Scope-Bremse, die es gibt: sie kostet eine Zeile und macht Scope-Creep zu einer
+  sichtbaren Abweichung statt zu einer Ermessensfrage. Sie wird nicht nur beim
+  Schreiben gegengelesen, sondern bei **jeder** späteren Ausweitung erneut — das
+  ist Teil des Wave-Reviews in `agents/control-agent.md` §4, „Scope against the
+  negative-list" (IMP-201).
+
+## Rohform (kopieren)
+
+```markdown
+## Auftrag: <ein Satz, was erreicht werden soll>
+
+- **Ort:** <absoluter Pfad + Abschnitt/Symbol>
+- **Symptom:** <was beobachtbar falsch ist>
+- **Ursache, soweit bekannt:** <Root Cause — oder ausdrücklich „unbekannt">
+- **Messwert / Beleg:** <Zahl/Artefakt + Messtiefe> — gemessen, nicht vermutet;
+  BITTE SELBST NACHPRÜFEN.
+- **Akzeptanzkriterium:** <prüfbar am Artefakt>
+- **Nicht Auftrag:** <was ausdrücklich draußen bleibt>
+- **Wörtliche Nutzeranweisung:** „<Zitat, falls eine vorliegt>"
+```
+
+Das letzte Feld entfällt, wenn keine wörtliche Anweisung vorliegt. Liegt eine vor,
+wird sie **zitiert weitergereicht, nie paraphrasiert** — und der Subagent darf sie
+nicht durch eigenes Urteil ersetzen, sondern nur nach oben eskalieren
+(`agents/control-agent.md` §3).
+
+## Ausgefülltes Beispiel
+
+```markdown
+## Auftrag: Der Wochenlauf wertet die komprimierten Signal-Scherben tatsächlich aus.
+
+- **Ort:** `~/.claude/scheduled-tasks/weekly-improve/SKILL.md`, Schritt 3
+  (Signal-Auswertung)
+- **Symptom:** Der Lauf meldet „ok" und liefert Findings, aber keines stammt aus
+  einer `.gz`-Scherbe.
+- **Ursache, soweit bekannt:** BSD-`zcat` liest eine `.gz`-Datei als leer und
+  beendet mit Exit 0 — kein Fehler, keine Ausgabe, kein Hinweis im Protokoll.
+- **Messwert / Beleg:** Der Lauf vom 2026-07-26 hat 1.286 Signale nicht gesehen;
+  `gunzip -c` auf derselben Datei gibt sie aus. Gemessen, nicht vermutet —
+  BITTE SELBST NACHPRÜFEN.
+- **Akzeptanzkriterium:** Derselbe Schritt über dieselbe Scherbe gibt >0 Zeilen
+  aus; Zeilenzahl vorher/nachher im Bericht.
+- **Nicht Auftrag:** keine Änderung an der Findings-Logik, kein Umbau des
+  Rotationsschemas, keine neuen Datenquellen.
+```
+
+## Verwendung
+
+| Wo | Wie |
+|---|---|
+| Subagenten-Dispatch | Pflichtform für jeden Auftragstext — `agents/control-agent.md` §2/§3 |
+| Handoff zwischen Sitzungen | Pflichtform für „Next recommended action" — `commands/handoff.md` Schritt 4 |
+| Eigene Diagnosen an den Nutzer | BEFUND-Format: dieselben Felder, plus „BITTE SELBST NACHPRÜFEN" |
+
+## Belege
+
+- IMP-161 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §3.5 (BEFUND-Format,
+  10/10 einturnig) und §5 (6 Sessions 79–266 Turns ohne Korrektur vs. 24 Korrektur-Turns)
+- IMP-176 (ebd.) — Zahlendreher im Auftrag, 1 h 41 min / 97 Edits / 8 Dateien
+- Verwandt: `rules/recommend-on-ask.md` (Rückfragen mit Empfehlung),
+  `rules/slop-prevention.md` (Abnahme am Artefakt)

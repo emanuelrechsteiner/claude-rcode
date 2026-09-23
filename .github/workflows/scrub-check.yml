@@ -1,0 +1,24 @@
+name: scrub-check
+
+# Release gate: fails if any tracked file contains a secret-shaped string,
+# a personal-data fragment from the private config this repo was scrubbed
+# from, or a leftover pre-rebrand project-name reference. Runs the same
+# scripts/scrub-check.sh used by the local pre-push hook
+# (scripts/install-git-hooks.sh), so contributor PRs are covered too, not
+# just this maintainer's machine.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  scrub-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run scrub-check.sh
+        run: bash scripts/scrub-check.sh

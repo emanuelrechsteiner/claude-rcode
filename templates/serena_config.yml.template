@@ -1,0 +1,193 @@
+# Serena — die NICHT versionierbaren Teile dieses Setups
+#
+# ⚠️  Diese Datei ist ein TEMPLATE, kein Live-Config.
+#     Ziel: ~/.serena/serena_config.yml  (liegt AUSSERHALB dieses Repos und kann
+#     deshalb nicht mitversioniert werden — Serena schreibt die Datei selbst und
+#     legt beim Start eigene Felder wie `projects:` an).
+#
+# Beim Aufsetzen auf einem neuen Rechner: Serena einmal starten (erzeugt die Datei),
+# dann die zwei unten dokumentierten Bloecke UEBERNEHMEN. Ohne sie reproduziert das
+# Repo den Setup NICHT — die Rules und Hooks kommen mit, die Absicherung nicht.
+#
+# Hintergrund + Messwerte: IMP-104/105 in global-observation/improvement-ledger.json
+# Regel-Doku: rules/mcp-tool-usage.md → "Serena: read-only by design"
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# TEIL 1 — MCP-Registrierung (NICHT in dieser Datei, sondern in ~/.claude.json)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Serena MUSS mit `--context claude-code` starten. Das Plugin
+# (serena@claude-plugins-official) startet OHNE dieses Flag und faellt damit auf
+# den Default-Context `desktop-app` zurueck.
+#
+# ⚠️ KORREKTUR 2026-08-15 — hier stand eine FALSCHE Angabe:
+#   "deshalb ist das Plugin in settings.json bewusst auf `false` gesetzt".
+# Tatsaechlich stand in settings.json `"serena@claude-plugins-official": true`.
+# Die Absicht war dokumentiert, die Umsetzung fehlte — und niemand hat es gemerkt,
+# weil genau diese Zeile behauptete, es sei erledigt. Folge im Betrieb:
+#   * ZWEI Serena-Prozesse pro Sitzung (gemessen: PID 82804 mit Context,
+#     PID 82495 ohne), also auch zwei Dashboard-Fenster beim Start
+#   * die Plugin-Kopie exponierte 28 statt 22 Tools — exakt die 6, die der
+#     claude-code-Context ausschliesst, inklusive execute_shell_command
+# Der serena-write-gate.sh hat execute_shell_command nachweislich verweigert
+# ("shell execution must go through the Bash tool and its gates"), der Riegel hielt
+# also — die Tuer war trotzdem eingebaut.
+# Behoben: `claude plugin uninstall serena@claude-plugins-official` UND Entfernen
+# des enabledPlugins-Eintrags aus settings.json. Ein blosses `false` reicht nicht,
+# solange niemand nachsieht, ob es wirklich dort steht.
+#
+#   claude mcp add serena --scope user -- \
+#     uvx --from git+https://github.com/oraios/serena \
+#     serena start-mcp-server --context claude-code --project .
+#
+# --project . (NEU 2026-08-15) — ersetzt die frueher hier festgehaltene Regel
+# "KEIN --project-Flag". Warum der Wechsel:
+#   Claude Code startet den MCP-Server mit cwd = Projektverzeichnis der jeweiligen
+#   Sitzung (nachgemessen per lsof an laufenden Prozessen: zwei Sitzungen, zwei
+#   verschiedene cwd). Serena loest einen relativen Pfad gegen genau dieses cwd auf
+#   (ProjectType.convert in cli.py -> Path(value).resolve()). Der Punkt betoniert
+#   also KEINEN festen Pfad ein — jede Sitzung aktiviert ihr eigenes Projekt.
+#   Belegt im Log: "Activating claude-code-config at /Volumes/...".
+#
+# PREIS DIESER ENTSCHEIDUNG (nicht verschweigen): der claude-code-Context setzt
+# `single_project: true`. Bei fixiertem Projekt schaltet Serena deshalb ZWEI Tools
+# ab (Log: "SingleProjectExclusions excluded 2 tools"):
+#   activate_project  — das Projekt ist innerhalb einer Sitzung nicht mehr wechselbar
+#   get_current_config — siehe VERIFIKATION unten, der alte Pruefweg entfaellt damit
+# Relevant nur, wenn eine Sitzung ZWEI registrierte Projekte zugleich symbolisch
+# bearbeiten soll (z.B. Bauhof + Haus). Dafuer entfaellt das manuelle Aktivieren bei
+# jedem Sitzungsstart — der Anlass fuer die Aenderung.
+#
+# Rueckbau (eine Zeile): das Flagpaar "--project", "." aus ~/.claude.json entfernen.
+# Nicht umgesetzte Alternative, die beides haette: eigener Context via
+#   serena context create --from-internal claude-code
+# mit `single_project: false` und trotzdem `--project .`. Preis dort: der Context-
+# Prompt wird upstream gepflegt und weiterentwickelt; eine eigene Kopie forkt ihn
+# und veraltet still.
+#
+# Was `--context claude-code` gegenueber `desktop-app` bewirkt:
+#   1. schliesst 6 Tools aus, die native Tools duplizieren:
+#      read_file, create_text_file, execute_shell_command, find_file, list_dir,
+#      search_for_pattern
+#      → execute_shell_command ist der sicherheitsrelevante: die Hook-Matcher und
+#        permissions.deny binden an den Tool-NAMEN "Bash". Kein mcp__*-Name matcht.
+#        Das Tool war damit ein offener Weg um guard-unsafe.sh, excessive-agency-gate.sh
+#        und deny: Bash(rm -rf ~/*). mcp-agency-gate.sh faengt es NICHT
+#        (nicht in dessen ESCALATE_RE).
+#   2. structured_tool_output: false — dokumentierter Claude-Code-Bug (entpackt
+#      strukturierte Outputs nicht → massives Escaping → Token-Verschwendung)
+#   3. korrigiert den System-Prompt (desktop-app behauptet, der Nutzer sitze vor
+#      einem vom Code getrennten Chat-Interface — fuer Claude Code schlicht falsch)
+#
+# Verifikation nach dem Setup (Stand 2026-08-15):
+#   get_current_config gibt es mit --project NICHT mehr (SingleProjectExclusions).
+#   Stattdessen einen Server frisch spawnen und ins Bautagebuch sehen:
+#     cd <projekt> && uvx --from git+https://github.com/oraios/serena \
+#       serena start-mcp-server --context claude-code --project . </dev/null
+#   Erwartet im Log unter ~/.serena/logs/<datum>/:
+#     "Activating <projektname> at <pfad>"           ← Auto-Aktivierung greift
+#     "Number of exposed tools: 21"                  ← Context greift
+#     open_dashboard IN der Tool-Liste               ← Fenster geht NICHT selbst auf
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# TEIL 2 — die zwei Bloecke fuer ~/.serena/serena_config.yml
+# ─────────────────────────────────────────────────────────────────────────────
+
+# --- Block A: Serena-Schreibtools hinter dem delegierenden Torwaechter ---------
+#
+# GESCHICHTE: Bis 2026-08-05 waren hier ALLE 11 Schreibtools abgeschaltet
+# (3:0-Gutachten, IMP-104) — die Hook-Matcher in settings.json binden an
+# Tool-NAMEN ("Write|Edit"), kein mcp__serena__*-Name matcht, Serena-Edits
+# liefen an allen 10 Write|Edit-Hooks vorbei (inkl. security-audit und
+# observation-capture). Das Gutachten verwarf einen Adapter, weil die Hooks
+# fail-open sind und ein halber Adapter GRUEN gemeldet haette, ohne zu pruefen.
+#
+# SUPERSEDED (IMP-130, 2026-08-05, docs/adr/0001): Es gibt jetzt einen
+# delegierenden, FAIL-CLOSED Torwaechter:
+#   ~/.claude/hooks/serena-write-gate.sh   (PreToolUse,  Matcher mcp__serena__.*)
+#   ~/.claude/hooks/serena-post-tool.sh    (PostToolUse, gleicher Matcher)
+# Er uebersetzt jeden Serena-Schreibaufruf in das (file_path, new_string)-Formular
+# und ruft DIESELBEN Pruefskripte auf (parallel-lock-check, file-protection,
+# security-audit, config-protection; danach auto-format, post-edit-validate,
+# observation-capture). Unbekanntes Tool / fehlender Vertragsparameter /
+# fehlender Pruefer → DENY, niemals durchwinken. Das Fail-open-Argument des
+# Gutachtens ist damit beantwortet, nicht ignoriert.
+# Regression: hooks/tests/serena-gate-regression.sh (35 Faelle, inkl.
+# Secret-durch-die-Serena-Tuer → block).
+#
+# Sonderfaelle:
+#   rename_symbol / safe_delete_symbol  → Gate stellt eine RUECKFRAGE (ask):
+#     das LSP schreibt N Referenzdateien, die Einzeldatei-Pruefer sehen nur die
+#     Definitionsdatei. Kein stilles Durchwinken des Rests.
+#   write_memory "global/..." oder Pfadanteile im Namen → DENY (Pfad-Ausbruch).
+#
+# REIHENFOLGE BEI AKTIVIERUNG (zwingend): erst claude-deploy (Gate ins Haus),
+# dann NEUE Session, DANN erst diese excluded_tools-Liste kuerzen. Umgekehrt
+# waeren die Schreibtools eine Session lang ungeschuetzt aktiv.
+excluded_tools:
+  # replace_in_files schreibt MEHRERE Dateien in einem Aufruf und traegt keinen
+  # abbildbaren Einzelpfad im Input — bleibt abgeschaltet (das Gate wuerde es
+  # ohnehin verweigern; Guertel + Hosentraeger).
+  - replace_in_files
+
+# --- Block B: Worktree-Kopien global aus dem Symbol-Index halten ---------------
+#
+# WARUM GLOBAL: `.claude/worktrees/` ist eine Claude-Code-KONVENTION, kein
+# Projekt-Spezifikum — jedes Projekt kann dort Worktrees anlegen (belegt: Projekt B,
+# Projekt G, ExampleOrg_Productions_Shop). Ein projektlokaler Ausschluss
+# haette 1 von 16 Projekten geloest.
+#
+# DAS PROBLEM: Worktrees enthalten vollstaendige, oft DIVERGENTE Kopien des
+# Quellcodes. In Projekt B lieferte find_symbol("lintLens") DREI Treffer — einer davon
+# eine veraltete Fassung (217 statt 244 Zeilen). Ein Edit haette in der falschen
+# Kopie auf einem fremden Branch landen koennen: unsichtbar fuer den aktiven Branch,
+# Tests dort weiterhin gruen. 872 veraltete Quell-Duplikate gegen 458 echte Dateien
+# = ~65 % des Index war Muell.
+#
+# WARUM ignore_all_files_in_gitignore DAS NICHT FAENGT: `.claude/worktrees/` ist per
+# `.git/info/exclude` ausgeschlossen, nicht per `.gitignore`-DATEI. Serena parst
+# .gitignore-Dateien; `.git/info/exclude` ist keine. Der verlaessliche Test ist
+# immer `git check-ignore -v <pfad>` — der loest alle 4 Ignore-Quellen auf.
+#
+# Serena merged globale und projektlokale ignored_paths ADDITIV. Projektspezifisches
+# (z.B. grosse docs-/artifacts-Ordner) gehoert weiterhin in .serena/project.yml.
+ignored_paths:
+  - ".claude/worktrees"
+
+# --- Block C: Dashboard nicht ungefragt in den Vordergrund (NEU 2026-08-15) ----
+#
+# Serena startet je Instanz ein Web-Dashboard und riss mit dem Default `true` bei
+# JEDEM Start ein Browserfenster auf, das sich in den Vordergrund schiebt. Mit der
+# damals doppelten Installation waren das zwei Fenster pro Sitzung; gemessen am
+# 2026-08-15 lauschten gleichzeitig acht Dashboards auf 24282–24289, dazu ein seit
+# dem 8. August durchlaufender Tray-Manager-Prozess.
+#
+# Das Dashboard bleibt vollstaendig nutzbar — es draengt sich nur nicht mehr auf:
+#   * erreichbar unter http://localhost:24282/dashboard/ (bei mehreren Instanzen
+#     aufsteigend 24283, 24284, …)
+#   * Serena blendet bei `false` zusaetzlich das Tool `open_dashboard` ein; ein
+#     "oeffne das Dashboard" im Chat genuegt dann.
+# Genau dieses Tool ist auch der Nachweis, dass die Einstellung greift: bei `true`
+# fehlt es in der Tool-Liste, bei `false` steht es drin (im Log verifiziert).
+web_dashboard_open_on_launch: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VERIFIKATION — Fallen, in die wir schon getappt sind
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ✅ effektive Tool-Liste:  frisch gespawnter Server + Log (siehe TEIL 1).
+#                           `get_current_config` steht mit --project NICHT mehr
+#                           zur Verfuegung — der alte Pruefweg ist tot.
+# ✅ ohne Neustart pruefbar: JSON-RPC tools/list gegen einen frisch gespawnten
+#                           `serena start-mcp-server --context claude-code`
+# ✅ Ignore-Regeln:         serena project is_ignored_path <ECHTER pfad>
+# ✅ doppelte Installation: `claude plugin list | grep -i serena` muss LEER sein,
+#                           und `ps aux | grep "[s]tart-mcp-server"` darf pro
+#                           Sitzung nur EINEN Prozess zeigen. Diese Pruefung fehlte
+#                           — deshalb lief die Doppelung unbemerkt.
+#
+# ❌ `serena tools list` taugt NICHT — zeigt laut eigener Hilfe die per Default
+#    aktiven Tools, nicht die effektiv aktiven. Meldete faelschlich
+#    execute_shell_command als vorhanden, obwohl der Context es ausschliesst.
+# ❌ `is_ignored_path` mit ERFUNDENEN Pfaden taugt nicht — nicht-existente Pfade
+#    melden immer "IS NOT ignored". Zwei Testlaeufe liefen deshalb falsch-negativ.

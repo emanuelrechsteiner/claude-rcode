@@ -1,0 +1,108 @@
+{
+  "improvementLedgerVersion": "1.5.0",
+  "createdAt": "2025-08-31T19:30:00Z",
+  "lastUpdated": "2026-09-23T13:30:00Z",
+  "versioningSystem": "semver_with_implementation_tracking",
+  "schemaVersion": "1.0.0",
+  "totalImprovements": 0,
+  "totalImplementations": 0,
+  "totalStaged": 0,
+  "totalRollbacks": 0,
+  "versioningProtocol": {
+    "majorVersion": {
+      "description": "Breaking changes to agent system architecture",
+      "examples": [
+        "control_agent_orchestration_overhaul",
+        "agent_instruction_system_redesign"
+      ],
+      "incrementTriggers": [
+        "fundamental_workflow_changes",
+        "backwards_incompatible_modifications"
+      ]
+    },
+    "minorVersion": {
+      "description": "New features and capabilities added to agent system",
+      "examples": [
+        "new_agent_specialization",
+        "enhanced_validation_systems",
+        "new_automation_capabilities"
+      ],
+      "incrementTriggers": [
+        "new_agent_capabilities",
+        "enhanced_workflows",
+        "additional_safety_systems"
+      ]
+    },
+    "patchVersion": {
+      "description": "Bug fixes, configuration tweaks, and small improvements",
+      "examples": [
+        "permission_fixes",
+        "configuration_updates",
+        "error_handling_improvements"
+      ],
+      "incrementTriggers": [
+        "bug_fixes",
+        "configuration_corrections",
+        "minor_optimizations"
+      ]
+    }
+  },
+  "improvementCategories": {
+    "orchestration": "Control Agent and multi-agent coordination improvements",
+    "compliance": "Agent instruction adherence and validation systems",
+    "integrity": "Data structure and ledger preservation protocols",
+    "efficiency": "Performance and workflow optimization improvements",
+    "safety": "Error prevention and rollback systems",
+    "automation": "Automated testing, deployment, and quality assurance",
+    "context": "Session continuity and context preservation systems"
+  },
+  "implementationStatuses": {
+    "proposed": "Improvement identified and proposed for implementation",
+    "approved": "Improvement approved by Control Agent with >99% confidence",
+    "in_progress": "Currently being implemented with progress tracking",
+    "implemented": "Successfully deployed and operational",
+    "tested": "Implementation validated and tested successfully",
+    "rolled_back": "Implementation reverted due to issues",
+    "deprecated": "Improvement superseded by newer solution"
+  },
+  "riskLevels": {
+    "low": "Minimal risk, can be implemented immediately",
+    "medium": "Some risk, requires testing and validation",
+    "high": "Significant risk, requires staged rollout and monitoring",
+    "critical": "High risk, requires extensive testing and rollback procedures"
+  },
+  "improvementQueue": {},
+  "implementationHistory": {},
+  "activeImprovements": {},
+  "rollbackHistory": {},
+  "metrics": {},
+  "continuityProtocol": {
+    "sessionHandoff": {
+      "description": "Protocol for maintaining improvement tracking across sessions",
+      "requirements": [
+        "always_check_improvement_ledger_before_new_implementations",
+        "update_progress_tracking_for_active_improvements",
+        "validate_no_conflicting_improvements_in_progress",
+        "preserve_all_historical_implementation_data",
+        "an_improvement_counts_as_implemented_ONLY_once_its_ledger_entry_exists__record_immediately_never_defer (IMP-074)"
+      ]
+    },
+    "versionControl": {
+      "description": "Semantic versioning for agent system improvements",
+      "currentVersion": "1.5.0",
+      "nextPlannedVersion": "1.6.0",
+      "versionUpdateTriggers": [
+        "successful_major_improvement_implementation"
+      ],
+      "recent_version_history": [
+        "v1.0.0: Initial improvement tracking system",
+        "v1.1.0: Major agent system improvements batch implementation",
+        "v1.2.0: Observation pipeline reboot + 30-day-review rule derivations (2026-04-20)",
+        "v1.3.0: Evidence-based improvements from 260-session-transcript audit: report-only default, identity auto-correction, tool-discipline rule (2026-04-20)",
+        "v1.4.0: Autonomy Arbiter + bash-gate rebalance + data hygiene (IMP-040/041/044/045/046); IMP-042/043 proposed (2026-06-09)",
+        "v1.5.0: IMP-047..069 backfill + computed counters + honest metrics (IMP-073/074, 2026-07-03)"
+      ]
+    }
+  },
+  "_publishNote": "This is a fresh public-release stub. The private source-of-truth ledger's historical entries (IMP-001..IMP-1xx) are not published — see docs/PUBLISHING.md for why. Schema/versioning fields above are carried over so tooling that reads this file keeps working from a clean slate."
+}

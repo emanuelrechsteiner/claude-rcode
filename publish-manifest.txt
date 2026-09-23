@@ -1,0 +1,121 @@
+# publish-manifest.txt — exclusion list consumed by scripts/publish.sh
+#
+# One glob/path per line (relative to repo root), matched against the git
+# archive staging tree with `rsync --exclude-from` semantics (trailing "/"
+# excludes a whole directory; no trailing "/" excludes an exact path or,
+# with a leading "*", any basename match). Blank lines and lines starting
+# with "#" are ignored.
+#
+# Every line exists to neutralize one or more scrub-check.sh findings on
+# the private tree (105 findings on 2026-08-06: 64 PII + 41 rebrand-in-
+# historical-files). Where a file's *content* is needed publicly but its
+# PII is not, prefer scripts/publish-transforms.d/ over exclusion — but
+# per the transform-drift-risk tradeoff, exclusion wins whenever the file
+# is either (a) pure internal history/audit trail, or (b) a personal tool
+# whose entire content is specific to this maintainer's machine/directory
+# layout and would not be meaningfully reusable even after scrubbing.
+
+# --- Internal audit / working trees — never part of a public artifact ----
+audit-reports/
+work/
+
+# --- Non-coding project work (ops/) — never part of a public artifact ----
+# ops/ is where the project's outreach, submission and positioning work
+# lives: awesome-list plans, promo drafts, decision records that discuss
+# the project's own weaknesses candidly. None of it is framework content
+# and all of it is written on the assumption that it stays private — the
+# exclusion is what makes that assumption true. Added 2026-08-13.
+ops/
+
+# --- Runtime observation data — regenerated per-machine, never shipped ---
+# improvement-ledger.json is the one exception that ships: it carries the
+# schema/versioning contract other tooling reads. It contains 300+ dated
+# PII/rebrand findings in its historical entries (real names, project
+# codenames, absolute machine paths quoted verbatim as evidence in old
+# IMP write-ups) that cannot be safely regex-scrubbed without corrupting
+# the JSON, so publish-transforms.d/10-ledger-stub.sh replaces it with a
+# schema-valid, content-empty stub instead of excluding it outright.
+global-observation/*.jsonl
+global-observation/token-counter.json
+# NOTE: improvement-ledger.json is intentionally NOT excluded here — it
+# survives to staging and is then replaced with a schema-valid, content-
+# empty stub by publish-transforms.d/10-ledger-stub.sh (see that script's
+# header for why it's a transform and not an exclusion).
+
+# --- Personal automation config: machine-specific mount points / usernames
+# roots.txt / git-roots.txt are the REAL (gitignored, untracked today)
+# config a user generates locally; the *.example siblings are tracked and
+# ship literal personal paths (/Users/your-username, /Volumes/YourExternalVolume)
+# as "examples" — excluding rather than transforming because a scrubbed
+# example is not obviously more useful than no example (the point of an
+# .example file is a copy-edit target, not documentation prose).
+scheduled-tasks/daily-docs/bin/roots.txt
+scheduled-tasks/daily-docs/bin/roots.txt.example
+scheduled-tasks/daily-docs/bin/git-roots.txt
+scheduled-tasks/daily-docs/bin/git-roots.txt.example
+bin/git-roots.txt
+bin/roots.txt
+
+# --- Dead reference material ---------------------------------------------
+# Pre-assembly development snapshots that are never invoked at runtime (see
+# that folder's own README). No capability ships with them, so they are
+# excluded outright. Added 2026-09-23.
+scheduled-tasks/daily-docs/bin/_referenz-artefakte/
+
+# --- Personal meta-intelligence tools — hardcoded to this maintainer's
+# specific external-volume layout (ProjectHub, ~49 named projects, a Notion-
+# adjacent ledger tree under /Volumes/YourExternalVolume). Not a generic
+# capability once scrubbed — the paths and project registry ARE the tool.
+skills/ledger-entry/
+skills/meta-intelligence/
+
+# --- Local-only settings / secrets-adjacent config ------------------------
+# Real overlay files (*.local.md, *.local.sh, *.local.json, *.local.yml) are
+# already blocked in .gitignore — they are untracked and structurally cannot
+# survive a `git archive HEAD`, so this manifest needs no line for them. A
+# prior '*.local.*' glob line duplicated that protection AND, because rsync
+# basename-matches it, wrongly stripped the *tracked* teaching files below
+# (.example/.template siblings that intentionally carry ".local." in their
+# name so a user can copy-rename them). Removed 2026-08-13 (F1) — keep this
+# section to explicit, non-glob exclusions only.
+settings.local.json
+
+# --- Plugin install-state — machine-specific absolute cache paths --------
+plugins/installed_plugins.json
+plugins/known_marketplaces.json
+# Plugin-Sperrliste: von Claude Code zur Laufzeit abgelegte Testeintraege
+# (2026-03), keine Framework-Inhalte — Gegenpruefung 2026-09-23.
+plugins/blocklist.json
+
+# --- Internal, dated planning docs — not user-facing documentation -------
+docs/superpowers/specs/
+
+# --- Agent-to-agent handoff docs — release scaffolding naming real
+# identities, machines, and repo internals; never part of a public artifact.
+docs/HANDOFF-*
+
+# --- Private IMP history — replaced by a public stub (see transforms) ----
+# The full CHANGELOG.md narrates internal improvement-cycle history (IMP-*
+# numbers, rebrand-in-progress commentary, the pre-rebrand project's old
+# codename used throughout) that predates the public artifact model itself.
+# publish-transforms.d/20-changelog.sh generates a minimal public
+# CHANGELOG.md pointing at GitHub Releases instead.
+CHANGELOG.md
+
+# --- Maintainer-specific publish transforms — excludes the FILE, not the
+# EFFECT -----------------------------------------------------------------
+# scripts/publish.sh and ops/bin/verify-public-mirror.sh run every
+# publish-transforms.d/*.sh from THIS repo's own tree (TRANSFORMS_DIR is set
+# from $REPO_ROOT in both); the staging dir is only passed in as $1.
+# Excluding a transform's file here therefore does not disable its effect on
+# the staging tree — it only keeps that transform's source out of the public
+# repo. The transforms listed below encode maintainer-specific knowledge in
+# their own source and comments, so their source is not publishable.
+# 10-ledger-stub.sh, 20-changelog.sh, 40-strip-private-hooks.sh and
+# 50-pseudonymize.sh are generic mechanisms and stay shipped. Added
+# 2026-09-23.
+publish-transforms.d/30-placeholder-scan.sh
+publish-transforms.d/45-strip-automode-cache.sh
+publish-transforms.d/60-declaw-scrub-check-pii.sh
+publish-transforms.d/65-generalize-reminders-section.sh
+publish-transforms.d/70-neutralize-private-layer-prose.sh

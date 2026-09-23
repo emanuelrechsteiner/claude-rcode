@@ -1,0 +1,114 @@
+# Scroll Handling Patterns
+
+> Lessons learned from LisaGUI scrollbar implementation
+
+## Critical Anti-Pattern: React State + Ref DOM Updates Conflict
+
+**NEVER** use both React-controlled inline styles AND ref-based DOM updates for the same CSS property. React will overwrite ref updates on every re-render.
+
+```tsx
+// BAD - React overwrites ref updates on re-render
+<div
+  ref={thumbRef}
+  style={{ top: `${stateValue}%` }}  // React controls this
+/>
+// Then elsewhere:
+thumbRef.current.style.top = '50%'  // Gets overwritten on next render!
+
+// GOOD - Let ref have exclusive control for animated properties
+<div
+  ref={thumbRef}
+  style={{ display: visible ? 'block' : 'none' }}  // Only non-animated props
+/>
+// Ref controls position exclusively:
+thumbRef.current.style.top = '50%'  // Works correctly
+```
+
+## Momentum Scrolling (Touchpad/Trackpad)
+
+macOS/iOS touchpad scrolling uses compositor-driven momentum. Scroll events may not fire on every frame. For smooth scroll-linked animations:
+
+1. Use native event listener with `{ passive: true }` for performance
+2. Start a RAF (requestAnimationFrame) loop on wheel event
+3. Update positions every frame during the loop
+4. Stop loop on `scrollend` event or timeout after last wheel event
+
+### RAF Animation Loop Pattern
+
+```typescript
+let isScrolling = false;
+let rafId: number | null = null;
+let scrollEndTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const updatePositions = () => {
+  // Read scroll position and update UI directly via refs
+  const scrollTop = content.scrollTop;
+  thumbRef.current.style.top = `${calculateThumbPosition(scrollTop)}%`;
+};
+
+const startLoop = () => {
+  if (isScrolling) return;
+  isScrolling = true;
+
+  const loop = () => {
+    updatePositions();
+    if (isScrolling) {
+      rafId = requestAnimationFrame(loop);
+    }
+  };
+  rafId = requestAnimationFrame(loop);
+};
+
+const stopLoop = () => {
+  isScrolling = false;
+  if (rafId) cancelAnimationFrame(rafId);
+};
+
+// Attach listeners
+content.addEventListener('wheel', () => {
+  startLoop();
+  if (scrollEndTimeout) clearTimeout(scrollEndTimeout);
+  scrollEndTimeout = setTimeout(stopLoop, 150);
+}, { passive: true });
+
+content.addEventListener('scrollend', stopLoop, { passive: true });
+```
+
+## CSS Optimization for Scroll-Linked Elements
+
+```css
+.scroll-thumb {
+  /* Hint to browser for GPU compositing */
+  will-change: top, height;
+
+  /* Disable transitions for instant response */
+  transition: none;
+}
+```
+
+## Debugging UI Lag/Delay Issues
+
+When debugging scroll or animation lag, follow this order:
+
+1. **Verify event fires** - Add console.log to confirm handler runs
+2. **Verify DOM updates** - Use browser DevTools to watch element styles live
+3. **Check for overwrites** - Look for React re-renders overwriting ref changes
+4. **Check for CSS transitions** - Look for `transition` properties causing visual delay
+5. **Check for compositor issues** - Use Chrome DevTools Performance panel
+
+## When to Use Native vs React Event Handlers
+
+| Use Native (`addEventListener`) | Use React (`onScroll`) |
+|--------------------------------|------------------------|
+| High-frequency events (scroll, wheel, mousemove) | Low-frequency events |
+| Need `{ passive: true }` for performance | Don't need passive option |
+| Updating DOM directly via refs | Updating React state |
+| Performance-critical animations | Normal UI updates |
+
+## Key Takeaways
+
+1. For scroll-linked animations, bypass React's render cycle entirely
+2. Use refs for DOM elements that need frequent position updates
+3. Use RAF loops for smooth animations during momentum scrolling
+4. Native event listeners with `passive: true` are faster than React's synthetic events
+5. Always check if React inline styles conflict with imperative ref updates

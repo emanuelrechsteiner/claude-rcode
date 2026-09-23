@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    IMP-135 (2026-08-22). Replaces the unversioned Cloud-scheduled binding
+    that broke silently for 20 days after a 2026-08-02 directory rename.
+    Fires routine-run.sh nightly-observation at 02:05 LOCAL time (launchd
+    does not do UTC conversion — StartCalendarInterval is always local
+    wall-clock).
+
+    Not installed by writing this file. Install via:
+      bash ~/.claude/scripts/install-routine-timers.sh
+    (only meaningful AFTER claude-deploy has copied scripts/routine-run.sh
+    into ~/.claude/scripts/ — see that script's own precondition check.)
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.your-username.claude-routine-nightly-observation</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/your-username/.claude/scripts/routine-run.sh</string>
+        <string>nightly-observation</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>2</integer>
+        <key>Minute</key><integer>5</integer>
+    </dict>
+
+    <!-- Run once after wake if the Mac was asleep at 02:05; don't wake it for this. -->
+    <key>StartCalendarIntervalRunsWhileSleeping</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/your-username/.claude/global-observation/launchd-nightly-observation.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/your-username/.claude/global-observation/launchd-nightly-observation.err.log</string>
+
+    <!-- Daily fixed-time job, not a daemon — never restart on exit/failure. -->
+    <key>KeepAlive</key>
+    <false/>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

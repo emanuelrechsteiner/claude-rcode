@@ -1,0 +1,31 @@
+2026-09-23
+Global R.Code rail version (first line, YYYY-MM-DD). Stamped into .rcode/config.json as "framework_version" by /rcode-init, /rcode-migrate, and /brainstorm; compared and bumped by /rcode-upgrade. Covers the rails (rcode/rules/*.md, installed stack rules) AND the artifact formats the global commands parse — config schema, BRAINSTORM unit-line format, template field names. Commands, skills, and stage playbooks are global (live in ~/.claude) and are NOT versioned per project.
+
+Corrected 2026-09-21 (IMP-214): the stamp read 2026-07-03 while the rails had
+last changed on 2026-08-06 (commit 259e948 / c6a742a — the pre-rebrand -> R.Code
+rename, which changed rule names AND paths). A version stamp that does not move
+when the content moves turns every /rcode-upgrade version comparison into a
+false "already current", which is precisely the drift that command exists to
+catch. Measured on the same day across all 5 deployed projects (Projekt M,
+Projekt L, Projekt W, Projekt N, Projekt K): their three installed
+rcode-*.md rules are byte-identical to these rails, so the consequence of the
+wrong stamp was bookkeeping, not content drift. Each project still carries
+framework_version 2026-07-03 and will now correctly report "behind" until
+/rcode-upgrade re-stamps it — an idempotent no-op on the file level.
+
+2026-09-23 — "Plan folgt Praxis" rework (docs/adr/0002-rcode-plan-folgt-praxis.md).
+What changed in the rails/artifact formats since 2026-08-06: .rcode/config.json
+gains a "tracker" field ("github" | "plan"; "workflow_version" is legacy and
+no longer written by any command, existing values are left untouched); the
+Phase/Stage/Step/Work-unit/Tracker/Check-trio glossary becomes binding
+(rcode-workflow.md); ADRs are two-tier — inline "### ADR-NNN" in
+ARCHITECTURE.md for design-time decisions, filed to docs/adr/NNNN-slug.md
+once implemented/final; every "/review" reference in the rails is corrected
+to "/rcode-review" (that command never existed — M2); commit references
+accept ranges and comma lists ("refs P-051..P-105", "refs P-085, P-100")
+alongside single IDs, reserved for consolidation commits, never a unit's own
+work; agent-log.md and PROJECT-STATUS.md move to a single-writer rule (lead/
+main thread only, never a dispatched worker) — this REPLACES the .gitattributes
+merge=union approach an earlier draft of this rework had planned (amendment
+A12: line-based union merges can interleave multi-line log entries, so no
+.gitattributes change was made for this).

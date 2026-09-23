@@ -1,0 +1,197 @@
+# Next.js App Router Patterns
+
+> Critical patterns and pitfalls for Next.js App Router development
+
+## CRITICAL: API Routes and Middleware Conflicts
+
+### The Problem
+
+When using middleware (especially i18n middleware like `next-intl`), API routes can be intercepted and cause unexpected behavior:
+
+- **405 Method Not Allowed** - Middleware redirects break POST requests
+- **Redirect loops** - API calls get redirected to localized paths
+- **CORS issues** - Middleware headers conflict with API response headers
+
+### The Solution: Always Exclude API Routes from Middleware
+
+```typescript
+// middleware.ts - CORRECT PATTERN
+import createMiddleware from 'next-intl/middleware';
+
+export default createMiddleware({
+  locales: ['en', 'de', 'el'],
+  defaultLocale: 'en'
+});
+
+export const config = {
+  // CRITICAL: Exclude ALL API routes from middleware
+  matcher: [
+    // Match all pathnames except:
+    // - /api/* (API routes)
+    // - /_next/* (Next.js internals)
+    // - /static/* (static files)
+    // - Files with extensions (.ico, .png, etc.)
+    '/((?!api|_next|static|.*\\..*).*)'
+  ]
+};
+```
+
+### Common Middleware Matcher Patterns
+
+```typescript
+// GOOD: Explicit API exclusion
+matcher: ['/((?!api|_next|static|.*\\..*).*']
+
+// GOOD: Alternative explicit listing
+matcher: [
+  '/',
+  '/(en|de|el)/:path*',
+  // Deliberately NOT including /api/*
+]
+
+// BAD: Catches everything including API routes
+matcher: ['/(.*)', '/:path*']
+
+// BAD: Regex that accidentally matches /api
+matcher: ['/(.*)']
+```
+
+## Route Handler Templates
+
+### API Route Template (App Router)
+
+```typescript
+// app/api/[endpoint]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+// Explicitly define allowed methods
+export async function GET(request: NextRequest) {
+  try {
+    // Implementation
+    return NextResponse.json({ data: 'result' });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    // Implementation
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to process request' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Dynamic Route Handler
+
+```typescript
+// app/api/items/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  // Use id...
+}
+```
+
+## Common Pitfalls Checklist
+
+Before deploying any Next.js App Router project, verify:
+
+### Middleware
+
+- [ ] **API routes excluded** from middleware matcher
+- [ ] **Static files excluded** (images, fonts, etc.)
+- [ ] **Next.js internals excluded** (`/_next/*`)
+- [ ] **Test POST requests** after adding middleware
+
+### Route Handlers
+
+- [ ] **No conflicting route names** (page.tsx vs route.ts in same folder)
+- [ ] **Correct HTTP methods exported** (GET, POST, etc.)
+- [ ] **Error handling** returns proper status codes
+- [ ] **Content-Type headers** set correctly for streaming/SSE
+
+### i18n Specific
+
+- [ ] **Default locale configured** correctly
+- [ ] **Locale detection** doesn't affect API routes
+- [ ] **Static paths** excluded from locale prefixing
+
+## Debugging 404/405 Errors
+
+When you get unexpected 404 or 405 errors on API routes:
+
+1. **Check middleware matcher** - Is `/api` excluded?
+   ```bash
+   grep -n "matcher" middleware.ts
+   ```
+
+2. **Check route file location** - Is it in the correct path?
+   ```bash
+   ls -la app/api/[endpoint]/route.ts
+   ```
+
+3. **Check exported methods** - Does the route export the method being called?
+   ```bash
+   grep -E "^export (async )?function (GET|POST|PUT|DELETE)" app/api/*/route.ts
+   ```
+
+4. **Check for redirect loops** - Look at network tab for 3xx responses
+
+5. **Test without middleware** - Temporarily disable to isolate issue
+
+## SSE (Server-Sent Events) Pattern
+
+For streaming responses in App Router:
+
+```typescript
+// app/api/stream/route.ts
+import { NextRequest } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      // Send events
+      controller.enqueue(encoder.encode('data: {"type":"start"}\n\n'));
+
+      // ... streaming logic
+
+      controller.enqueue(encoder.encode('data: {"type":"done"}\n\n'));
+      controller.close();
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      // CRITICAL: If behind proxy, may need:
+      'X-Accel-Buffering': 'no'
+    }
+  });
+}
+```
+
+## Key Takeaways
+
+1. **Always exclude API routes from i18n/auth middleware**
+2. **Use explicit matcher patterns, not catch-all**
+3. **Test POST/PUT/DELETE requests after adding any middleware**
+4. **Check route file exists AND exports the correct HTTP method**
+5. **For streaming, set appropriate headers and exclude from middleware**

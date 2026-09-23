@@ -1,0 +1,89 @@
+name: pr-guard
+
+# This repo (claude-rcode) is a GENERATED PUBLIC ARTIFACT, published from a
+# private source-of-truth repo via scripts/publish.sh — see
+# docs/PUBLISHING.md. It is never hand-edited, and pull requests against it
+# cannot be merged directly: there is no branch here for a PR to merge
+# cleanly into that survives the next publish (each publish overwrites the
+# tree via rsync --delete and produces one new squashed commit).
+#
+# This workflow always fails on every PR, on purpose. Once branch
+# protection on this repo requires this check, PRs become structurally
+# unmergeable via GitHub's UI — the failing check plus "require status
+# checks to pass" is what makes it a hard gate rather than a suggestion.
+# See docs/PUBLISHING.md ("Branch protection the maintainer must set once")
+# for the exact settings.
+#
+# The maintainer's actual path for accepting a contribution is:
+#   1. Read the PR, decide whether to accept it.
+#   2. Run scripts/backport-pr.sh <PR-number> in the PRIVATE repo — it
+#      fetches the diff, applies it there, and preserves attribution via
+#      Co-Authored-By.
+#   3. Merge in the private repo, then re-publish (scripts/publish.sh).
+#   4. Close this PR with a thank-you comment referencing the release that
+#      shipped the change.
+#
+# See CONTRIBUTING.md for the contributor-facing explanation.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# WHY THE REPOSITORY CONDITION BELOW EXISTS (IMP-134, 2026-08-15):
+# This file lives in the PRIVATE source repo, because that is what publishes it
+# into the public mirror. A workflow that lives in a repo also RUNS in that repo
+# — so without a condition, this guard failed on every PR in the private source
+# too, where its own premise ("this repo is a generated artifact") is false.
+# Observed on PR #5 in the source repo: `guard` red, reason inapplicable.
+# The condition names the PUBLIC repo positively rather than excluding the
+# private one by name — this file is published, and the private repo's name
+# should not travel with it.
+jobs:
+  guard:
+    if: github.repository == 'emanuelrechsteiner/claude-rcode'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain why this PR cannot be merged here
+        run: |
+          echo "::error::This repo is generated from a private source of truth. PRs cannot be merged here directly — a maintainer will back-port accepted changes and credit you via Co-Authored-By. See CONTRIBUTING.md."
+          exit 1
+
+  comment:
+    # Runs regardless of whether `guard` passed or failed, so the PR author
+    # gets the explanation even though `guard` is the check GitHub reports
+    # as failing. `continue-on-error: true` on the comment step itself
+    # means a comment-posting failure (rate limit, permissions drift, a
+    # closed/locked PR) never masks the actual gate result from `guard` —
+    # the required check is `guard`, not this job.
+    #
+    # The repository condition is repeated here on purpose (IMP-134): `needs:
+    # guard` combined with `if: always()` runs this job even when `guard` is
+    # SKIPPED. Without it, the private source repo would stay silent-but-wrong —
+    # no failing check, yet still a comment telling the author their PR cannot
+    # be merged here. Both jobs must agree on where this workflow applies.
+    needs: guard
+    if: always() && github.repository == 'emanuelrechsteiner/claude-rcode'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post explanatory PR comment
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              "Thanks for the contribution! This repo (`claude-rcode`) is a **generated public artifact** — it's published from a private source-of-truth repo and is never hand-edited, so PRs can't be merged here directly.",
+              "",
+              "Here's what happens next: a maintainer will review this PR, and if it's accepted, back-port it into the private repo with `scripts/backport-pr.sh`, which preserves your authorship via `Co-Authored-By` in the resulting commit. The change then ships in the next release published from there.",
+              "",
+              "See `CONTRIBUTING.md` and `docs/PUBLISHING.md` for the full explanation of why this repo works this way. The failing check above (`pr-guard`) is expected and intentional — it's not a problem with your PR.",
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

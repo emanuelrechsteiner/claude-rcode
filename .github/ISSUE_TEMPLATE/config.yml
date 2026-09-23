@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contributing guide
+    url: https://github.com/emanuelrechsteiner/claude-rcode/blob/main/CONTRIBUTING.md
+    about: How contributions flow into this generated repo (read before opening a PR)
+  - name: Publishing model
+    url: https://github.com/emanuelrechsteiner/claude-rcode/blob/main/docs/PUBLISHING.md
+    about: Why this repo has no PR-merge path and how changes actually ship

@@ -1,0 +1,27 @@
+# Memory First — Personal Context
+
+> Personal context loaded at the start of each session. Edit this file to
+> describe yourself: your role, current focus, projects, preferences.
+> This file is .gitignored — your personal context never gets committed.
+
+## About Me
+
+- Role: [e.g., Senior Backend Engineer]
+- Current focus: [e.g., authentication refactor for product X]
+- Time zone: [e.g., Europe/Berlin]
+
+## Active Projects
+
+- [Project A]: [one-line description + repo path]
+- [Project B]: [one-line description + repo path]
+
+## Preferences
+
+- [e.g., Prefer Postgres over MySQL]
+- [e.g., Tabs over spaces in Go, spaces in TypeScript]
+- [e.g., Notion as project tracker, GitHub Issues for bugs]
+
+## External References
+
+- Knowledge base: [path or URL if you maintain one]
+- Personal notes: [link]

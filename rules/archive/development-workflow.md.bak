@@ -1,0 +1,131 @@
+# Development Workflow Rules
+
+## Sub-Agent Usage
+
+When working on development tasks, ALWAYS use specialized sub-agents:
+
+### Agent Selection Matrix
+
+| When you need to... | Use this agent |
+|---------------------|----------------|
+| Research technologies, APIs, docs | `research-agent` |
+| Create plans, architecture, task breakdowns | `planning-agent` |
+| Design user flows, wireframes | `ux-agent` |
+| Create visual specs, design systems | `ui-agent` |
+| Write backend code, APIs, database | `backend-agent` |
+| Write frontend code, components | `frontend-agent` |
+| Write tests, check coverage | `testing-agent` |
+| Write documentation | `documentation-agent` |
+| Manage git, commits, PRs | `version-control-agent` |
+| Quick build/type validation | `build-validator-agent` |
+| Clean up dead code, debug artifacts | `cleanup-agent` |
+| Extract learnings from fixes | `pattern-extractor-agent` |
+| Debug framework issues | `framework-specialist-agent` |
+
+## Spawning Sub-Agents
+
+Use the Task tool with:
+```
+subagent_type: "[agent-name]"
+prompt: "[detailed task description with all context]"
+```
+
+## Parallel Execution
+
+When tasks are independent, spawn multiple agents in a single message:
+- Research + Planning (Phase 1)
+- Backend + Frontend (when no blocking dependencies)
+
+## Testing Integration
+
+### Testing Cadence
+
+| After... | Do This |
+|----------|---------|
+| Implementing a function | Write unit tests for it |
+| Completing a feature | Write integration tests |
+| Fixing a bug | Write regression test to prevent recurrence |
+| Every 30 minutes of coding | Run existing tests |
+| Before every commit | Run full test suite |
+
+### Testing Rules
+
+1. **No untested code in commits** - Every new function should have at least one test
+2. **Tests within 30 minutes** - Write tests within 30 minutes of feature completion
+3. **Bug fix = regression test** - Every bug fix must include a test that would have caught it
+4. **Run tests before commit** - Never commit without running `npm test`
+
+### Test Types by Phase
+
+| Development Phase | Test Types |
+|-------------------|------------|
+| Function implemented | Unit tests |
+| Component completed | Component tests |
+| Feature integrated | Integration tests |
+| Before merge/deploy | E2E tests |
+
+## Validation Gates
+
+### After Each Implementation Unit
+
+Before moving on from any coding task:
+
+```bash
+# Quick validation (REQUIRED)
+npx tsc --noEmit  # TypeScript check
+
+# Before commit (REQUIRED)
+npm test          # Run tests
+npm run build     # Verify build
+```
+
+### Phase Transition Gates
+
+| From Phase | To Phase | Required Checks |
+|------------|----------|-----------------|
+| Planning | Implementation | Architecture approved |
+| Implementation | Testing | TypeScript passes, build succeeds |
+| Testing | Documentation | Tests pass, coverage met |
+| Documentation | Commit | All above + no lint errors |
+| Commit | PR | All above + peer review |
+
+### Blocking Conditions
+
+**NEVER proceed if:**
+- TypeScript has errors (`tsc --noEmit` fails)
+- Build fails (`npm run build` fails)
+- Tests fail (`npm test` fails)
+- Stray characters at EOF detected
+
+## Quality Gates
+
+Before moving to next phase:
+1. All agents reported completion
+2. Deliverables exist
+3. No blocking issues
+4. **NEW: Validation passes** (TypeScript, ESLint, build)
+5. **NEW: Tests written and passing**
+
+## Commit Frequency
+
+Ensure commits every 60 minutes during active development.
+
+### Pre-Commit Checklist
+
+Before every commit, verify:
+- [ ] TypeScript check passes
+- [ ] ESLint check passes
+- [ ] Build succeeds
+- [ ] Tests pass
+- [ ] No debug statements (console.log, debugger)
+- [ ] No stray characters at EOF
+
+Use `/validate-build` or spawn `build-validator-agent` for quick verification.
+
+## Post-Fix Protocol
+
+After fixing any bug:
+1. Run `/fix-review` to check for missed occurrences
+2. Write a regression test
+3. Consider `/pattern-document` if the fix reveals a reusable pattern
+4. Commit with clear message referencing the issue
