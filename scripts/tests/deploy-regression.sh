@@ -243,5 +243,28 @@ check "modelsettings/eigener-commit"     1 "$(G -C "$WS" log --oneline -1 | grep
 check "modelsettings/regel-angekommen"   1 "$([ -f "$LIVE/rules-n.md" ] && echo 1 || echo 0)"
 teardown
 
+# ── Cockpit mit neuen Commits: die Abhaengigkeiten muessen nachgezogen werden ──
+# Befund 2026-09-24: `[ "$name" = "config" ] && write_pending_verification …`
+# war die LETZTE Zeile von deploy(); beim Cockpit ist der Test falsch, die
+# Funktion gab 1 zurueck, set -e brach vor `npm install` ab. Jede echte
+# Cockpit-Uebergabe endete mit Exit 1 und ohne Abhaengigkeitsabgleich; nur der
+# zweite Lauf ("bereits aktuell") kam durch. npm ist hier eine Attrappe, die
+# ihren Aufruf protokolliert — die Suite braucht kein Netz.
+ROOT=$(mktemp -d)
+CWS="$ROOT/workshop/cockpit"; CLIVE="$ROOT/live-cockpit"; SHIM="$ROOT/bin"
+mkdir -p "$CWS" "$SHIM" "$ROOT/workshop/claude-code-config"
+printf '#!/bin/sh\necho "npm $*" >> "%s/npm-calls.log"\n' "$ROOT" > "$SHIM/npm"; chmod +x "$SHIM/npm"
+echo '{"name":"cockpit-attrappe","private":true}' > "$CWS/package.json"
+G -C "$CWS" init -q -b main && G -C "$CWS" add -A && G -C "$CWS" commit -q -m "Grundstand"
+G clone -q "$CWS" "$CLIVE"; G -C "$CLIVE" remote add workshop "$CWS"
+echo "neu" > "$CWS/neu.txt"; G -C "$CWS" add -A && G -C "$CWS" commit -q -m "neuer Stand"
+OUT=$(PATH="$SHIM:$PATH" CLAUDE_WORKSHOP_ROOT="$ROOT/workshop" CLAUDE_LIVE_COCKPIT="$CLIVE" \
+      bash "$DEPLOY" cockpit 2>&1); RC=$?
+check "cockpit-neu/exit0"               0 "$RC"
+check "cockpit-neu/stand-angekommen"    1 "$([ -f "$CLIVE/neu.txt" ] && echo 1 || echo 0)"
+check "cockpit-neu/npm-abgeglichen"     1 "$(grep -c '^npm install' "$ROOT/npm-calls.log" 2>/dev/null || echo 0)"
+check "cockpit-neu/abschlussmeldung"    1 "$(echo "$OUT" | grep -c 'Übergabe abgeschlossen')"
+rm -rf "$ROOT"
+
 printf '── deploy-regression: %d bestanden, %d fehlgeschlagen ──\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

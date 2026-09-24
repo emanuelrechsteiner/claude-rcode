@@ -227,7 +227,12 @@ deploy() {
   else
     note "$name: $before → $after"
     git -C "$live" log --oneline "$before..$after"
-    [ "$name" = "config" ] && write_pending_verification "$live" "$before" "$after"
+    # if/fi, NICHT `[ … ] && …`: als letzte Zeile der Funktion lieferte der
+    # falsche Test beim Cockpit Exit 1, und set -e brach vor `npm install` ab
+    # (Befund 2026-09-24, Regression "cockpit-neu" in deploy-regression.sh).
+    if [ "$name" = "config" ]; then
+      write_pending_verification "$live" "$before" "$after"
+    fi
   fi
 }
 

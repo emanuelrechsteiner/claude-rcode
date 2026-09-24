@@ -69,6 +69,17 @@ See `CLAUDE.md` for the framework architecture and `HARNESS.md` for the system m
 - **Agency bands (AUTO / SOFT-ACK / ESCALATE).** Every tool call is implicitly classified by reversibility, blast-radius, and input trust. Reversible, local, trusted work runs without asking. Anything genuinely irreversible or external — force-push, a production migration, a merge, an outbound message — always gets a real y/n, even in unattended/autonomous runs. See `rules/agency-bands.md`.
 - **The observation pipeline.** Edits and session-end events are captured as lightweight signals. When enough accumulate, an on-demand skill (`meta-observer`) synthesizes them into concrete proposals for new or changed rules — the framework is meant to improve itself from its own friction, reviewed by you before anything lands.
 
+## See it, not just read about it
+
+Rules and hooks are invisible until something happens. **Cockpit** is a companion tmux dashboard that makes a session visible while you work — a sidebar pane next to Claude Code showing context/usage, active subagents, workflow progress, and clickable links/files, fed by the same hooks this repo registers. It's optional; nothing in this repo depends on it.
+
+| | |
+|---|---|
+| ![Cockpit dashboard, unfocused](docs/assets/cockpit-spalte.png) | The dashboard column on its own, unfocused — no card is selected yet. Demo data. |
+| ![Cockpit dashboard, focused on Subagents](docs/assets/cockpit-fokus.png) | ⌘2 selected the Subagents card (cyan border, first entry highlighted) and moved keyboard focus onto the dashboard — the footer switches to "▶ Tastatur hier" (keyboard is here). Demo data. |
+
+See [claude-cockpit](https://github.com/emanuelrechsteiner/claude-cockpit) for setup and the full keybinding table.
+
 ## Install
 
 ### One-liner (Mac/Linux)
