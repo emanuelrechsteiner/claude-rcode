@@ -10,7 +10,7 @@
 # Repo den Setup NICHT — die Rules und Hooks kommen mit, die Absicherung nicht.
 #
 # Hintergrund + Messwerte: IMP-104/105 in global-observation/improvement-ledger.json
-# Regel-Doku: rules/mcp-tool-usage.md → "Serena: read-only by design"
+# Regel-Doku: rules/mcp-tool-usage.md → "## Serena" (Wartungswissen: TEIL 3 unten)
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # TEIL 1 — MCP-Registrierung (NICHT in dieser Datei, sondern in ~/.claude.json)
@@ -191,3 +191,88 @@ web_dashboard_open_on_launch: false
 #    execute_shell_command als vorhanden, obwohl der Context es ausschliesst.
 # ❌ `is_ignored_path` mit ERFUNDENEN Pfaden taugt nicht — nicht-existente Pfade
 #    melden immer "IS NOT ignored". Zwei Testlaeufe liefen deshalb falsch-negativ.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TEIL 3 — Ausgelagert aus rules/mcp-tool-usage.md (IMP-218, 2026-09-24)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Wortlaut der Regel bis 2026-09-24; nur Absaetze, die oben nicht schon in
+# gleichwertiger Form stehen. Die Regel behaelt unter "## Serena" nur, was eine
+# Sitzung beim BENUTZEN von Serena braucht.
+#
+# Aus "## Serena: writes go through the delegating gate (IMP-130, 2026-08-05)":
+#
+# Serena runs as a regular MCP server — tools are `mcp__serena__*`. Keep the
+# plugin-prefixed matcher (`mcp__plugin_serena_serena__.*`) in the hook definitions
+# too, regardless of whether the plugin is currently installed — verify with
+# `claude plugin list | grep -i serena` (must be empty), never trust a doc's claim
+# alone.
+#
+# **Why:** `mcp__serena__*` tool names don't match the `Write|Edit` hook matchers,
+# so Serena writes bypassed `security-audit.sh` and `observation-capture.sh` until
+# this gate (IMP-104/105, 2026-07-17→08-05) closed the gap.
+#
+# **Superseded by the delegating gate** (`docs/adr/0001-serena-write-gate.md`):
+#
+# - **`hooks/serena-write-gate.sh`** (PreToolUse, matcher `mcp__serena__.*|mcp__plugin_serena_serena__.*`)
+#   translates each Serena write call into the native `(file_path, new_string)` shape
+#   and delegates to the SAME inspectors the native path runs — `parallel-lock-check`,
+#   `file-protection`, `security-audit`, then `config-protection` (its recoverable
+#   `ask` deliberately last). **FAIL-CLOSED**: unknown tool suffix, missing contract
+#   param (upstream param-name drift), unparseable stdin, or a missing inspector
+#   script → deny, never allow. This answers IMP-104's fail-open objection instead
+#   of ignoring it. No bypass env var exists.
+# - **`hooks/serena-post-tool.sh`** (PostToolUse, same matcher) feeds the native
+#   post-edit chain (`auto-format`, `post-edit-validate` with propagated findings,
+#   `observation-capture` → signals.jsonl) and records Serena READS with an explicit
+#   `relative_path` into the read tracker, so a later native `Edit` passes
+#   `pretool-auto-read`.
+# - Regression: `hooks/tests/serena-gate-regression.sh` (37 cases, incl.
+#   secret-through-the-Serena-door → block, and gate-without-inspectors → deny).
+#
+# **Known residual gaps (documented, not hidden):** `gateguard.sh` /
+# `pretool-auto-read.sh` (read-before-edit) and `controller-first-mutation-gate.sh`
+# are NOT delegated — Serena's symbolic workflow reads symbols before editing by
+# construction; revisit if the gate log shows abuse. The N−1 reference files of an
+# approved `rename_symbol` are not individually inspected or logged.
+#
+# Aus "### mcp__serena__replace_content — RE-ENABLED behind the gate (2026-08-05)":
+#
+# Excluded 2026-07-17 → re-enabled per IMP-130: every Serena writing tool now runs
+# through `serena-write-gate.sh`, which delegates to the same protection hooks the
+# native path triggers — see "Serena: writes go through the delegating gate" above.
+# `replace_in_files` remains the one permanently excluded writer (multi-file).
+#
+# --- Nachtrag (Gegenpruefung IMP-218): vier Originalstellen, die sonst weder in
+# der Regel noch in dieser Vorlage stuenden — woertlich aus HEAD:rules/mcp-tool-usage.md.
+#
+# stays excluded AND gate-denied. Memory names with `/` or `..` (incl. Serena's
+# `global/` prefix) are denied — path-escape from `.serena/memories/`.
+#
+# **Rollout order is load-bearing:** deploy the gate to `~/.claude` FIRST
+# (`claude-deploy config` + new session), only THEN shorten `excluded_tools` in
+# `~/.serena/serena_config.yml`. The reverse order runs write tools unprotected for
+# a session.
+# ### mcp__serena__find_symbol (read-only — relative paths)
+#
+# **Correct:**
+# ```json
+# {
+#   "name_path_pattern": "MyClass/myMethod",
+#   "relative_path": "src/file.ts",
+#   "include_body": true
+# }
+# ```
+#
+# **Wrong:**
+# ```json
+# {
+#   "name_path_pattern": "myMethod",
+#   "relative_path": "/Users/name/project/src/file.ts"  // ❌ Absolute path
+# }
+# ```
+#
+# > Parameter names differ per Serena tool and drift between upstream versions
+# > (e.g. `replace_symbol_body` uses `name_path`, `safe_delete_symbol` uses
+# > `name_path_pattern`). Always load the current schema via ToolSearch before calling —
+# > never from memory.

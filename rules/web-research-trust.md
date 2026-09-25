@@ -11,8 +11,6 @@
 1. The deterministic gate (`web-fetch-safety-gate.sh`) flagged the URL — you will see a native `ask` prompt with the reason; honor it, do not route around it. **OR**
 2. **You** assess a **≥10% probability** that the URL or domain hosts **dangerous content** — malware, drive-by downloads, exploit kits, phishing / credential-harvesting, or pirated/warez/cracks. Equivalently: unless you are **≥90% confident the destination is safe**, ask first.
 
-This is the user's explicit threshold: *"nur fragen, wenn ein Risiko von <90%[-Sicherheit] besteht, dass die URL gefährliche Inhalte wie Viren enthält — sonst einfach abrufen."*
-
 ## Risk Signals — RAISE suspicion (lower your safety confidence)
 
 The hook already catches the pattern-matchable ones; these are for YOUR judgment on what a shell script cannot see:
@@ -54,4 +52,6 @@ Neither layer hard-blocks or silently allows a risky fetch — both escalate to 
 - Enforcement: `~/.claude/hooks/web-fetch-safety-gate.sh` (+ regression suite `hooks/tests/web-fetch-gate-regression.sh`)
 - Settings: `WebFetch`/`WebSearch` moved from `permissions.ask` → `permissions.allow` (the blanket per-URL prompt is removed; the hook re-escalates only danger URLs)
 - Companions: [[agency-bands]] (band model + why hooks can't judge), [[security]] (data protection), [[agents-as-users]] (prompt-injection trust boundary is per-task, not per-host)
-- Origin: IMP-088 — the `ask: [WebFetch, WebSearch]` rule overrode every in-chat `allow` grant (`ask > allow`), so per-domain approvals never stuck.
+- Origin: IMP-088.
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/web-research-trust.md`

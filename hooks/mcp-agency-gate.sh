@@ -14,7 +14,7 @@
 #   unanswerable ask fails safe.
 # - Read-only / reversible / notify-no-one MCP tools pass silently (AUTO band).
 # - deploy_to_vercel: preview deploys are SOFT-ACK (allowed + note); only a
-#   prod-flagged input escalates (per cloud-cli-discipline.md).
+#   prod-flagged input escalates (per the cloud-cli-discipline skill).
 # - Logged to global-observation/excessive-agency.log with gate:"mcp".
 set -u
 

@@ -414,6 +414,9 @@
     },
     "claude-sonnet-5": {
       "effortLevel": "low"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "medium"
     }
   }
 }

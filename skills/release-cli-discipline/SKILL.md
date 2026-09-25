@@ -1,10 +1,15 @@
+---
+name: release-cli-discipline
+description: Release and CLI value-handling discipline — local-first deploy testing, tarball-based publish verification, safe printf-based CLI/secret piping, and MCP generation-endpoint serialization. Use before deploying a serverless function/build, publishing a package, writing env vars/secrets into a CLI, or invoking a generation-style MCP tool. Triggers on "deploy", "vercel deploy", "build locally", "serverless function", "npm publish", "pnpm pack", "npm pack", "changeset publish", "tarball", "release a package", "env var", "secret", "set env", "printf", "heredoc", "generate screen", "Stitch", "Figma generate"; German: "deployen", "ausliefern", "veröffentlichen", "Paket veröffentlichen", "Release", "Umgebungsvariable setzen", "Secret setzen", "Bildschirm generieren".
+---
+
 # Release & CLI Discipline Rule
 
-> Four cross-project disciplines around shipping and CLI value-handling, distilled from the 2026-05-28 config merge-intake. **Consolidated 2026-07-03 (IMP-079) — supersedes `local-first-deploy.md`, `publish-discipline.md`, `shell-cli-piping.md`, `mcp-generation-serialize.md`; every rule and anti-pattern preserved.** Always loaded.
+> Four disciplines for shipping and CLI value-handling — local-first deploy, publish discipline, safe CLI piping, and MCP generation serialization. Supersedes `local-first-deploy.md`, `publish-discipline.md`, `shell-cli-piping.md`, `mcp-generation-serialize.md` (IMP-079). On-demand skill — demoted from always-loaded rule per IMP-218 (2026-09-24).
 
 ## 1. Local-First Deploy
 
-**Before deploying a serverless function or build to the cloud, run the build locally and exercise the compiled artifact directly.** Cloud deploy-debug loops are the last resort, not the first test — each cloud iteration is a remote build + log-fetch round-trip, 5–10× the wall-time of a local pass. Observed: 4 failed cloud deploys cost ~12 minutes; a single local `<tool> build` + direct import of the compiled function (e.g. `import('.vercel/output/functions/.../index.js')` or the platform equivalent) would have caught all four bugs in <5 seconds.
+**Before deploying a serverless function or build to the cloud, run the build locally and exercise the compiled artifact directly.** Cloud deploy-debug loops are the last resort, not the first test — each cloud iteration is a remote build + log-fetch round-trip, 5–10× the wall-time of a local pass.
 
 - Run the platform's **local build** (`<tool> build`) before pushing a deploy.
 - **Directly import / invoke** the compiled function artifact locally to exercise its logic before the cloud sees it.
@@ -57,3 +62,5 @@ Anti-patterns:
 
 - Companions: `api-cost-optimization.md` (§1 — cheapest per successful outcome), `testing-quality.md` (§2), `code-quality.md` (§3 — defensive parsing of external values), `mcp-tool-usage.md` (§4)
 - Distilled from multi-project experience (merge-intake 2026-05-28); consolidated per IMP-079 (2026-07-03) — originals in git history
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/release-cli-discipline.md`

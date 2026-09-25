@@ -24,6 +24,23 @@ pwd
 Dasselbe Muster gilt für das Cockpit: Bauhof `…/5-AI-APPS/cockpit`,
 Haus `~/.claude/cockpit`.
 
+**Doppelladung im Bauhof (behoben 2026-09-24, IMP-217):** Eine Sitzung im Bauhof
+lädt `CLAUDE.md` zweimal — einmal als Nutzeranweisung aus dem Haus
+(`~/.claude/CLAUDE.md`), einmal als Projektanweisung aus dem Bauhof — Claude Code
+vergleicht Inhalte nicht, nur Pfade. Der dokumentierte Schalter `claudeMdExcludes`
+(`code.claude.com/docs/en/memory`, Pfadmuster gegen absolute Pfade) schließt die
+**Bauhof-Kopie** aus, damit die Sitzung weiterhin den eingezogenen Stand liest:
+
+```json
+// .claude/settings.local.json im Bauhof (maschinenlokal, git-ignoriert)
+{ "claudeMdExcludes": ["/Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS/claude-code-config/CLAUDE.md"] }
+```
+
+Sichtbar beim nächsten Sitzungsstart: die Zeile „N instruction files add up to …"
+zählt eine `CLAUDE.md` weniger. Die Gesamtgrenze von 150.000 Zeichen dahinter ist
+übrigens **nur eine Warnung** — nichts wird gekappt (offiziell undokumentiert; Beleg:
+Claude-Code-Issue #96506).
+
 **Was passiert, wenn du es doch im Haus änderst:** Deine Änderung ist sofort
 scharf (der nächste Werkzeugaufruf derselben Sitzung nutzt schon den neuen
 Hook), und bei der nächsten Übergabe bricht `claude-deploy` ab, weil das Haus
@@ -236,3 +253,4 @@ Kernaufgabe fertig übergeben noch der Nebenfund sauber verifiziert.
 - Zwei-Orte-Modell kompakt: Abschnitt „Zwei Orte: Bauhof und bewohntes Haus" in `CLAUDE.md`
 - Übergabe-Werkzeug: `scripts/deploy-to-live.sh` (verlinkt als `claude-deploy`)
 - Architektur des Frameworks: `HARNESS.md`
+- Vollständiges Bestandsverzeichnis mit Chronik (Hook-Tabelle, Routinen-Status, IMP-Belege — seit 2026-09-24 nicht mehr in `CLAUDE.md`): `docs/FRAMEWORK-REFERENCE.md`; ausgelagerte Regel-Belege: `docs/archive/rules-evidence/`

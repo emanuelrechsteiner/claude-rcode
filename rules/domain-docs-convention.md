@@ -1,6 +1,6 @@
 # Domain-Docs Convention Rule (CONTEXT.md + ADRs)
 
-> Two lightweight per-project memory artifacts: a shared-language glossary (`CONTEXT.md`) that compresses domain jargon into short, consistently used terms, and atomic Architecture Decision Records (`docs/adr/`). Adapted from mattpocock/skills (MIT, © 2026 Matt Pocock) 2026-08-03, IMP-124. Always loaded.
+> Two lightweight per-project memory artifacts: a shared-language glossary (`CONTEXT.md`) for domain terms, and atomic Architecture Decision Records (`docs/adr/`). Always loaded.
 
 ## Why
 
@@ -44,8 +44,6 @@ Agents dropped into a project without a shared language use 20 words where 1 wou
 3. If the correction is mechanically checkable, add a test case that would have caught the violation before it recurs.
 4. Proceed with the original task afterward — persisting the correction is a side-effect of the same turn, not a separate task requiring confirmation.
 
-**Evidence:** "immer klickbar ausgeben" repeated **twice in the same morning across two sessions** (2026-08-03); Projekt D "KEIN ZUSATZ-FEATURE" repeated **3× within 90 minutes** (2026-08-07) — the out-of-scope work built in between had to be discarded; "jeder Screen Zurück/Weiter" repeated (Projekt B, 2026-07-13 → 2026-07-18); Projekt C's chat-agreed "Bauordnung" from 2026-08-09 did not prevent the identical regression on 2026-08-12 — the companion case for `slop-prevention.md` Trigger 3, and the reason this section exists as a standing rule rather than a chat agreement.
-
 ## What this is NOT
 
 - Not a replacement for [[planning-doc-convention]] — planning docs describe *intended current state* and evolve; ADRs record *point-in-time decisions* and freeze.
@@ -56,3 +54,5 @@ Agents dropped into a project without a shared language use 20 words where 1 wou
 
 - Companions: [[planning-doc-convention]], [[documentation]], `skills/grilling` (closes into these artifacts), `skills/prototype` (verdicts land here)
 - Origin: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) `domain-modeling` conventions + `.agents/adr/` practice (MIT); adopted as IMP-124 (2026-08-03)
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/domain-docs-convention.md`

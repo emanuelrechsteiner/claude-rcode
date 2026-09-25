@@ -18,8 +18,6 @@
 - Branch *from* and target PRs *at* that trunk — not reflexively `main`.
 - When unsure which branch is production, ask before pushing.
 
-> Distilled from multi-project experience (merge-intake 2026-05-28): default-`main` assumptions repeatedly caused mis-targeted work.
-
 ## Commit Format
 
 ```
@@ -38,13 +36,6 @@ Co-Authored-By: Claude <noreply@anthropic.com>
     (`/decompose` → `/issue <#>`), i.e. wherever `gh issue list` is non-empty.
   - **Ledger id** (`IMP-114`) — the correct reference in this framework's own config repos, which
     track work in `improvement-ledger.json` rather than as GitHub issues.
-
-  > **Why this was rewritten (IMP-121, 2026-08-01):** the rule previously demanded an issue number
-  > unconditionally and was violated **17 times out of 17** across every active repo — not out of
-  > sloppiness, but because those repos genuinely use `IMP-###`. A rule that is broken 100% of the
-  > time does not enforce discipline, it teaches that rules are decorative. The requirement is
-  > unchanged in substance (every code commit must be traceable to a tracked unit of work); only the
-  > accepted form now matches how the repos actually work.
 - **Separation of concerns:** Never mix code changes and doc changes in same commit
 - Commit every 60 minutes during active development
 
@@ -118,8 +109,6 @@ Signs of good context hygiene:
 
 **When the user's request is classified as research, audit, review, explore, investigate, brainstorm, or plan — NEVER perform IRREVERSIBLE or REMOTE git/state operations without explicit instruction.** Local, fully-reversible scaffolding (a working branch + local commits) is explicitly allowed and even encouraged, because it costs nothing to undo and keeps the working tree clean.
 
-Evidence basis: across many sessions the user repeatedly typed "Do NOT commit. Report back." and "Do NOT create branches or commits. Just write the files." What that intent actually protects against is **publishing** work prematurely (pushes, PRs, deploys) — not a throwaway local branch. The earlier blanket ban on `git checkout -b` over-corrected: it suppressed a 100%-reversible operation, forcing analysis work to pile up on the trunk working tree.
-
 ### What is suppressed vs. allowed in report-only mode
 
 | Operation | In report-only mode | Why |
@@ -158,3 +147,5 @@ Default commit discipline (per 60-min cadence above) applies when the **head ver
 If the head-verb classification is genuinely uncertain, default to the **safe reversible middle ground**: create a local working branch and commit there, but do NOT push/PR/deploy — then **ask before publishing** with a short clarification rather than guessing. Example: "I've kept this on a local `audit/...` branch with commits — want me to push it / open a PR, or leave it local?"
 
 > The reversibility-vs-mode reasoning here is the band system defined in [[agency-bands]].
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/workflow-git.md`

@@ -25,7 +25,7 @@ run). Loaded by `~/.claude/commands/team-lead.md` (directly, or via the
 
 | Mode | Trigger when | Loop |
 |---|---|---|
-| Ship | Directive is a release/deploy ask | Cut the release using the Ship-half assets above, under `~/.claude/rules/release-cli-discipline.md` §1–3 (local-first deploy, tarball-test before publish, `printf`-piping + verify-by-pull) |
+| Ship | Directive is a release/deploy ask | Cut the release using the Ship-half assets above, under the `release-cli-discipline` skill (`~/.claude/skills/release-cli-discipline/SKILL.md`) §1–3 (local-first deploy, tarball-test before publish, `printf`-piping + verify-by-pull) |
 | Run | Directive reports a production incident | `~/.claude/skills/incident-response/SKILL.md` — its six-phase runbook (Observe → Hypothesize → Verify → Fix → Regression test → Postmortem) is the Run-mode procedure, never re-copy it here; the asset cluster above supplies the delegates it calls out (`backend-agent`, `testing-agent`, `pattern-document`, `memory-index`, `nextjs-debug`, `react-perf-check`) |
 
 ## Version authority (double-authority fix)

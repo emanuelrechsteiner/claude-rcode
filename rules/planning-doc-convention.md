@@ -1,6 +1,6 @@
 # Planning-Doc Convention Rule
 
-> Planning docs (PLANNING.md, PLAN.md, ARCHITECTURE.md, SPEC.md, DESIGN.md) are versioned single-source-of-truth artifacts, not draft notebooks. Derived from IMP-036 (an example PLANNING.md with rewrite-heavy sessions: 4.4M chars across 229 edits at 80% rewrite rate, 2026-05). Always loaded.
+> Planning docs (PLANNING.md, PLAN.md, ARCHITECTURE.md, SPEC.md, DESIGN.md) are versioned single-source-of-truth artifacts, not draft notebooks (IMP-036). Always loaded.
 
 ## Scope
 
@@ -35,8 +35,6 @@ Symptoms that a planning doc is being treated as draft notebook:
 
 These suggest the doc is being used as a thinking space rather than a spec. The git history loses signal: 200 rewrites look the same as a single thoughtful update from outside the session.
 
-Concrete evidence basis: an example `PLANNING.md` accumulated 4.4M chars across 229 edits at an 80% rewrite rate within a single week (IMP-036, Phase X3 Finding #05).
-
 ## Recommendation: Draft → Replace Workflow
 
 When you genuinely need to rework a planning doc heavily (>50% of content changing):
@@ -68,3 +66,5 @@ This preserves the "live spec" property of the original while giving you a scrat
 - IMP-036 in `~/.claude/global-observation/improvement-ledger.json`
 - Phase X3 Finding #05: rewrite-heavy sessions in historical signals
 - Companion: `~/.claude/hooks/session-end-check.sh` Reminder 4 surfaces this rule
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/planning-doc-convention.md`

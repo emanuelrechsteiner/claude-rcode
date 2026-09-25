@@ -1,6 +1,6 @@
 # Slop Prevention Rule
 
-> Ban extending unverified AI code. Triangulated from Replit ByBench + Cline 4-levels + Matt Pocock + Mario Zechner (KB cluster 09 + 18, 2026-05-26). Always loaded.
+> Ban extending unverified AI code. Always loaded.
 
 ## The Rule
 
@@ -19,8 +19,6 @@ If `P(step correct) = 0.95` and you have 20 steps: `P(end) = 36%`.
 | 0.95 | 36% — already shaky |
 | 0.85 | 4% — broken |
 | 0.75 | 0.3% — useless |
-
-This is the "slop-on-slop" failure mode demonstrated in Replit ByBench.
 
 ## The Three Triggers
 
@@ -52,7 +50,7 @@ Workflow:
 
 **Check against the SOURCE, never against your own paraphrase.** The comparison target is the primary artifact — the file on disk, the PDF, the screenshot the *user* sent, the running program — not your summary of it, not the plan's restatement of it, not what a sub-agent reported it says. A paraphrase was already filtered through the same expectation that produced the bug; comparing against it can only confirm the expectation.
 
-**Describe what you see, then judge.** At every checkpoint, first write down what is *actually visible* in the artifact (which elements, which colors, which positions, which values), and only then state whether it matches the claim. Naming the observation before the verdict is the working defense against confirmation bias — the failure mode is literally *"Ich sah, was ich zu sehen erwartete"* (self-diagnosis, 2026-08-09). A verdict with no description behind it is not an inspection; it is a guess wearing an inspection's clothes.
+**Describe what you see, then judge.** At every checkpoint, first write down what is *actually visible* in the artifact (which elements, which colors, which positions, which values), and only then state whether it matches the claim. Naming the observation before the verdict is the working defense against confirmation bias. A verdict with no description behind it is not an inspection; it is a guess wearing an inspection's clothes.
 
 Workflow:
 1. Before claiming "fixed"/"done" on a visible state, run or render the artifact.
@@ -61,16 +59,16 @@ Workflow:
 4. Compare the description against the claim, and the claim against the **source** — not against the declaration that was edited, and not against any paraphrase of the requirement.
 5. If no rendering step exists yet, build one before making the completion claim, not after the fact.
 
-**Evidence:** Projekt C, 2026-08-09 — "Du hast sie 'gefixt' … beim Spielen sind sie EXAKT gleich … GAR NICHTS" — the same false "fixed" claim recurred **≥9 times across 5 sessions** (the atlas/asset declaration was checked, never the render). **The 09→12.08 lesson:** a testing discipline that was merely *agreed on in chat* on 2026-08-09 did not survive to 2026-08-12 — the identical failure recurred three days later. A discipline that lives only in chat history is not enforced; it has to live here, as a rule the agent re-reads every session, not as a one-time chat agreement.
+A discipline agreed only in chat is not enforced — it lives here, in this rule.
 
-**The four error types** behind the wider count — **13 "fixed without visual inspection" incidents across 7 days** (IMP-160), of which the ≥9 above are the visible-claim subset. All four were self-diagnosed in the same transcript; each has its own countermeasure, and fixing only the first leaves the other three live:
+**The four error types** (IMP-160) — each has its own countermeasure, and fixing only the first leaves the other three live:
 
 | # | Error type | Countermeasure |
 |---|---|---|
-| 1 | **Circular check** — *"Der Test leitet seine Erwartung aus derselben Deklaration ab, die er prüfen soll … Ich habe diese Prüfung gestern sogar 'gehärtet' — härter im Mechanismus, unverändert blind fürs Bild"* | Trigger 3 above: prove against the render, not the declaration |
+| 1 | **Circular check** — the test derives its expectation from the same declaration it is meant to check | Trigger 3 above: prove against the render, not the declaration |
 | 2 | **Checking against one's own paraphrase** instead of the source | "Check against the SOURCE" above + the *Abschreiben, nicht deuten* pattern below |
-| 3 | **Confirmation bias when looking** — *"Ich sah, was ich zu sehen erwartete"* | "Describe what you see, then judge" above + the adversarial counter-check below |
-| 4 | **Sub-agent replaces an explicit user instruction with its own judgement**, and the orchestrator waves it through — *"Das ist mein Versäumnis"* | `agents/control-agent.md` §3 (verbatim instruction travels with the brief; deviation escalates, never decides) + §4 synthesis check |
+| 3 | **Confirmation bias when looking** | "Describe what you see, then judge" above + the adversarial counter-check below |
+| 4 | **Sub-agent replaces an explicit user instruction with its own judgement**, and the orchestrator waves it through | `agents/control-agent.md` §3 (verbatim instruction travels with the brief; deviation escalates, never decides) + §4 synthesis check |
 
 ## How to Apply
 
@@ -92,8 +90,6 @@ Concretely, in every brief:
 ### Pattern: Adversarial counter-check (an agent that HUNTS for deviations)
 
 After an implementation wave that claims conformance to a spec, source, or design, spawn a **separate** agent whose stated job is to **find deviations**, not to confirm the work. The brief matters: "verify this matches" invites agreement; "find every place this does NOT match, list them" invites the opposite.
-
-**Counter-evidence that this works:** Projekt B, 2026-07-13 — a dedicated deviation-hunting agent found **39 real deviations** that the implementing strand could not see itself. It is the only pattern in the August corpus demonstrated to surface errors the executing thread was structurally blind to.
 
 Run it as a second phase with a typed result schema (a list of deviations with locations), so an empty result is a real finding rather than the absence of a report.
 
@@ -140,11 +136,8 @@ See *Abschreiben, nicht deuten* above. The paraphrase is where the requirement q
 
 ## References
 
-- Replit ByBench benchmark — "slop-on-slop" failure mode
-- Cline talk — 4 levels of agent autonomy; Level 4 worse outcomes
-- Matt Pocock — "Full Walkthrough" — vertical slices + verification
-- Mario Zechner — "Building pi in a World of Slop"
-- Cluster source: see author's knowledge base (private)
-- Trigger 3: Projekt C chat-transcript evidence (2026-08-09 → 2026-08-12, ≥9 recurrences) — IMP-143, `plans/meta-proposal-2026-08-23-chat-analyse.md`; companion paragraph in `testing-quality.md` ("Rendered-Proof for Visual Claims")
-- Trigger 3 extension (source-not-paraphrase, describe-before-judging, four-error table) + the two patterns above: IMP-160/IMP-167 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §2 (13 incidents / 7 days, four self-diagnosed error types) and §3.4 (Projekt B 2026-07-13, 39 deviations found by a deviation-hunting agent)
+- Trigger 3: IMP-143, `plans/meta-proposal-2026-08-23-chat-analyse.md`; companion paragraph in `testing-quality.md` ("Rendered-Proof for Visual Claims")
+- Trigger 3 extension + the two patterns above: IMP-160/IMP-167 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §2, §3.4
 - Error type 4 (sub-agent overruling an explicit user instruction) is enforced in `agents/control-agent.md` §3/§4, not here — the brief is where the instruction has to survive
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/slop-prevention.md`

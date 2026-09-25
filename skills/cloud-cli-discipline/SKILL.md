@@ -1,6 +1,11 @@
+---
+name: cloud-cli-discipline
+description: Guidance for inspecting cloud-CLI state before destructive or scope-changing operations (env rm, link --yes, --force) and avoiding team/account auto-pick; covers when --yes is safe, preferring the web UI for per-environment values, and the Vercel team-mismatch pre-deploy check (vercel whoami, teams ls, env ls, switch). Use before running a destructive or scope-changing cloud-CLI command, or when a deploy might target the wrong team or account. Triggers on "vercel", "vercel deploy", "vercel link", "vercel env rm", "vercel switch", "netlify", "firebase deploy", "gcloud", "aws cli", "fly", "railway", "supabase cli", "--yes", "--force", "--dry-run", "dry run", "env rm", "teams ls", "whoami", "wrong team", "wrong account", "web UI", "Web-UI", "per-environment value", "Cloud-CLI", "falsches Team", "falscher Account", "Umgebungsvariable löschen", "pro Umgebung", "deployen auf Vercel".
+---
+
 # Cloud-CLI Discipline Rule
 
-> Inspect state before any destructive cloud-CLI operation; beware team/scope auto-selection. Distilled from cross-project experience surfaced during the 2026-05-28 config merge-intake. Always loaded.
+> Inspect state before any destructive cloud-CLI operation; beware team/scope auto-selection. On-demand skill — demoted from always-loaded rule per IMP-218 (2026-09-24).
 
 ## The Rule
 
@@ -8,12 +13,7 @@
 
 ## Why This Matters
 
-Cloud CLIs hide scope behind terse commands. Two recurring failure modes:
-
-1. **Scope-collision on delete.** A command like `<provider> env rm NAME <env>` can remove the entire variable across *all* environments when the variable spans multiple environments in a single row — not just the one environment named. The CLI often lacks the per-scope granularity the web UI exposes.
-2. **Team/account auto-pick.** A command like `<provider> link --yes` auto-selects a team/account non-interactively. The wrong target means deploys land somewhere invisible, and you debug a "missing" deploy that actually succeeded elsewhere.
-
-Both are silent: the command "succeeds," the damage surfaces later.
+Cloud CLIs hide scope behind terse commands: a delete can span more environments than the one named ("scope-collision"), and an auto-selected team/account can send deploys somewhere invisible ("auto-pick"). Both failures are silent — the command exits 0, and the damage surfaces later.
 
 ## How to Apply
 
@@ -62,3 +62,5 @@ vercel deploy
 
 - Companion: `agency-bands.md`
 - Distilled from multi-project cloud-deploy experience (merge-intake 2026-05-28)
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/cloud-cli-discipline.md`

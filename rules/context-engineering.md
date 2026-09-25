@@ -1,6 +1,6 @@
 # Context Engineering Rules
 
-> Reconciled empirical thresholds for managing Claude Code's context window. Derived from KB synthesis of 140 videos on context engineering (2026-05-26); converted to window-relative percentages 2026-07-03 (IMP-080) — windows now range from 200K up to 1M (`[1m]` model suffix), so absolute token constants mislead. Always loaded.
+> Window-relative thresholds for managing Claude Code's context window — soft ceiling 50%, hard ceiling 75–80%, never the 90% auto-compact margin. Always loaded.
 
 ## Why Window-Relative (IMP-080)
 
@@ -77,11 +77,6 @@ This is when you have a clean moment to recalibrate. Skipping = drift.
 
 ## References
 
-> Source numbers below are absolute tokens from the 200K-window era (Opus 4.x); read them as the %-of-window thresholds above.
-
-- Matt Pocock — "Full Walkthrough: Workflow for AI Coding" — smart-zone <100K threshold (= ~50% of 200K)
-- Cole Medin — "2000+ Hours of Claude Code" / WHISK framework — 250K hallucination cliff (cited on larger-window models)
-- Dex Horthy — "No Vibes Allowed: Solving Hard Problems in Complex Codebases" — 40% dumb-zone empirical
-- Jared Zoneraich — "How Claude Code Works" — 92% auto-compact mechanism, H2A buffer (local override: `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=90`)
 - Model-era conversion to window-relative: IMP-080 (2026-07-03)
-- Cluster source: see author's knowledge base (private)
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/context-engineering.md`

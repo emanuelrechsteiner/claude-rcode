@@ -1,6 +1,6 @@
 # Parallel-by-Default Rule
 
-> For every task with 2+ independent units, evaluate parallel dispatch BEFORE executing. Auto-dispatch reversible work with disjoint, lock-claimed file-sets (state a one-line note, no gate); reserve the confirmation handshake for parallel work that contains irreversible/ESCALATE-band ops or has ambiguous scope. Sequential is the exception, not the default. Always loaded.
+> For every task with 2+ independent units, evaluate parallel dispatch BEFORE executing — see "The Norm" below for the auto-dispatch vs. confirmation-handshake split. Always loaded.
 >
 > **Model + Effort per unit is NOT decided here.** This rule owns the independence analysis and the dispatch/confirmation mechanics; the Agent/Model/Effort assignment for each unit is the canonical dispatch spec in `agents/control-agent.md` §2 (IMP-091) — reference it, don't restate the matrix.
 
@@ -16,7 +16,7 @@ When the user gives any task that could be decomposed into 2+ independent units,
    - has **ambiguous scope** (file-sets you cannot prove disjoint, or unclear which files each unit touches).
 5. **Only execute sequentially** when parallelism is shown to be wasteful or unsafe.
 
-This rule exists because: serial execution of independent work is a token-cost and wall-time multiplier. The user's signals.jsonl data shows 27% of work happens across 2+ files in single sessions — much of it parallelizable but currently serialized. Gating *reversible, disjoint* parallel work behind a confirmation prompt added friction without safety value; the gate now applies only where it earns its cost.
+Why: serial execution of independent work is a token-cost and wall-time multiplier, and gating *reversible, disjoint* parallel work behind a confirmation prompt added friction without safety value — the gate now applies only where it earns its cost (evidence: `docs/archive/rules-evidence/parallel-by-default.md`).
 
 ## Decision Matrix — when YES, when NO
 
@@ -103,7 +103,7 @@ The proposal+confirmation handshake is required only for the two cases in step 4
 
 For any WRITE-mode dispatch — especially chained follow-up writers, which inherit the parent's worktree+branch instead of getting a fresh one — follow **"Worktree & Follow-up Discipline (IMP-070/072)"** in `~/.claude/skills/parallel-dispatch/SKILL.md`: isolation per writer (worktree or pre-claimed lock), work-slicing before the first commit (orchestrator edits shared files like `package.json`/`types.ts` itself up front), smallest-PR-first merge order, short-lived branches, per-worktree `node_modules`/dev-PORT, protected main. The lock protocol is for WRITE fan-outs only; read-only swarms (common and healthy) need no claims at all.
 
-> **Retracted metric (IMP-114, 2026-08-01).** This passage used to cite "exactly **1** real multi-lock dispatch in 6 weeks" (metareview 2026-07-03). That figure came from `parallel-coordination.jsonl`, which logged only *releases* — and the release path compared two identifier spaces that never intersect (orchestrator claim id vs. runtime harness id), so it reported "released 0 locks" on **3,212 of 3,212** records and was structurally incapable of counting anything. The same broken comparison also drove `parallel-lock-check.sh`, which therefore denied a claimed file to the very subagent it had been claimed for — verified directly on 2026-08-01. Write fan-outs were not merely rare, they were **unusable**. Both defects are fixed and claims are now logged. **Actual usage is currently unmeasured**; the only reliable data point is 18 claims in one session (2026-07-26). Do not cite a usage rate until the new claim log has accumulated. Regression suite: `hooks/tests/parallel-lock-regression.sh`.
+**Actual usage is currently unmeasured** (both counting defects behind that are fixed, IMP-114) — do not cite a usage rate until the new claim log has accumulated. Regression suite: `hooks/tests/parallel-lock-regression.sh`. Full incident: `docs/archive/rules-evidence/parallel-by-default.md`.
 
 ## Opt-out
 
@@ -125,3 +125,5 @@ Ask yourself:
    - **Reversible work, file-sets provably disjoint, locks claimable** → auto-dispatch in parallel with a one-line note. No confirmation prompt.
    - **Contains an ESCALATE-band/irreversible op, OR scope is ambiguous (can't prove disjoint)** → present the proposal in the exact format above and wait for confirmation.
 5. Either way, each unit still needs its Model + Effort assigned before dispatch — pull that from `agents/control-agent.md` §2 (do not skip the assignment just because the dispatch path itself is auto-approved).
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/parallel-by-default.md`

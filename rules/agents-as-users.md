@@ -1,6 +1,6 @@
 # Agents-as-Users Rule
 
-> Agents must be authorized like users, not given global credentials. Derived from Casco YC red-team finding (7/16 agents hacked in 30 min) + OWASP MCP Top 10 + Brian John "Hacking Subagents Into Codex" (KB cluster 09, 2026-05-26). Always loaded.
+> Agents must be authorized like users, not given global credentials. Always loaded.
 
 ## The Rule
 
@@ -8,7 +8,7 @@
 
 ## The Threat Model
 
-Casco (YC W26) red-teamed 16 deployed AI agents in 30 minutes. **7 were hacked.** Common root cause: agents had broader credentials than the immediate task required.
+Common root cause: agents had broader credentials than the immediate task required.
 
 | Attack vector | Mitigation |
 |---|---|
@@ -23,7 +23,6 @@ Casco (YC W26) red-teamed 16 deployed AI agents in 30 minutes. **7 were hacked.*
 ### 1. Database access
 - LLM-backed app calls DB via **read-only role** for queries
 - Writes require an explicit user-authenticated path
-- Pattern: Hasura DB-read-only-role talk (cluster 09)
 
 ### 2. API keys
 - Never give an agent a "master" API key
@@ -33,7 +32,7 @@ Casco (YC W26) red-teamed 16 deployed AI agents in 30 minutes. **7 were hacked.*
 ### 3. Filesystem access
 - Subagents operating on a single project get **workspace-scoped** access
 - No `~/` or `/` read for sub-agents
-- Brian John ("Hacking Subagents Into Codex") shows the `sandbox:workspace-write` pattern
+- Follow the `sandbox:workspace-write` pattern for scoping sub-agent filesystem access
 
 ### 4. Network access
 - Default deny. Allowlist domains per task.
@@ -47,7 +46,7 @@ Casco (YC W26) red-teamed 16 deployed AI agents in 30 minutes. **7 were hacked.*
 
 ## Meta's "Agents Rule of Two"
 
-Per Brian John's BetterUp talk, classify each agent run by three dimensions:
+Classify each agent run by three dimensions:
 1. Does it process **untrustworthy input**? (yes if web content, user data, external API)
 2. Does it access **sensitive systems or private data**?
 3. Does it **change state** or **communicate externally**?
@@ -75,10 +74,4 @@ Agent says "no secrets in output" — verify with `grep`.
 ### ❌ Treating local-host as a trusted boundary
 Prompt-injection from a fetched webpage can exfiltrate from local files via the agent's filesystem tools. Trust boundary is per-task, not per-host.
 
-## References
-
-- Casco YC W26 red-team finding — 7/16 agents hacked in 30 min
-- Brian John (BetterUp) — "Hacking Subagents Into Codex CLI" — Meta Rule-of-Two
-- OWASP MCP Top 10 (cluster 09)
-- Hasura DB-read-only-role pattern
-- Cluster source: see author's knowledge base (private)
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/agents-as-users.md`

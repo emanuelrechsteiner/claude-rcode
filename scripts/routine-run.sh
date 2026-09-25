@@ -229,7 +229,7 @@ trap release_lock EXIT
 # ever reaches the model — every routine run failed on exactly this since
 # 2026-08-23. `< "$SKILL_FILE"` reads the file directly, byte-exact, with no
 # intermediate shell variable — `$(cat ...)` command substitution would also
-# strip the file's trailing newline (release-cli-discipline.md §3 default is
+# strip the file's trailing newline (release-cli-discipline skill §3 default is
 # `printf '%s' "$VALUE" |`, but a direct file redirect is the byte-exact
 # form of that same discipline when the value is already a file, not a
 # constructed string).

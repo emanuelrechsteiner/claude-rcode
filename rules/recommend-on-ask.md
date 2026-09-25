@@ -13,11 +13,9 @@ For `AskUserQuestion` calls: place the recommended option **first** in the optio
 
 For inline prose questions: state the recommendation before (or immediately after) posing the question. Never pose a bare "which do you prefer?" or "should we do X or Y?" without a stated preference.
 
-## Why This Matters
+## Why
 
-Every unanswered question is a round-trip. When Claude presents N options with no recommendation, the user must re-derive the relevant tradeoffs from scratch — context they don't have and Claude already does. A recommendation + rationale lets the user decide in one glance and either accept, override, or ask a follow-up. This typically reduces 2–3 back-and-forth turns to 0–1.
-
-Concrete cost: a bare option-set on a 3-way architectural question can add 5–10 minutes of user deliberation time and one or two clarification turns — all avoidable by one sentence from Claude.
+A bare option-set forces the user to re-derive tradeoffs Claude already has, costing avoidable back-and-forth turns and deliberation time. Leading with a recommendation lets them decide in one glance.
 
 ## How to Apply
 
@@ -54,3 +52,5 @@ The reason must reference something concrete about this task, file, or codebase 
 
 - Companion rule: `[[agency-bands]]` — governs the y/n confirmation case for irreversible ops
 - Motivation: reduces round-trip overhead identified in session-end-check signals (IMP-053)
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/recommend-on-ask.md`

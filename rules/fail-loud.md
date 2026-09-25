@@ -1,6 +1,6 @@
 # Fail Loud Rule
 
-> Ban silent fallbacks in agent-generated code. Triangulated from Armin Ronacher + Danilo Campos (PostHog Wizard postmortem) + Mario Zechner (KB cluster 10, 2026-05-26). Always loaded.
+> Ban silent fallbacks in agent-generated code. Always loaded.
 
 ## The Rule
 
@@ -53,12 +53,6 @@ grep -rE '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{?\s*\}?\s*\)' src/   # promise.catch((
 
 **A message that recurs unchanged eight times is functionally a non-message.** Fail-loud is not satisfied by a routine that prints a warning every run if the warning never changes shape when nobody acts on it — the reader habituates, and an unresolved 20-day-old condition becomes visually identical to a fresh one-day condition. This is a distinct failure mode from the ones above: the failure *was* reported, every single time, and it was still effectively silent.
 
-Three documented cases in the same August-2026 window, all traced to this exact pattern:
-
-1. **"Backfill der 7 drifteten Metrikzeilen"** — reported identically in 8 consecutive nightly routine runs, never actioned.
-2. **`NOTION_PARENT_PAGE_ID` missing** — reported 10× over 12 days, same wording each time.
-3. **The IMP-138 observation-loop staleness counter** — fired for 20 consecutive days (`stale=7` on 2026-08-03 climbing to `stale=26` on 2026-08-22, while `shards=6` sat frozen the whole span) and was overlooked the entire time. This one is the sharpest case: the alarm was **never silent** — it printed every session-end for three weeks — and it was still missed, because each day's printout looked like just another day's printout.
-
 **The fix is escalation, not volume.** A message-class that fires N times in a row must change its own presentation at a threshold (see `hooks/session-end-check.sh`'s `alarm_repeat_count` helper, wired into the IMP-138 staleness reminder: 3rd consecutive occurrence switches from an informational line to an explicit "ESKALATION" form; 5th adds a note that a ledger entry is due). This is deliberately **not an auto-fix** — the human stays the gate — it only makes the N-th occurrence impossible to mistake for the 1st.
 
 ## Allowed Patterns (Legitimate Fallbacks)
@@ -88,9 +82,4 @@ If a fallback is genuinely needed, add an explicit `# ALLOWED: <reason>` comment
 
 Document the override in commit message: `"allows fail-silent in test fixture per fail-loud.md exception"`.
 
-## References
-
-- Armin Ronacher — "The Friction Is Your Judgment"
-- Danilo Campos — "LLM codegen fails" (PostHog Wizard postmortem)
-- Mario Zechner — "Building pi in a World of Slop"
-- Cluster source: see author's knowledge base (private)
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/fail-loud.md`

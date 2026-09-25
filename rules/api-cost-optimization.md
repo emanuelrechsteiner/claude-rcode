@@ -1,20 +1,14 @@
 # API Cost Optimization Rules
 
-> Model-selection heuristics for Anthropic API calls. Derived from a production two-phase email triage pipeline (2026-04). Refreshed for the Claude 5 model era 2026-07-03 (IMP-080). Always loaded.
+> Model-selection heuristics for Anthropic API calls. Refreshed for the Claude 5 model era 2026-07-03 (IMP-080). Always loaded.
 
 ## Model Era: Claude 5 Family (2026-07)
 
-Current tiers, cheapest → most capable: **Haiku 4.5 → Sonnet 5 → Opus 4.8 → Fable 5 / Mythos 5** (`claude-fable-5` — a new Mythos-class tier ABOVE Opus). The structural heuristics below (N_turns cost equation, cache discipline, triage-then-depth) are model-era-independent; concrete price ratios are NOT. **Verify current pricing at docs.claude.com/pricing before any batch job** — never trust a ratio written down in a prior model era. Examples dated 2024–2026 below are historical evidence for the *patterns*, not current price claims.
+Current tiers, cheapest → most capable: **Haiku 4.5 → Sonnet 5 → Opus 4.8 → Fable 5 / Mythos 5** (`claude-fable-5` — a new Mythos-class tier ABOVE Opus). The structural heuristics below (N_turns cost equation, cache discipline, triage-then-depth) are model-era-independent; concrete price ratios are NOT. **Verify current pricing at docs.claude.com/pricing before any batch job** — never trust a ratio written down in a prior model era.
 
 ## The Dual-Model Default
 
 **Default pattern for any two-step AI pipeline:** Haiku first for classification or filtering, Sonnet for nuanced generation or judgment.
-
-### Evidence: Two-Phase Email Triage Pipeline (historical, 2026-04 — Claude 4.x era)
-- **Phase A (Haiku 4.5):** 4-way classification (IMPORTANT / ACTION / INFO / IGNORE) on ~200-char thread previews. Fast, cheap, deterministic enough for triage.
-- **Phase B (Sonnet 4.6):** Reply-audit on unreplied threads where a human response is likely required. Requires nuance — intent, tone, stakeholder-importance. 90% confidence gate before flagging as urgent-reply.
-
-Result: 2 daily runs at 7:00 + 12:00, within Apps Script 6-min execution limit, cost scales with volume but 80%+ of tokens stay on Haiku tier.
 
 ## Model-Selection Decision Matrix
 
@@ -33,13 +27,11 @@ Use when choosing between Haiku 4.5 / Sonnet 5 / Opus 4.8 / Fable 5 for a given 
 
 ## Cheapest per Successful Outcome (2026-05 Reframe — structural heuristic, still valid)
 
-> Added 2026-05-26 after KB synthesis of 109 prompting / cost videos (Anthropic talks + Cole Medin + practitioners). The equation is model-era-independent; plug in current per-token rates from docs.claude.com/pricing.
+> The equation is model-era-independent; plug in current per-token rates from docs.claude.com/pricing.
 
 **The 2024 framing** ("pick the cheapest model that does the job" — historical) underweighted **turn count**. The 2026 reframe:
 
 **Total cost = (input tokens + output tokens) × N_turns × price/token**
-
-A "cheap" Haiku call that loops 8 times to hit the right answer is often **more expensive** than ONE Sonnet call that solves it correctly. And the Sonnet call avoids context pollution from N retries.
 
 | Anti-pattern | Cost reality |
 |---|---|
@@ -51,11 +43,9 @@ A "cheap" Haiku call that loops 8 times to hit the right answer is often **more 
 
 For **agent loops**, default to Sonnet unless you have evidence Haiku reliably one-shots the task.
 
-**Source:** Anthropic "Picking the right model" talk (2026); Cole Medin "REAL cost of LLM (78%+ cost reduction)" — both reframe the cost equation around success-rate, not per-token-rate.
-
 ## Cache Discipline — Model-Switch Kills Cache
 
-> Added 2026-05-26. The flush mechanics are model-era-independent; the TTL and cache-write premiums are not — verify current values at docs.claude.com/pricing before relying on them in batch jobs.
+> The flush mechanics are model-era-independent; the TTL and cache-write premiums are not — verify current values at docs.claude.com/pricing before relying on them in batch jobs.
 
 Anthropic's prompt cache (historically 5-min TTL, 80–90% cost reduction after first call) is the single biggest cost-saver. **But every model switch flushes the entire cache** — the next call is full-price. This applies across the whole Claude 5 ladder: toggling Sonnet 5 ↔ Opus 4.8 ↔ Fable 5 mid-session flushes just like the old Opus/Sonnet toggle did.
 
@@ -82,8 +72,6 @@ Cache expires after 5 minutes of idle. If your session has ~5min gaps (thinking 
 - [ ] No planned mid-session model switches
 - [ ] Long stable system prompt (cached)
 - [ ] Steady cadence (avoid 5-min idle gaps)
-
-**Source:** Anthropic "Token-savings" talk (2026); Cole Medin "GitHub is the Future of AI Coding" — model-switch cache-flush warning is verbatim across both.
 
 ## Anti-Patterns
 
@@ -126,6 +114,7 @@ When writing new AI-powered code:
 
 ## References
 
-- Two-phase email triage pipeline (Apps Script): reference implementation in your own scripts directory (historical, Claude 4.x era)
 - Anthropic pricing: **verify current per-token rates and tier ratios at docs.claude.com/pricing** — ratios change per model generation; the old Claude-4-era "haiku ≈ 1/10 sonnet ≈ 1/50 opus" is historical, not current
 - IMP-011 in improvement-ledger.json; model-era refresh: IMP-080 (2026-07-03)
+
+> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/api-cost-optimization.md`
