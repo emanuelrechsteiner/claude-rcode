@@ -1,13 +1,13 @@
 <!--
 Status: ARCHIVED
 Last Updated: 2026-09-24
-Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich aus rules/tool-discipline.md ausgelagert wurden — die Regel selbst bleibt dort; hier steht das „Warum" in voller Länge.
+Purpose: Evidence, incidents, and measurements moved verbatim out of rules/tool-discipline.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
-# Belege zu `rules/tool-discipline.md`
+# Evidence for `rules/tool-discipline.md`
 
-> Ausgelagert 2026-09-24 (IMP-217). Jeder Block steht unter der Überschrift, unter der er in der Regel stand, und ist unverändert übernommen.
+> Moved out 2026-09-24 (IMP-217). Every block sits under the same heading it had in the rule, and is carried over unchanged.
 
-## Tool Discipline Rules (Einleitungszeile unter dem Titel)
+## Tool Discipline Rules (intro line under the title)
 
 > Hard rules on tool selection. Derived from 30-day session audit (2026-04-20): 50 Edit-before-Read failures + 57 Bash(cat) failures + Bash(find/grep) anti-patterns. Always loaded.
 
@@ -40,4 +40,4 @@ Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich 
 
 ## Rule 8 — Absolute paths over `cd` chains
 
-**Rationale:** August 2026 chat analysis: 416 `cd` commands — **28% of all Bash invocations** — 124 of them chained (`cd X && cd Y && …`), with 8 documented approval-friction incidents. `cd` chains are also the mechanism behind IMP-162's largest single error class (66 "File does not exist" errors over 37 sessions, see the Bauhof/Haus path-canon note now printed at session start): every `cd` forces the agent to recompute the next command's path relative to wherever the chain left it, and the two-roots split (Bauhof `<BAUHOF>` vs. Haus `~/.claude`) is exactly the kind of mental path arithmetic that goes wrong under that pressure.
+**Rationale:** August 2026 chat analysis: 416 `cd` commands — **28% of all Bash invocations** — 124 of them chained (`cd X && cd Y && …`), with 8 documented approval-friction incidents. `cd` chains are also the mechanism behind IMP-162's largest single error class (66 "File does not exist" errors over 37 sessions, see the workshop/live-install path-canon note now printed at session start): every `cd` forces the agent to recompute the next command's path relative to wherever the chain left it, and the two-roots split (workshop `<WORKSHOP>` vs. live install `~/.claude`) is exactly the kind of mental path arithmetic that goes wrong under that pressure.

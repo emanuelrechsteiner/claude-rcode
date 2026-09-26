@@ -1,19 +1,19 @@
 <!--
 Status: ARCHIVED
 Last Updated: 2026-09-24
-Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich aus rules/web-research-trust.md ausgelagert wurden — die Regel selbst bleibt dort; hier steht das „Warum" in voller Länge.
+Purpose: Evidence, incidents, and measurements moved verbatim out of rules/web-research-trust.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
-# Belege zu `rules/web-research-trust.md`
+# Evidence for `rules/web-research-trust.md`
 
-> Ausgelagert 2026-09-24 (IMP-217). Jeder Block steht unter der Überschrift, unter der er in der Regel stand, und ist unverändert übernommen.
+> Moved out 2026-09-24 (IMP-217). Every block sits under the same heading it had in the rule, and is carried over unchanged.
 
-## Web Research Trust Rule (Einleitungszeile unter dem Titel)
+## Web Research Trust Rule (intro line under the title)
 
 > Standing permission to fetch, search, and scrape URLs for research WITHOUT per-URL confirmation. Pause and ask ONLY when the URL/domain crosses a malicious-content risk threshold. The deterministic slice is enforced by `web-fetch-safety-gate.sh`; the nuanced judgment is yours. Always loaded. (IMP-088, 2026-07-09)
 
 ## The Rule
 
-This is the user's explicit threshold: *"nur fragen, wenn ein Risiko von <90%[-Sicherheit] besteht, dass die URL gefährliche Inhalte wie Viren enthält — sonst einfach abrufen."*
+This is the user's explicit threshold: *"only ask if there's a <90%[-confidence] risk that the URL contains dangerous content like viruses — otherwise just fetch it."* (said in German)
 
 ## How the two layers fit together
 

@@ -1,47 +1,48 @@
 #!/usr/bin/env bash
-# run-log v1.0 — Lauf-Beleg fuer die daily-docs-Routine (Paragraph C der SKILL.md).
+# run-log v1.0 — run receipt for the daily-docs routine (paragraph C of the SKILL.md).
 #
-# ZWECK: Die Zeile in daily-docs-log.jsonl ist der EINZIGE Beweis, dass ein Lauf
-# stattgefunden hat (IMP-075). Sie war bisher der LETZTE Schritt und hatte selbst
-# kein Artefakt — jeder Abbruch nach Paragraph A/B erzeugte Artefakte OHNE Beleg.
-# Real aufgetreten 2026-07-31 (Lauf fuer 2026-07-30): Logbuch geschrieben, Notion
-# aktualisiert, dann `[Request interrupted by user]` 11 Sekunden nach Beginn von
-# Paragraph C — Datumsreihe sprang 2026-07-29 -> 2026-07-31, jede Abdeckungspruefung
-# meldete FALSCH-NEGATIV "nie gelaufen".
+# PURPOSE: the line in daily-docs-log.jsonl is the ONLY proof that a run
+# actually happened (IMP-075). It used to be the LAST step and had no
+# artifact of its own — every abort after paragraph A/B produced artifacts
+# WITHOUT a receipt. Really happened on 2026-07-31 (run for 2026-07-30):
+# logbook written, Notion updated, then `[Request interrupted by user]` 11
+# seconds after paragraph C began — the date series jumped 2026-07-29 ->
+# 2026-07-31, and every coverage check reported a FALSE NEGATIVE "never ran".
 #
-# VERTRAG (zweiphasig, EINE Zeile pro Datum, Upgrade in-place):
-#   1. `start`  — ALLERERSTE dauerhafte Aktion des Laufs, vor Zaehlung/Logbuch/Notion.
-#                 Schreibt status:"partial". Ab hier ist ein Abbruch SICHTBAR.
-#   2. `finish` — nach Paragraph A+B. Hebt dieselbe Zeile auf status:"ok" an.
-#      `fail`   — bei Skript-ABORT o.ae. Setzt status:"fail" + reason, OHNE Zahlen.
+# CONTRACT (two-phase, ONE line per date, upgrade in place):
+#   1. `start`  — the VERY FIRST durable action of the run, before counting/logbook/Notion.
+#                 Writes status:"partial". From here on, an abort is VISIBLE.
+#   2. `finish` — after paragraph A+B. Raises the same line to status:"ok".
+#      `fail`   — on a script ABORT etc. Sets status:"fail" + reason, WITHOUT numbers.
 #
-# Warum Skript und nicht Prosa: dieselbe Lehre wie bei der Zaehlung (2026-07-18,
-# logbook-count.sh ersetzte die Agenten-Schaetzung). Ein Agent, der abbricht, fuehrt
-# keine Prosa-Anweisung mehr aus; ein Aufruf, der als erstes passiert, ist dagegen
-# schon passiert. Zusaetzlich verhindert der jq-Aufbau aus count.json das Abtippen
-# der Zertifikatsfelder (historische Fehlerquelle: "85 Commits" statt 83).
+# Why a script and not prose: the same lesson as with the counting (2026-07-18,
+# logbook-count.sh replaced the agent's own estimate). An agent that aborts no
+# longer executes a prose instruction; a call that happens FIRST, on the other
+# hand, has already happened. The jq-built object from count.json additionally
+# prevents hand-typing the certificate fields (historical error source: "85
+# commits" instead of 83).
 set -euo pipefail
 
 LOG_DEFAULT="$HOME/.claude/global-observation/daily-docs-log.jsonl"
-# $HOME statt eines literalen Nutzerpfads (IMP-219) — dieselbe Begruendung wie
-# beim Logbuch-Pfad in der SKILL.md gilt weiterhin: eine Pflicht-Env-Variable,
-# die der Scheduler nicht setzt, ist der Ur-Defekt in neuer Gestalt (${LOGBOOK_DIR}
-# expandierte still zu leer). $HOME ist KEINE app-spezifische Konfigurationsvariable
-# wie die alte ${LOGBOOK_DIR} — jeder Prozess bekommt sie vom Login-Shell/launchd-
-# Environment gesetzt, ohne separate Verdrahtung in settings.json. Override nur
-# fuer Tests/Backfill.
+# $HOME instead of a literal user path (IMP-219) — the same reasoning as for
+# the logbook path in the SKILL.md still applies: a mandatory env variable
+# that the scheduler doesn't set is the original defect in a new shape
+# (${LOGBOOK_DIR} used to silently expand to empty). $HOME is NOT an
+# app-specific configuration variable like the old ${LOGBOOK_DIR} — every
+# process gets it set by the login shell/launchd environment, with no
+# separate wiring needed in settings.json. Override only for tests/backfill.
 LOG="${DAILY_DOCS_LOG:-$LOG_DEFAULT}"
 
 die() { echo "ABORT: $*" >&2; exit 1; }
 usage() {
   cat >&2 <<'EOF'
-Aufruf:
+Usage:
   run-log.sh start  <YYYY-MM-DD>
-  run-log.sh finish <YYYY-MM-DD> --count-json <pfad> --logbook <pfad>
+  run-log.sh finish <YYYY-MM-DD> --count-json <path> --logbook <path>
                     [--notion-page-id <id>] [--notion-modus <text>]
-                    [--status ok|partial] [--reason <text>] [--extra '<json-objekt>']
+                    [--status ok|partial] [--reason <text>] [--extra '<json-object>']
   run-log.sh fail   <YYYY-MM-DD> --reason <text>
-  run-log.sh check  [<YYYY-MM-DD>]     # Selbstpruefung / Luecken-Scan
+  run-log.sh check  [<YYYY-MM-DD>]     # self-check / gap scan
 EOF
   exit 1
 }
@@ -49,45 +50,45 @@ EOF
 [ $# -ge 1 ] || usage
 CMD="$1"; shift || true
 
-[ -f "$LOG" ] || die "Run-Log fehlt: $LOG (NICHT anlegen — falscher Pfad ist wahrscheinlicher als eine fehlende Datei)"
-[ -w "$LOG" ] || die "Run-Log nicht schreibbar: $LOG"
-command -v jq >/dev/null 2>&1 || die "jq fehlt"
+[ -f "$LOG" ] || die "run log missing: $LOG (do NOT create it — a wrong path is more likely than a missing file)"
+[ -w "$LOG" ] || die "run log not writable: $LOG"
+command -v jq >/dev/null 2>&1 || die "jq missing"
 
 valid_date() { printf '%s' "$1" | /usr/bin/grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; }
 
-# Ersetzt/fuegt die Zeile fuer $1 ein, Inhalt aus stdin. Datumssortierung bleibt
-# erhalten, genau EINE Zeile pro Datum. Atomar via temp + mv im selben Verzeichnis.
+# Replaces/inserts the line for $1, content from stdin. Date ordering is
+# preserved, exactly ONE line per date. Atomic via temp + mv in the same directory.
 splice() {
   local d="$1" tmp new_line
   new_line="$(cat)"
-  printf '%s' "$new_line" | jq -e . >/dev/null 2>&1 || die "erzeugte Zeile ist kein gueltiges JSON"
+  printf '%s' "$new_line" | jq -e . >/dev/null 2>&1 || die "generated line is not valid JSON"
   tmp="$(mktemp "${LOG}.tmp.XXXXXX")"
   # shellcheck disable=SC2064
   trap "rm -f '$tmp'" RETURN
 
-  jq -r .date "$LOG" > "${tmp}.dates" || die "Datumsspalte nicht lesbar — Run-Log beschaedigt?"
+  jq -r .date "$LOG" > "${tmp}.dates" || die "date column not readable — run log corrupted?"
   printf '%s\n' "$new_line" > "${tmp}.line"
 
   awk -v newfile="${tmp}.line" -v target="$d" '
     FNR==NR { dd[FNR]=$0; next }
     {
-      if (dd[FNR] == target) { next }                       # alte Zeile desselben Tages faellt weg
+      if (dd[FNR] == target) { next }                       # old line for the same day is dropped
       if (!ins && (dd[FNR] > target)) {
         while ((getline l < newfile) > 0) print l; close(newfile); ins=1
       }
       print
     }
     END { if (!ins) { while ((getline l < newfile) > 0) print l; close(newfile) } }
-  ' "${tmp}.dates" "$LOG" > "$tmp" || die "Splice fehlgeschlagen"
+  ' "${tmp}.dates" "$LOG" > "$tmp" || die "splice failed"
 
-  # Pflichtpruefungen VOR dem Ersetzen — nie ein unverifiziertes Log installieren.
-  jq -e . "$tmp" >/dev/null || die "Ergebnis enthaelt ungueltige JSON-Zeile"
-  jq -r .date "$tmp" | sort -c || die "Datumsreihe nicht mehr aufsteigend"
+  # Mandatory checks BEFORE replacing — never install an unverified log.
+  jq -e . "$tmp" >/dev/null || die "result contains an invalid JSON line"
+  jq -r .date "$tmp" | sort -c || die "date series no longer ascending"
   [ "$(jq -r --arg d "$d" 'select(.date==$d) | .date' "$tmp" | wc -l | tr -d ' ')" -eq 1 ] \
-    || die "nicht genau eine Zeile fuer $d"
+    || die "not exactly one line for $d"
 
   rm -f "${tmp}.dates" "${tmp}.line"
-  mv "$tmp" "$LOG" || die "Installation fehlgeschlagen"
+  mv "$tmp" "$LOG" || die "installation failed"
   trap - RETURN
 }
 
@@ -95,52 +96,52 @@ existing_status() { jq -r --arg d "$1" 'select(.date==$d) | .status' "$LOG" | he
 
 case "$CMD" in
   start)
-    D="${1:-}"; valid_date "${D:-}" || die "Tag fehlt/ungueltig (YYYY-MM-DD)"
+    D="${1:-}"; valid_date "${D:-}" || die "day missing/invalid (YYYY-MM-DD)"
     prev="$(existing_status "$D")"
     if [ -n "$prev" ]; then
-      # Idempotent: ein wiederaufgenommener Lauf darf nicht duplizieren, und ein
-      # bereits abgeschlossener Tag darf nicht auf "partial" zurueckfallen.
-      echo "HINWEIS: Zeile fuer $D existiert bereits (status=$prev) — start uebersprungen." >&2
+      # Idempotent: a resumed run must not duplicate, and an
+      # already-completed day must not fall back to "partial".
+      echo "NOTE: a line for $D already exists (status=$prev) — start skipped." >&2
       exit 0
     fi
     jq -cn --arg d "$D" --argjson ts "$(date +%s)" '{
       date: $d, ts: $ts, status: "partial",
-      phase: "begonnen",
-      reason: "Lauf begonnen, Paragraph A/B/C noch nicht abgeschlossen. Bleibt diese Zeile partial, ist der Lauf abgebrochen — kein Falsch-Negativ mehr, sondern ein sichtbarer Teil-Lauf."
+      phase: "started",
+      reason: "Run started, paragraph A/B/C not yet complete. If this line stays partial, the run was aborted — no longer a false negative, but a visible partial run."
     }' | splice "$D"
-    echo "run-log: $D als partial angelegt (Lauf ist ab jetzt belegt)." >&2
+    echo "run-log: $D recorded as partial (the run now has a receipt)." >&2
     ;;
 
   finish)
     D="${1:-}"; shift || true
-    valid_date "${D:-}" || die "Tag fehlt/ungueltig (YYYY-MM-DD)"
+    valid_date "${D:-}" || die "day missing/invalid (YYYY-MM-DD)"
     COUNT_JSON=""; LOGBOOK=""; NOTION_ID=""; NOTION_MODUS=""; ST="ok"; REASON=""; EXTRA="{}"
     while [ $# -gt 0 ]; do
       case "$1" in
-        --count-json) COUNT_JSON="${2:?--count-json braucht einen Pfad}"; shift 2;;
-        --logbook) LOGBOOK="${2:?--logbook braucht einen Pfad}"; shift 2;;
+        --count-json) COUNT_JSON="${2:?--count-json needs a path}"; shift 2;;
+        --logbook) LOGBOOK="${2:?--logbook needs a path}"; shift 2;;
         --notion-page-id) NOTION_ID="${2:-}"; shift 2;;
         --notion-modus) NOTION_MODUS="${2:-}"; shift 2;;
-        --status) ST="${2:?--status braucht ok|partial}"; shift 2;;
+        --status) ST="${2:?--status needs ok|partial}"; shift 2;;
         --reason) REASON="${2:-}"; shift 2;;
-        --extra) EXTRA="${2:?--extra braucht ein JSON-Objekt}"; shift 2;;
-        *) die "unbekannte Option: $1";;
+        --extra) EXTRA="${2:?--extra needs a JSON object}"; shift 2;;
+        *) die "unknown option: $1";;
       esac
     done
-    [ -n "$COUNT_JSON" ] || die "--count-json fehlt (Zahlen kommen NUR aus logbook-count.sh)"
-    [ -r "$COUNT_JSON" ] || die "count-json nicht lesbar: $COUNT_JSON"
-    [ -n "$LOGBOOK" ] || die "--logbook fehlt"
-    [ -f "$LOGBOOK" ] || die "Logbuch-Datei existiert nicht: $LOGBOOK (status ok ohne Artefakt ist unzulaessig)"
-    case "$ST" in ok|partial) :;; *) die "--status muss ok oder partial sein (fail => Unterbefehl 'fail')";; esac
-    [ "$ST" = "ok" ] || [ -n "$REASON" ] || die "status=partial verlangt --reason (SKILL.md Paragraph C)"
-    printf '%s' "$EXTRA" | jq -e 'type=="object"' >/dev/null 2>&1 || die "--extra ist kein JSON-Objekt"
+    [ -n "$COUNT_JSON" ] || die "--count-json missing (numbers come ONLY from logbook-count.sh)"
+    [ -r "$COUNT_JSON" ] || die "count-json not readable: $COUNT_JSON"
+    [ -n "$LOGBOOK" ] || die "--logbook missing"
+    [ -f "$LOGBOOK" ] || die "logbook file does not exist: $LOGBOOK (status ok without an artifact is not allowed)"
+    case "$ST" in ok|partial) :;; *) die "--status must be ok or partial (fail => use the 'fail' subcommand)";; esac
+    [ "$ST" = "ok" ] || [ -n "$REASON" ] || die "status=partial requires --reason (SKILL.md fail-loud contract)"
+    printf '%s' "$EXTRA" | jq -e 'type=="object"' >/dev/null 2>&1 || die "--extra is not a JSON object"
     jq -e 'has("items_total") and has("count_basis") and has("evidence_tier") and has("quellen_epochen") and has("sources")' \
-      "$COUNT_JSON" >/dev/null 2>&1 || die "count-json erfuellt den Skriptvertrag nicht (items_total/count_basis/evidence_tier/quellen_epochen/sources)"
+      "$COUNT_JSON" >/dev/null 2>&1 || die "count-json does not satisfy the script contract (items_total/count_basis/evidence_tier/quellen_epochen/sources)"
     JD="$(jq -r .day "$COUNT_JSON")"
-    [ "$JD" = "$D" ] || die "count-json gehoert zu $JD, nicht zu $D"
+    [ "$JD" = "$D" ] || die "count-json belongs to $JD, not $D"
 
     prev="$(existing_status "$D")"
-    [ -n "$prev" ] || echo "WARNUNG: kein 'start' fuer $D vorhanden — Zeile wird trotzdem geschrieben, aber der Lauf war zwischenzeitlich unbelegt." >&2
+    [ -n "$prev" ] || echo "WARNING: no 'start' present for $D — the line is written anyway, but the run went unrecorded for a while." >&2
 
     jq -c \
       --arg d "$D" --argjson ts "$(date +%s)" --arg st "$ST" \
@@ -161,41 +162,41 @@ case "$CMD" in
       + (if $startfehlt == "true" then {start_zeile_fehlte: true} else {} end)
       + $extra
     ' "$COUNT_JSON" | splice "$D"
-    echo "run-log: $D auf status=$ST angehoben." >&2
+    echo "run-log: $D raised to status=$ST." >&2
     ;;
 
   fail)
     D="${1:-}"; shift || true
-    valid_date "${D:-}" || die "Tag fehlt/ungueltig (YYYY-MM-DD)"
+    valid_date "${D:-}" || die "day missing/invalid (YYYY-MM-DD)"
     REASON=""
     while [ $# -gt 0 ]; do
       case "$1" in
-        --reason) REASON="${2:?--reason braucht Text}"; shift 2;;
-        *) die "unbekannte Option: $1";;
+        --reason) REASON="${2:?--reason needs text}"; shift 2;;
+        *) die "unknown option: $1";;
       esac
     done
-    [ -n "$REASON" ] || die "--reason ist PFLICHT bei fail (SKILL.md Fail-Loud-Kontrakt)"
-    # KEINE Zahlenfelder — Fail-Loud-Kontrakt: bei Exit != 0 kein items_total, auch nicht null.
+    [ -n "$REASON" ] || die "--reason is MANDATORY for fail (SKILL.md fail-loud contract)"
+    # NO number fields — fail-loud contract: on exit != 0, no items_total, not even null.
     jq -cn --arg d "$D" --argjson ts "$(date +%s)" --arg r "$REASON" \
       '{date:$d, ts:$ts, status:"fail", reason:$r}' | splice "$D"
-    echo "run-log: $D als fail vermerkt." >&2
+    echo "run-log: $D recorded as fail." >&2
     ;;
 
   check)
     D="${1:-}"
     if [ -n "$D" ]; then
-      valid_date "$D" || die "ungueltiges Datum"
+      valid_date "$D" || die "invalid date"
       line="$(jq -c --arg d "$D" 'select(.date==$d)' "$LOG")"
-      [ -n "$line" ] || { echo "FEHLT: keine Zeile fuer $D"; exit 2; }
+      [ -n "$line" ] || { echo "MISSING: no line for $D"; exit 2; }
       printf '%s\n' "$line" | jq -r '"\(.date) status=\(.status) items_total=\(.items_total // "-")"'
       exit 0
     fi
-    jq -e . "$LOG" >/dev/null || die "Run-Log enthaelt ungueltiges JSON"
-    jq -r .date "$LOG" | sort -c || die "Run-Log nicht datumssortiert"
+    jq -e . "$LOG" >/dev/null || die "run log contains invalid JSON"
+    jq -r .date "$LOG" | sort -c || die "run log not sorted by date"
     dup="$(jq -r .date "$LOG" | uniq -d)"
-    [ -z "$dup" ] || die "doppelte Datumszeilen: $dup"
-    echo "Run-Log strukturell in Ordnung ($(wc -l < "$LOG" | tr -d ' ') Zeilen)."
-    echo "Offene Teil-Laeufe (status != ok):"
+    [ -z "$dup" ] || die "duplicate date lines: $dup"
+    echo "Run log structurally fine ($(wc -l < "$LOG" | tr -d ' ') lines)."
+    echo "Open partial runs (status != ok):"
     jq -r 'select(.status != "ok") | "  \(.date) status=\(.status) reason=\((.reason // "-")[0:80])"' "$LOG"
     ;;
 

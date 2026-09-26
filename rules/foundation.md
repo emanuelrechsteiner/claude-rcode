@@ -23,7 +23,7 @@ For everything else, the main thread's role is to plan, delegate, and synthesize
 
 For 2+ independent units: see `rules/parallel-by-default.md`. That rule defines the confirmation-handshake and auto-dispatch rules — they are not duplicated here. The control-agent (`~/.claude/agents/control-agent.md`) is the **sole human-facing escalation point** for all delegated work; sub-agents never ask the user directly.
 
-Every brief handed to a sub-agent is written in the Auftragsbrief form — five mandatory fields plus the two evidenced additions, defined once in `templates/auftragsbrief.md.template` (IMP-161).
+Every brief handed to a sub-agent is written in the task brief form — five mandatory fields plus the two evidenced additions, defined once in `templates/auftragsbrief.md.template` (IMP-161).
 
 **Model + Effort assignment per spawn is defined ONCE, in `agents/control-agent.md` §2** (the canonical dispatch spec, IMP-091) — not restated here. §2 assigns Agent, Model (against the matrix in `rules/api-cost-optimization.md`), Effort, and dependencies for every atomic task, whether the control-agent runs as a real sub-agent or the main thread performs the planner role in its place.
 

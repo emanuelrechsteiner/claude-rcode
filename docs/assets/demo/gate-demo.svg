@@ -8,7 +8,7 @@
 <rect x="0" y="0" width="880" height="460" fill="#0c0c0c"/>
 <rect x="24" y="24" width="832" height="412" rx="4" fill="#151515" stroke="#3a3a3a" stroke-width="1"/>
 <line x1="24" y1="60" x2="856" y2="60" stroke="#3a3a3a" stroke-width="1"/>
-<text x="40" y="46" font-size="13" fill="#9a9a9a">claude — demo-projekt</text>
+<text x="40" y="46" font-size="13" fill="#9a9a9a">claude — demo-project</text>
 <g clip-path="url(#clipPrompt)"><text x="40" y="96" font-size="16" fill="#ececec">$ gh pr merge 42 --merge</text></g>
 <rect x="276" y="79" width="9" height="18" fill="#ececec" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2143;0.2232;0.2321;0.2411;0.25;0.2589;0.2679;0.2768;0.2857" values="0;1;0;1;0;1;0;1;0;0"/></rect>
 <g opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.2857;0.3;1" values="0;0;1;1"/>

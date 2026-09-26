@@ -1,40 +1,40 @@
 #!/usr/bin/env bash
-# logbook-count v3.4 — Tageszaehlung "touched file days" (TFD), Zaehlbasis REPO-IDENTITAET
-# Aufruf: LOGBOOK_ROOTS=<pfad zu roots.txt> bash logbook-count.sh YYYY-MM-DD
-# Optional (Backfill/alte Tage vor der Transkript-Epoche): LOGBOOK_GIT_ROOTS=<pfad zu
-# git-roots.txt> — Baumwurzeln (nicht Repos) fuer die quellenunabhaengige Git-Discovery.
-# Ohne diese Variable bleibt ein Tag VOR der Transkript-Epoche ohne Discovery-Repos ein
-# ABORT(24), nie eine stille 0. Siehe roots.txt.example / git-roots.txt.example daneben.
-# Schreibt AUSSCHLIESSLICH nach $WORK (mktemp -d unter TMPDIR). Kein Repo, kein ~/.claude.
+# logbook-count v3.4 — day count "touched file days" (TFD), count basis REPO IDENTITY
+# Usage: LOGBOOK_ROOTS=<path to roots.txt> bash logbook-count.sh YYYY-MM-DD
+# Optional (backfill/old days before the transcript epoch): LOGBOOK_GIT_ROOTS=<path to
+# git-roots.txt> — tree roots (not repos) for the source-independent git discovery.
+# Without this variable, a day BEFORE the transcript epoch with no discovery repos stays
+# an ABORT(24), never a silent 0. See roots.txt.example / git-roots.txt.example next to it.
+# Writes EXCLUSIVELY to $WORK (mktemp -d under TMPDIR). No repo, no ~/.claude.
 #
-# MODUL-STATUS (assembliert 2026-07-18 aus zwei Workflow-Runden, R4+R5 — backend-agent):
-# Dieses Skript ist VOLLSTAENDIG SELBSTENTHALTEN. qv2.py und canon.py liegen als
-# HISTORISCHE, NICHT VERDRAHTETE Referenzartefakte daneben (Entwicklungsstand vor der
-# Einbettung in dieses Skript) — sie werden zur Laufzeit NICHT aufgerufen, dienen nur
-# der Nachvollziehbarkeit/Audit der S12/S9a/S9b-Logik. qh.py (Q_H/Historien-DB-Achse)
-# ist SPEZIFIZIERT, aber NICHT in dieses Skript integriert und sein Quelltext war zum
-# Assemblierungszeitpunkt nicht mehr rekonstruierbar (lag im ephemeren $TMPDIR eines
-# beendeten Subagenten). Der 2026-01-15-Wert unten stammt vom quellenunabhaengigen
-# GIT-DISCOVERY-Zweig (v3.4-Neuerung), nicht von Q_H — Details im Assemblierungs-Log.
+# MODULE STATUS (assembled 2026-07-18 from two workflow rounds, R4+R5 — backend-agent):
+# This script is FULLY SELF-CONTAINED. qv2.py and canon.py sit next to it as
+# HISTORICAL, NOT-WIRED-IN reference artifacts (a development stage before they were
+# embedded into this script) — they are NOT invoked at runtime, they only serve
+# traceability/audit of the S12/S9a/S9b logic. qh.py (the Q_H/history-DB axis)
+# is SPECIFIED but NOT integrated into this script, and its source was no longer
+# reconstructable at assembly time (it sat in the ephemeral $TMPDIR of a
+# terminated subagent). The 2026-01-15 value below comes from the source-independent
+# GIT DISCOVERY branch (the v3.4 addition), not from Q_H — details in the assembly log.
 set -euo pipefail
 
-# ============================== R0 Ausfuehrungsvertrag ==============================
-# 1. set -euo pipefail steht in Zeile 5.
-# 2. KEIN `grep -f` irgendwo. Mengensubtraktion nur via awk FILENAME==PF.
-#    `NR==FNR` ist VERBOTEN (konsumiert bei leerer Musterdatei die Nutzdaten, Exit 0).
-# 3. Fallbacks nur als if/then/else, nie `A | B || C > out`.
-# 4. Arbeitsdateien nur in $WORK.
-# 5. Frische-Assertion auf $WORK.
-# 6. WERKZEUGE SIND GEPINNT (gemessen, nicht vermutet): in dieser Umgebung ist `grep`
-#    eine Shell-Funktion, die auf ugrep mit `--ignore-files` umleitet. Gemessen am
-#    2026-07-18: `grep -c 'set' v32.sh` -> rc=1, 0 Treffer; `/usr/bin/grep -c` -> 19.
-#    Ein ignoriertes Verzeichnis macht den Positivscan STILL leer. Dasselbe gilt fuer
-#    `find` (bfs-Shim, abweichende Zyklus-Semantik). Beide werden absolut aufgerufen.
-# IMP-219 (2026-09-25): Zeitzone aus der Umgebung, nie hartcodiert. Prioritaet:
-# bereits gesetztes $TZ (z.B. eine Testsuite) > $CLAUDE_LOGBOOK_TZ (optional in
-# ~/.claude/env.local.sh) > Systemzeitzone (readlink /etc/localtime). NIE
-# `TZ=""` setzen (auf macOS ist eine leere TZ gleich UTC — eine stille
-# Fehlmessung, keine ehrliche "unbekannt"-Meldung, siehe ABORT(6) unten).
+# ============================== R0 Execution contract ==============================
+# 1. set -euo pipefail is on line 5.
+# 2. NO `grep -f` anywhere. Set subtraction only via awk FILENAME==PF.
+#    `NR==FNR` is FORBIDDEN (with an empty pattern file it consumes the payload data, exit 0).
+# 3. Fallbacks only as if/then/else, never `A | B || C > out`.
+# 4. Working files only in $WORK.
+# 5. Freshness assertion on $WORK.
+# 6. TOOLS ARE PINNED (measured, not assumed): in this environment `grep`
+#    is a shell function that redirects to ugrep with `--ignore-files`. Measured on
+#    2026-07-18: `grep -c 'set' v32.sh` -> rc=1, 0 hits; `/usr/bin/grep -c` -> 19.
+#    An ignored directory makes the positive scan SILENTLY empty. The same applies to
+#    `find` (bfs shim, different cycle semantics). Both are invoked with absolute paths.
+# IMP-219 (2026-09-25): timezone from the environment, never hardcoded. Priority:
+# already-set $TZ (e.g. a test suite) > $CLAUDE_LOGBOOK_TZ (optional in
+# ~/.claude/env.local.sh) > system timezone (readlink /etc/localtime). NEVER
+# set `TZ=""` (on macOS an empty TZ equals UTC — a silent
+# mismeasurement, not an honest "unknown" report, see ABORT(6) below).
 if [ -z "${TZ:-}" ]; then
   [ -n "${CLAUDE_LOGBOOK_TZ:-}" ] || { [ -f "$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }
   TZ="${CLAUDE_LOGBOOK_TZ:-}"
@@ -45,68 +45,68 @@ if [ -z "${TZ:-}" ]; then
     */zoneinfo/*) TZ="${LOCALTIME_LINK#*/zoneinfo/}" ;;
   esac
 fi
-[ -n "${TZ:-}" ] || { echo "ABORT(6): Zeitzone nicht ermittelbar (weder \$TZ noch \$CLAUDE_LOGBOOK_TZ gesetzt, readlink /etc/localtime ohne zoneinfo-Pfad) — CLAUDE_LOGBOOK_TZ in ~/.claude/env.local.sh setzen" >&2; exit 6; }
+[ -n "${TZ:-}" ] || { echo "ABORT(6): timezone not determinable (neither \$TZ nor \$CLAUDE_LOGBOOK_TZ set, readlink /etc/localtime without a zoneinfo path) — set CLAUDE_LOGBOOK_TZ in ~/.claude/env.local.sh" >&2; exit 6; }
 export TZ
 FINDBIN=/usr/bin/find
 GREPBIN=/usr/bin/grep
 for b in "$FINDBIN" "$GREPBIN"; do
-  [ -x "$b" ] || { echo "ABORT(20): gepinntes Werkzeug fehlt: $b" >&2; exit 20; }
+  [ -x "$b" ] || { echo "ABORT(20): pinned tool missing: $b" >&2; exit 20; }
 done
-D="${1:?ABORT(1): Tag fehlt (YYYY-MM-DD)}"
-# ROOTS-Aufloesung (2026-07-18): Default ist die Datei NEBEN dem Skript, nicht eine
-# Umgebungsvariable. Grund ist der Ur-Defekt dieser Routine: ${LOGBOOK_DIR} war nie
-# gesetzt, expandierte still zu leer, und der Lauf reparierte sich selbst aus alten
-# Logzeilen. Eine Pflicht-Env-Variable, die der Scheduler nicht setzt, ist derselbe
-# Fehler in neuer Gestalt (gemessen: Aufruf ohne LOGBOOK_ROOTS -> ABORT(3)).
-# LOGBOOK_ROOTS bleibt als Override fuer Tests/Backfill vorrangig.
+D="${1:?ABORT(1): day missing (YYYY-MM-DD)}"
+# ROOTS resolution (2026-07-18): the default is the file NEXT TO the script, not an
+# environment variable. Reason: the original defect of this routine — ${LOGBOOK_DIR}
+# was never set, silently expanded to empty, and the run repaired itself from old
+# log lines. A mandatory env variable that the scheduler doesn't set is the same
+# defect in a new shape (measured: invocation without LOGBOOK_ROOTS -> ABORT(3)).
+# LOGBOOK_ROOTS remains a higher-priority override for tests/backfill.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOTS="${LOGBOOK_ROOTS:-$SCRIPT_DIR/roots.txt}"
-[ -r "$ROOTS" ] || { echo "ABORT(3): Roots-Datei nicht lesbar: $ROOTS (weder \$LOGBOOK_ROOTS noch $SCRIPT_DIR/roots.txt)" >&2; exit 3; }
+[ -r "$ROOTS" ] || { echo "ABORT(3): roots file not readable: $ROOTS (neither \$LOGBOOK_ROOTS nor $SCRIPT_DIR/roots.txt)" >&2; exit 3; }
 : "${LOGBOOK_GIT_ROOTS:=$SCRIPT_DIR/git-roots.txt}"; export LOGBOOK_GIT_ROOTS
 FAULT="${LOGBOOK_FAULT:-}"
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/logbook-$D.XXXXXX")"
-if [ -n "${LOGBOOK_KEEP:-}" ]; then trap 'echo "WORK=$WORK behalten" >&2' EXIT
+if [ -n "${LOGBOOK_KEEP:-}" ]; then trap 'echo "WORK=$WORK kept" >&2' EXIT
 else trap 'rm -rf "$WORK"' EXIT; fi
 N_PRE=$(ls -A "$WORK" | wc -l | tr -d ' ')
-if [ "$N_PRE" != "0" ]; then echo "ABORT(10): Arbeitsverzeichnis nicht frisch ($N_PRE Eintraege)" >&2; exit 10; fi
+if [ "$N_PRE" != "0" ]; then echo "ABORT(10): working directory not fresh ($N_PRE entries)" >&2; exit 10; fi
 if [ "$FAULT" = "b" ]; then : > "$WORK/altbestand.txt"
   N_PRE=$(ls -A "$WORK" | wc -l | tr -d ' ')
-  echo "ABORT(10): Arbeitsverzeichnis nicht frisch ($N_PRE Eintraege)" >&2; exit 10; fi
+  echo "ABORT(10): working directory not fresh ($N_PRE entries)" >&2; exit 10; fi
 
 rcpt() { echo "RECEIPT $*" >&2; }
 
-# ============================== W19 Symlink-Waechter (ABORT 19) ==============================
-# Ein Verzeichnis-Symlink verbirgt einen unbegrenzten Teilbaum, OHNE dass irgendeine Zahl,
-# ein Zertifikat oder eine stderr-Zeile abweicht. Gemessen: Originalskript gegen einen Baum
-# mit 2 ausgelagerten Teilbaeumen -> EXIT=0, Tageszahl 90 statt 99, Zertifikat "state=verified".
+# ============================== W19 symlink guard (ABORT 19) ==============================
+# A directory symlink hides an unbounded subtree WITHOUT any number,
+# certificate, or stderr line diverging. Measured: original script against a tree
+# with 2 outsourced subtrees -> EXIT=0, day count 90 instead of 99, certificate "state=verified".
 #
-# WARUM ABBRUCH UND NICHT `find -L` (drei ausgefuehrte Messungen, keine Behauptungen):
-#  (a) ZYKLEN: /usr/bin/find -L auf einer Symlink-Schleife -> rc=0, 0 stderr-Zeilen.
-#      Der Umbau auf -L fuehrt also eine NEUE stille Ausfallart ein.
-#  (b) DOPPELZAEHLUNG: -L listet dieselbe Datei unter jedem Pfad erneut (3 Inodes -> 6 Pfade).
-#      Bei item_key = <repo_id>::<relpfad> sind zwei Pfade zwei Schluessel.
-#  (c) KANONISCHER SCHLUESSEL: bei zwei Pfaden auf eine Datei ist nicht entscheidbar,
-#      welcher relpfad der Schluessel ist. Raten waere eine Zahl ohne Beleg.
+# WHY ABORT AND NOT `find -L` (three actual measurements, not claims):
+#  (a) CYCLES: /usr/bin/find -L on a symlink loop -> rc=0, 0 stderr lines.
+#      Switching to -L therefore introduces a NEW silent failure mode.
+#  (b) DOUBLE-COUNTING: -L lists the same file again under every path (3 inodes -> 6 paths).
+#      With item_key = <repo_id>::<relpath>, two paths are two keys.
+#  (c) CANONICAL KEY: with two paths to one file, it's undecidable which
+#      relpath is the key. Guessing would be a number with no evidence.
 #
-# KLASSIFIKATION statt Zaehler — sonst waere der Waechter unbenutzbar: der Desktop-Baum
-# fuehrt 67 legitime Symlinks (node_modules/.bin, tote debug/latest-Zeiger). Ein Waechter
-# nach der Regel "irgendein Symlink -> Abbruch" haette ab Tag eins taeglich gefeuert.
-#   DIR-Symlink     -> ABBRUCH (verbirgt einen Teilbaum)
-#   Muster-Symlink  -> ABBRUCH (verbirgt eine zaehlbare Quelldatei)
-#   sonstiger       -> ins Zertifikat, KEIN Abbruch (verbirgt nichts)
+# CLASSIFICATION instead of a counter — otherwise the guard would be unusable: the
+# desktop tree carries 67 legitimate symlinks (node_modules/.bin, dead debug/latest
+# pointers). A guard on the rule "any symlink -> abort" would have fired daily from day one.
+#   DIR symlink      -> ABORT (hides a subtree)
+#   pattern symlink   -> ABORT (hides a countable source file)
+#   any other         -> goes into the certificate, NO abort (hides nothing)
 W19_CERT=""
 w19() {
   local baum="$1"; local quelle="$2"; local muster="$3"
   local dirn=0 mustn=0 sonst=0 n=0 nL=0 frc=0 wurzel=nein
   local L="$WORK/w19-$quelle.links"; local B="$WORK/w19-$quelle.bad"
   : > "$L"; : > "$B"
-  # (0) Wurzel-Probe: find OHNE -L betritt eine Symlink-Wurzel gar nicht.
+  # (0) Root probe: find WITHOUT -L does not enter a symlink root at all.
   if [ -L "$baum" ]; then wurzel=ja; fi
   set +e
   "$FINDBIN" "$baum" -type l -print > "$L" 2>/dev/null; frc=$?
   set -e
-  # (1)+(2) Zensus und Klassifikation in DERSELBEN Traversierung, die die Links nicht betritt.
+  # (1)+(2) Census and classification in the SAME traversal, which does not enter the links.
   while IFS= read -r lk; do
     [ -n "$lk" ] || continue
     if [ -d "$lk" ]; then dirn=$((dirn+1)); printf 'DIR\t%s\n' "$lk" >> "$B"
@@ -117,20 +117,20 @@ w19() {
       esac
     fi
   done < "$L"
-  # (3) Zweite, andersartige Achse: Mengenvergleich find gegen find -L.
-  #     -L wird NUR gezaehlt, NIE zur Erhebung benutzt.
+  # (3) Second, different-kind axis: set comparison find vs. find -L.
+  #     -L is ONLY counted, NEVER used for the actual collection.
   n=$("$FINDBIN"    "$baum" -name "$muster" -type f 2>/dev/null | wc -l | tr -d ' ')
   nL=$("$FINDBIN" -L "$baum" -name "$muster" -type f 2>/dev/null | wc -l | tr -d ' ')
   if [ "$wurzel" = ja ] || [ "$dirn" -gt 0 ] || [ "$mustn" -gt 0 ] || [ "$n" != "$nL" ] || [ "$frc" -ne 0 ]; then
-    { echo "ABORT(19): Symlink im Scanbaum von $quelle"
-      echo "  baum=$baum"
-      echo "  wurzel_ist_symlink=$wurzel dir_symlinks=$dirn muster_symlinks=$mustn sonstige=$sonst find_rc=$frc"
-      echo "  dateien ohne -L=$n mit -L=$nL (Differenz=$((nL-n)) unsichtbare Dateien)"
-      head -5 "$B" | sed 's/^/  betroffen: /'
-      echo "  MESSUNG UNVOLLSTAENDIG. NICHT auf -L umgestellt: -L schweigt bei Zyklen (rc=0,"
-      echo "  0 stderr) und zaehlt dieselbe Datei unter jedem Pfad erneut -> zwei item_keys."
-      echo "  Aufloesung: den ausgelagerten Baum als eigenen root in roots.txt fuehren"
-      echo "  oder den Symlink durch das echte Verzeichnis ersetzen."
+    { echo "ABORT(19): symlink in the scan tree of $quelle"
+      echo "  tree=$baum"
+      echo "  root_is_symlink=$wurzel dir_symlinks=$dirn pattern_symlinks=$mustn other=$sonst find_rc=$frc"
+      echo "  files without -L=$n with -L=$nL (difference=$((nL-n)) invisible files)"
+      head -5 "$B" | sed 's/^/  affected: /'
+      echo "  MEASUREMENT INCOMPLETE. NOT switched to -L: -L stays silent on cycles (rc=0,"
+      echo "  0 stderr) and lists the same file again under every path -> two item_keys."
+      echo "  Resolution: list the outsourced tree as its own root in roots.txt,"
+      echo "  or replace the symlink with the real directory."
     } >&2
     exit 19
   fi
@@ -138,7 +138,7 @@ w19() {
   rcpt "W19 $quelle symlinks=$((dirn+mustn+sonst)) (dir=$dirn muster=$mustn sonstige=$sonst) n=$n n_L=$nL state=symlinkfrei"
 }
 
-# ============================== S0 Tagesfenster ==============================
+# ============================== S0 day window ==============================
 PREV=$(python3 -c "import sys,datetime;print(datetime.date.fromisoformat(sys.argv[1])-datetime.timedelta(days=1))" "$D")
 python3 - "$D" > "$WORK/win.txt" <<'PY'
 import os, sys
@@ -153,11 +153,11 @@ WSTART=$(sed -n 1p "$WORK/win.txt"); WEND=$(sed -n 2p "$WORK/win.txt")
 if [ "$FAULT" = "d" ]; then WSTART=""; fi
 RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
 if [ -z "$WSTART" ] || [ -z "$WEND" ]; then
-  echo "ABORT(2): Fenstergrenzen leer (WSTART='$WSTART' WEND='$WEND')" >&2; exit 2; fi
+  echo "ABORT(2): window bounds empty (WSTART='$WSTART' WEND='$WEND')" >&2; exit 2; fi
 if ! [[ "$WSTART" =~ $RE ]] || ! [[ "$WEND" =~ $RE ]]; then
-  echo "ABORT(2): Fensterformat ungueltig" >&2; exit 2; fi
-if ! [[ "$WSTART" < "$WEND" ]]; then echo "ABORT(2): Fenster nicht aufsteigend" >&2; exit 2; fi
-rcpt "S0 tz=$TZ fenster=[$WSTART,$WEND)"
+  echo "ABORT(2): window format invalid" >&2; exit 2; fi
+if ! [[ "$WSTART" < "$WEND" ]]; then echo "ABORT(2): window not ascending" >&2; exit 2; fi
+rcpt "S0 tz=$TZ window=[$WSTART,$WEND)"
 
 # ============================== S1 Preflight ==============================
 # S1d Roots + Sentinels
@@ -165,44 +165,44 @@ NROOTS=0; NSYMROOT=0
 : > "$WORK/roots_ok.txt"
 while IFS=$'\t' read -r root sentinel; do
   [ -n "$root" ] || continue
-  if [ ! -d "$root" ]; then echo "ABORT(3): root fehlt: $root" >&2; exit 3; fi
-  if [ ! -r "$sentinel" ]; then echo "ABORT(3): sentinel unlesbar: $sentinel (Volume nicht gemountet?)" >&2; exit 3; fi
-  # W19 auf der Roots-Achse: ABSICHTLICH KEINE Baumtraversierung, nur Wurzel-Identitaet.
-  # Begruendung gemessen: die Git-Achse ist gegen Teilbaum-Blindheit STRUKTURELL IMMUN —
-  # ein Verzeichnis-Symlink steht als Eintrag mit Modus 120000 im Baum und wird nicht
-  # durchlaufen (`git ls-files -s spiegel` -> "120000 ... spiegel"); jede Datei erscheint
-  # genau einmal unter ihrem echten Pfad. Der volle Waechter waere hier zudem untragbar
-  # (ein Repo allein: 14252 Symlinks in node_modules -> taeglicher Abbruch).
-  # Was auf DIESER Achse wirklich bricht, ist die ZAEHLBASIS: ist die Wurzel ueber einen
-  # Symlink adressiert, haengt der relpfad am Zugangspfad und dieselbe Datei bekaeme zwei
-  # item_keys — die Kollabierung von Worktrees/Klonen fiele still aus.
+  if [ ! -d "$root" ]; then echo "ABORT(3): root missing: $root" >&2; exit 3; fi
+  if [ ! -r "$sentinel" ]; then echo "ABORT(3): sentinel unreadable: $sentinel (volume not mounted?)" >&2; exit 3; fi
+  # W19 on the roots axis: DELIBERATELY NO tree traversal, only root identity.
+  # Reasoning measured: the git axis is STRUCTURALLY IMMUNE to subtree blindness —
+  # a directory symlink sits in the tree as an entry with mode 120000 and is not
+  # traversed (`git ls-files -s mirror` -> "120000 ... mirror"); every file appears
+  # exactly once under its real path. The full guard would also be untenable here
+  # (one repo alone: 14252 symlinks in node_modules -> daily abort).
+  # What actually breaks on THIS axis is the COUNT BASIS: if the root is addressed via a
+  # symlink, the relpath hangs off the access path and the same file would get two
+  # item_keys — the collapsing of worktrees/clones would silently fail.
   rp=$(cd "$root" && pwd -P)
   if [ -L "$root" ] || [ "$rp" != "$root" ]; then
     NSYMROOT=$((NSYMROOT+1))
-    { echo "ABORT(19): root ueber Symlink adressiert — Zaehlbasis nicht eindeutig"
+    { echo "ABORT(19): root addressed via a symlink — count basis not unique"
       echo "  root=$root"; echo "  realpath=$rp"
-      echo "  Der relpfad haengt am Zugangspfad; dieselbe Datei bekaeme zwei item_keys."
-      echo "  Aufloesung: in roots.txt den aufgeloesten Pfad eintragen ($rp)."
-      echo "  BEKANNTE REIBUNG: /var und /tmp sind auf macOS selbst Symlinks auf /private/*."
-      echo "  Ein root unterhalb davon loest hier aus, obwohl die Lage harmlos ist. Bewusst"
-      echo "  NICHT per Sonderfall entschaerft — eine Ausnahme fuer /private waere die erste"
-      echo "  Bresche in genau der Regel, die den Waechter traegt."
+      echo "  The relpath hangs off the access path; the same file would get two item_keys."
+      echo "  Resolution: enter the resolved path in roots.txt ($rp)."
+      echo "  KNOWN FRICTION: /var and /tmp are themselves symlinks to /private/* on macOS."
+      echo "  A root beneath those triggers this even though the situation is harmless. Deliberately"
+      echo "  NOT relaxed via a special case — an exception for /private would be the first"
+      echo "  breach of exactly the rule that carries this guard."
     } >&2
     exit 19
   fi
   echo "$root" >> "$WORK/roots_ok.txt"; NROOTS=$((NROOTS+1))
 done < "$ROOTS"
-if [ "$NROOTS" -eq 0 ]; then echo "ABORT(3): roots.txt leer" >&2; exit 3; fi
-CERT_S1D="roots=$NROOTS;sentinels=lesbar;symlink_wurzeln=$NSYMROOT;state=verified"
-rcpt "S1d roots_geprueft=$NROOTS sentinels=lesbar symlink_wurzeln=$NSYMROOT"
+if [ "$NROOTS" -eq 0 ]; then echo "ABORT(3): roots.txt empty" >&2; exit 3; fi
+CERT_S1D="roots=$NROOTS;sentinels=readable;symlink_roots=$NSYMROOT;state=verified"
+rcpt "S1d roots_checked=$NROOTS sentinels=readable symlink_roots=$NSYMROOT"
 
-# ============================== S0e QUELLEN-EPOCHEN (GEMESSEN) =========================
-# DEFEKT-URSACHE (Runde 5): jede Quelle hatte genau ZWEI Zustaende - "da" oder "fehlt",
-# und "fehlt" war immer ein ABORT. Eine Quelle, die am Zieltag NOCH NICHT EXISTIERTE,
-# ist aber kein Messfehler, sondern eine Tatsache ueber die Welt. Fuer jeden Tag vor
-# dem Beginn einer Quelle brach das Skript deshalb ab, BEVOR die Git-Achse ueberhaupt
-# lief - obwohl Git die einzige Achse ist, die ueber die gesamte Zeitspanne existiert.
-# Epochen werden GEMESSEN (aus der Platte), nicht angenommen.
+# ============================== S0e SOURCE EPOCHS (MEASURED) =========================
+# DEFECT ROOT CAUSE (round 5): every source had exactly TWO states - "present" or "missing",
+# and "missing" was always an ABORT. But a source that did NOT YET EXIST on the
+# target day is not a measurement error, it's a fact about the world. For every day before
+# a source's start, the script therefore aborted BEFORE the git axis even
+# ran - even though git is the only axis that exists across the entire time span.
+# Epochs are MEASURED (from disk), never assumed.
 ARC="$HOME/.claude/global-observation/archives"
 DESK="$HOME/Library/Application Support/Claude/local-agent-mode-sessions"
 PROJ="$HOME/.claude/projects"
@@ -219,65 +219,65 @@ else
           | "$GREPBIN" -o '"timestamp":"[0-9-]\{10\}' | sed 's/.*"//' | sort | head -1)
   EP_DESK=$("$FINDBIN" "$DESK" -type f -name '*.json*' -print0 2>/dev/null \
             | xargs -0 stat -f '%Sm' -t '%Y-%m-%d' 2>/dev/null | sort | head -1)
-  EPO_QUELLE=gemessen
+  EPO_QUELLE=measured
   printf 'signals\t%s\ntranskripte\t%s\ndesktop\t%s\n' "$EP_SIG" "$EP_TR" "$EP_DESK" > "$EPO_CACHE"
 fi
 for e in "signals:$EP_SIG" "transkripte:$EP_TR" "desktop:$EP_DESK"; do
   case "${e#*:}" in
     ????-??-??) : ;;
-    *) echo "ABORT(22): Quellen-Epoche fuer ${e%%:*} nicht messbar ('${e#*:}') — ohne Epoche ist 'fehlt' nicht von 'gab es noch nicht' unterscheidbar" >&2; exit 22 ;;
+    *) echo "ABORT(22): source epoch for ${e%%:*} not measurable ('${e#*:}') — without an epoch, 'missing' cannot be distinguished from 'did not exist yet'" >&2; exit 22 ;;
   esac
 done
-rcpt "S0e epochen signals=$EP_SIG transkripte=$EP_TR desktop=$EP_DESK ($EPO_QUELLE)"
+rcpt "S0e epochs signals=$EP_SIG transkripte=$EP_TR desktop=$EP_DESK ($EPO_QUELLE)"
 
-# S1c Signal-Archive D-1 und D (NIE D+1)
-# W19 auf der Archiv-Achse VOR der Erhebung.
+# S1c signal archives D-1 and D (NEVER D+1)
+# W19 on the archive axis BEFORE collection.
 [ -d "$ARC" ] && w19 "$ARC" "S1c_signals" "signals-*.jsonl.gz"
-# VIER unterscheidbare Zustaende. "leer" != "fehlend": ein gueltiges, inhaltsleeres gz
-# (50 Bytes, gzcat rc=0, 0 Zeilen) machte den einzigen Waechter gegen einen blinden
-# Transkriptzweig strukturell unausloesbar. Reproduziert: EXIT=0, items 79 statt 224
-# (65 % Untererfassung), status DEGRADED wie am gesunden Tag, i4_gap=0. Deshalb ist
-# empty_verified SCHARFSTELLEND (siehe ABORT(17)) und nie "ok".
+# FOUR distinguishable states. "empty" != "missing": a valid, content-empty gz
+# (50 bytes, gzcat rc=0, 0 lines) made the only guard against a blind
+# transcript branch structurally unfireable. Reproduced: EXIT=0, items 79
+# instead of 224 (65% undercounting), status DEGRADED like on a healthy day,
+# i4_gap=0. Hence empty_verified is TRIP-WORTHY (see ABORT(17)) and never "ok".
 CERT_S1C=""; SIG_EMPTY_DAYS=0; SIG_PRE_DAYS=0
 for dd in "$PREV" "$D"; do
   f="$ARC/signals-$dd.jsonl.gz"
   if [ ! -f "$f" ]; then
-    # VOR der Epoche: Tatsache, kein Messfehler. NICHT als empty_verified zaehlen —
-    # sonst wuerde ABORT(17) (Hook-/Rotationsausfall) auf jedem Alttag falsch feuern.
+    # BEFORE the epoch: a fact, not a measurement error. Do NOT count as empty_verified —
+    # otherwise ABORT(17) (hook/rotation failure) would falsely fire on every old day.
     if [[ "$dd" < "$EP_SIG" ]]; then
       : > "$WORK/sig-$dd.jsonl"; SIG_PRE_DAYS=$((SIG_PRE_DAYS+1))
       CERT_S1C="${CERT_S1C}${dd}:epoche=$EP_SIG;state=not_yet_existing|"
-      rcpt "S1c signals-$dd state=not_yet_existing (Quelle beginnt $EP_SIG)"
+      rcpt "S1c signals-$dd state=not_yet_existing (source starts $EP_SIG)"
       continue
     fi
-    echo "ABORT(5): Archiv FEHLT (state=missing): signals-$dd.jsonl.gz (Tag liegt IN der Epoche ab $EP_SIG)" >&2; exit 5
+    echo "ABORT(5): archive MISSING (state=missing): signals-$dd.jsonl.gz (day is IN the epoch starting $EP_SIG)" >&2; exit 5
   fi
   set +e
   gzcat "$f" > "$WORK/sig-$dd.jsonl" 2>"$WORK/gz-$dd.err"; GZ_RC=$?
   set -e
   NZ=$(wc -l < "$WORK/sig-$dd.jsonl" | tr -d ' ')
   if [ "$GZ_RC" -ne 0 ]; then
-    echo "ABORT(5): Archiv ABGESCHNITTEN (state=truncated) $dd — gzcat_rc=$GZ_RC, $NZ Zeilen vor Abbruch; Teilausgabe wird NICHT verwendet" >&2; exit 5; fi
+    echo "ABORT(5): archive TRUNCATED (state=truncated) $dd — gzcat_rc=$GZ_RC, $NZ lines before failure; partial output is NOT used" >&2; exit 5; fi
   if [ "$NZ" -eq 0 ]; then ST=empty_verified; SIG_EMPTY_DAYS=$((SIG_EMPTY_DAYS+1)); else ST=ok; fi
   CERT_S1C="${CERT_S1C}${dd}:rc=$GZ_RC;zeilen=$NZ;state=$ST|"
-  rcpt "S1c signals-$dd rc=$GZ_RC zeilen=$NZ state=$ST"
+  rcpt "S1c signals-$dd rc=$GZ_RC lines=$NZ state=$ST"
 done
 
-# S1e Manifest D-1 (Handarbeits-Baseline)
+# S1e manifest D-1 (manual-work baseline)
 MAN="$HOME/.claude/logbook/manifests/manifest-$PREV.tsv.gz"
 if [ -r "$MAN" ]; then MAN_STATUS=ok; else MAN_STATUS=DEGRADED_missing; fi
 rcpt "S1e manifest-$PREV status=$MAN_STATUS"
 
-# S1b Desktop
+# S1b desktop
 if [ ! -d "$DESK" ]; then DESK_STATUS=MISSING
 elif [[ "$D" < "$EP_DESK" ]]; then DESK_STATUS=not_yet_existing
 else DESK_STATUS=ok; fi
-rcpt "S1b desktop_status=$DESK_STATUS (Quelle beginnt $EP_DESK)"
+rcpt "S1b desktop_status=$DESK_STATUS (source starts $EP_DESK)"
 
-# S1a Transkripte — Positivprobe NACH INHALT (nie mtime), mit GELESENHEITS-ZERTIFIKAT.
-# "Keine Fehlermeldung" ist kein Beweis. Das Originalskript warf den grep-Exit-Status per
-# `|| true` weg; gemessen ergab eine unlesbare Datei rc=2 UND 11 von 12 Treffern auf stdout
-# — ein echter Teiltreffer, der als "ok" gemeldet wurde.
+# S1a transcripts — positive check BY CONTENT (never mtime), with a READ CERTIFICATE.
+# "No error message" is not proof. The original script threw away grep's exit status via
+# `|| true`; measured, this let an unreadable file rc=2 AND 11 of 12 hits on stdout
+# through — a genuine partial hit that was reported as "ok".
 PROJ="$HOME/.claude/projects"
 w19 "$PROJ" "S1a_transcripts" "*.jsonl"
 set +e
@@ -293,8 +293,8 @@ set +e
 set -e
 NCAND=$(wc -l < "$WORK/cand.txt" | tr -d ' ')
 if [ "$FIND_RC" -ne 0 ] || [ "$NUNREAD" -gt 0 ] || [ "$GREP_RC" -ge 2 ]; then
-  { echo "ABORT(15): S1a-Scan UNVOLLSTAENDIG — grep_rc=$GREP_RC find_rc=$FIND_RC unlesbare_dateien=$NUNREAD von $NALL"
-    head -5 "$WORK/unreadable.txt" | sed 's/^/  unlesbar: /'
+  { echo "ABORT(15): S1a scan INCOMPLETE — grep_rc=$GREP_RC find_rc=$FIND_RC unreadable_files=$NUNREAD of $NALL"
+    head -5 "$WORK/unreadable.txt" | sed 's/^/  unreadable: /'
     head -3 "$WORK/grep_s1a.err"  | sed 's/^/  grep: /'
   } >&2
   exit 15
@@ -303,23 +303,23 @@ TR_STATE=verified
 if [ "$NCAND" -eq 0 ]; then
   if [[ "$D" < "$EP_TR" ]]; then
     TR_STATE=not_yet_existing
-    rcpt "S1a 0 Transkripte — state=not_yet_existing (Quelle beginnt $EP_TR)"
+    rcpt "S1a 0 transcripts — state=not_yet_existing (source starts $EP_TR)"
   else
-    echo "ABORT(4): 0 Transkripte fuer $D — Messfehler, KEIN Leertag (dateien=$NALL, alle lesbar, Tag liegt IN der Epoche ab $EP_TR)" >&2; exit 4
+    echo "ABORT(4): 0 transcripts for $D — a measurement error, NOT an empty day (files=$NALL, all readable, day is IN the epoch starting $EP_TR)" >&2; exit 4
   fi
 fi
-# ZWEI Pruefungen, aber NICHT unabhaengig: Zensus und grep beziehen ihre Grundgesamtheit
-# aus derselben Traversierung. Ihre Unabhaengigkeit stellt erst W19 her, indem es die
-# Grundgesamtheit selbst pruefbar macht.
+# TWO checks, but NOT independent: the census and grep draw their population from
+# the same traversal. Only W19 establishes their independence, by making the
+# population itself checkable.
 CERT_S1A="rc=$GREP_RC;find_rc=$FIND_RC;dateien=$NALL;unlesbar=$NUNREAD;kandidaten=$NCAND;epoche=$EP_TR;state=$TR_STATE"
-rcpt "S1a kandidaten=$NCAND dateien=$NALL unlesbar=$NUNREAD grep_rc=$GREP_RC"
+rcpt "S1a candidates=$NCAND files=$NALL unreadable=$NUNREAD grep_rc=$GREP_RC"
 
-# ============================== S2 WERKZEUGKARTE (deklariert, nicht geraten) ==============
-# Klassen: W = Schreibwerkzeug (Spalte 3 = Zielparameter in Prioritaetsreihenfolge)
-#          B = Bash-artig (Spalte 3 = Kommandoparameter) -> geht durch qb.py
-#          R = bekannt UND schreibt nachweislich nicht ins Dateisystem
-# Ein Werkzeug, das hier NICHT steht, darf nicht stumm 0 liefern: enthaelt sein Input
-# einen pfadartigen Wert, landet es NAMENTLICH im Pflichtbucket unbekanntes_werkzeug_mit_pfad.
+# ============================== S2 TOOL MAP (declared, not guessed) ==============
+# Classes: W = write tool (column 3 = target parameter in priority order)
+#          B = bash-like (column 3 = command parameter) -> goes through qb.py
+#          R = known AND demonstrably does not write to the filesystem
+# A tool that is NOT listed here must not silently return 0: if its input contains
+# a path-like value, it lands BY NAME in the mandatory bucket unbekanntes_werkzeug_mit_pfad.
 cat > "$WORK/toolmap.tsv" <<'MAPEOF'
 Edit	W	file_path
 Write	W	file_path
@@ -365,20 +365,20 @@ WebSearch	R	query
 ToolSearch	R	query
 mcp__workspace__web_fetch	R	url
 MAPEOF
-# Regex-Fallback fuer namensvariable MCP-Schreibwerkzeuge (Suffix-Konvention)
+# Regex fallback for name-variable MCP write tools (suffix convention)
 cat > "$WORK/toolmap_re.tsv" <<'MAPEOF'
 write_file|edit_file|create_text_file	W	path,file_path,relative_path
 MAPEOF
 NMAP=$(wc -l < "$WORK/toolmap.tsv" | tr -d ' ')
-rcpt "S2 werkzeugkarte_eintraege=$NMAP klassen=W/B/R"
+rcpt "S2 tool_map_entries=$NMAP classes=W/B/R"
 
-# Alle deklarierten Parameternamen (Superset) — jq extrahiert genau diese Schluessel.
+# All declared parameter names (superset) — jq extracts exactly these keys.
 PKEYS='file_path,path,filename,notebook_path,source,destination,filePath,relative_path,local_path,paths,files,project,url,query'
 KNOWN=$(cut -f1 "$WORK/toolmap.tsv" | python3 -c "import sys;print(' '+' '.join(l for l in sys.stdin.read().split(chr(10)) if l)+' ')")
 
-# ============================== S3 Ereignisse ==============================
-# iv = deklarierte Parameterwerte (Parameterkarte).  sc = pfadartige String-Blaetter
-# NUR fuer Werkzeuge, die die Karte nicht kennt (Pflichtbucket-Kandidaten).
+# ============================== S3 Events ==============================
+# iv = declared parameter values (parameter map).  sc = path-like string leaves
+# ONLY for tools the map doesn't know (mandatory-bucket candidates).
 xargs -0 -n 40 jq -c --arg s "$WSTART" --arg e "$WEND" --arg pk "$PKEYS" --arg known "$KNOWN" '
   ($pk|split(",")) as $keys |
   select(.timestamp != null)
@@ -397,9 +397,9 @@ xargs -0 -n 40 jq -c --arg s "$WSTART" --arg e "$WEND" --arg pk "$PKEYS" --arg k
   | select((.tu|length) > 0)' \
   < <(tr '\n' '\0' < "$WORK/cand.txt") > "$WORK/events.jsonl"
 NEV=$(wc -l < "$WORK/events.jsonl" | tr -d ' ')
-rcpt "S3 ereigniszeilen=$NEV"
+rcpt "S3 event_lines=$NEV"
 
-# ---- Extraktor: Karte -> (id, Zielpfad) + Pflichtbucket -------------------
+# ---- Extractor: map -> (id, target path) + mandatory bucket -------------------
 cat > "$WORK/extract.py" <<'PYEOF'
 import sys, json, os, re
 mapfile, refile, evfile, outpairs, outunknown = sys.argv[1:6]
@@ -413,7 +413,7 @@ for l in open(refile).read().split('\n'):
     if not l: continue
     rx, cls, params = l.split('\t')
     REMAP.append((re.compile(rx), cls, [p for p in params.split(',') if p]))
-# pfadartig: absolut, ODER relativ mit Verzeichnistrenner UND Endung. Keine URLs.
+# path-like: absolute, OR relative with a directory separator AND an extension. No URLs.
 PATHY = re.compile(r'^(/[^\x00\n]*|[^\x00\n:]*/[^\x00\n/]+\.[A-Za-z0-9]{1,8})$')
 def pathy(s):
     if not s or len(s) > 512 or '\n' in s: return False
@@ -461,18 +461,18 @@ print(json.dumps({'bash_class_calls': bashcmds, 'unknown_tools': len(unknown),
                   'unknown_paths': sum(len(v) for v in unknown.values())}), file=sys.stderr)
 PYEOF
 
-# ---- qb.py: Bash-Schreiberkenner (VOR S6 definiert, weil der Desktop-Zweig ihn braucht)
+# ---- qb.py: bash write-target recognizer (defined BEFORE S6 because the desktop branch needs it)
 cat > "$WORK/qb.py" <<'PYEOF'
 import sys, json, os, re, shlex
-# Schreib-Operatoren, systematisch geprueft (Defekt B/3):
-#   cp mv install rsync ln  -> letztes Argument
-#   dd of=ZIEL              -> explizites Ziel
-#   touch                   -> alle Nicht-Flag-Argumente (Erzeugung = Schreibvorgang)
-#   tee [-a]                -> erstes Nicht-Flag-Argument
-#   sed -i                  -> letztes Argument
-#   > >> >| &> 2>           -> Redirect-Ziel (deckt auch Heredoc `cat > f <<EOF`)
-#   mkdir -p                -> Verzeichnisziel (evidence Bdir)
-#   python open(p,'w'/'a'/'x'), pathlib write_text/write_bytes -> Regex auf dem Rohkommando
+# Write operators, systematically checked (defect B/3):
+#   cp mv install rsync ln  -> last argument
+#   dd of=TARGET             -> explicit target
+#   touch                    -> all non-flag arguments (creation = write)
+#   tee [-a]                 -> first non-flag argument
+#   sed -i                   -> last argument
+#   > >> >| &> 2>            -> redirect target (also covers heredoc `cat > f <<EOF`)
+#   mkdir -p                 -> directory target (evidence Bdir)
+#   python open(p,'w'/'a'/'x'), pathlib write_text/write_bytes -> regex on the raw command
 LAST_ARG = {'cp', 'mv', 'install', 'rsync', 'ln'}
 ALL_ARGS = {'touch'}
 OPS = {'&&', '||', '|', ';', '&', '(', ')', '{', '}'}
@@ -546,9 +546,9 @@ for line in sys.stdin:
         for m in PYWRITE.finditer(cmd): emit(m.group(1), 'pathlib_write')
         for toks in stmts:
             for i, t in enumerate(toks):
-                # REIHENFOLGE IST NORMATIV: erst die ALLEINSTEHENDE Operatorform pruefen.
-                # Umgekehrt frisst `>>?(.+)` das Token '>>' selbst (zweites '>' als "Pfad")
-                # und der Anhaenge-Redirect wird stumm verschluckt — im Test real passiert.
+                # ORDER IS NORMATIVE: check the STANDALONE operator form first.
+                # Otherwise `>>?(.+)` eats the token '>>' itself (the second '>' as a "path")
+                # and the append-redirect is silently swallowed — this actually happened in testing.
                 if re.match(r'^[0-9]*&?>{1,2}\|?$', t):
                     if i + 1 < len(toks): emit(toks[i + 1], 'redirect')
                 else:
@@ -585,9 +585,9 @@ for f in sorted(files): print('F\t' + f + '\t' + (byop.get(f) or '?'))
 for d in sorted(dirs): print('DIR\t' + d)
 PYEOF
 
-# ============================== S4 Fehlschlaege abziehen ==============================
-# Fehler-IDs werden ueber ALLE Zeilen der Kandidatendateien gesammelt (nicht fenstergefiltert):
-# ein tool_result kann nach Fensterende eintreffen. Sichere Richtung = mehr Subtraktion.
+# ============================== S4 Subtract failures ==============================
+# Error IDs are collected across ALL lines of the candidate files (not window-filtered):
+# a tool_result can arrive after the window ends. Safe direction = subtract more.
 xargs -0 -n 40 jq -r 'select((.message.content?|type)=="array") | .message.content[]
    | select(.type=="tool_result" and .is_error==true) | .tool_use_id' \
    < <(tr '\n' '\0' < "$WORK/cand.txt") | sort -u > "$WORK/failed_ids.txt"
@@ -597,20 +597,20 @@ python3 "$WORK/extract.py" "$WORK/toolmap.tsv" "$WORK/toolmap_re.tsv" "$WORK/eve
         "$WORK/pairs3.tsv" "$WORK/unknown_qt.tsv" 2> "$WORK/extract_qt.meta"
 cut -f1,2 "$WORK/pairs3.tsv" | sort -u > "$WORK/pairs.tsv"
 NPAIRS=$(wc -l < "$WORK/pairs.tsv" | tr -d ' ')
-rcpt "S3b karte_treffer=$NPAIRS unbekannt_werkzeuge=$(jq -r '.unknown_tools' "$WORK/extract_qt.meta") unbekannt_pfade=$(jq -r '.unknown_paths' "$WORK/extract_qt.meta")"
+rcpt "S3b map_hits=$NPAIRS unknown_tools=$(jq -r '.unknown_tools' "$WORK/extract_qt.meta") unknown_paths=$(jq -r '.unknown_paths' "$WORK/extract_qt.meta")"
 
 if [ "$FAULT" = "c" ]; then : > "$WORK/failed_ids.txt"; NFAIL=0; fi
 awk -F'\t' -v PF="$WORK/failed_ids.txt" '
   FILENAME==PF { bad[$1]=1; next } !($1 in bad)' "$WORK/failed_ids.txt" "$WORK/pairs.tsv" \
   > "$WORK/pairs_ok.tsv"
 NOK=$(wc -l < "$WORK/pairs_ok.tsv" | tr -d ' ')
-# R4 Filter-Selbstverteidigung: leere Musterdatei darf NIE reduzieren
+# R4 filter self-defense: an empty pattern file must NEVER reduce.
 if [ "$NFAIL" -eq 0 ] && [ "$NPAIRS" -gt 0 ] && [ "$NOK" -ne "$NPAIRS" ]; then
-  echo "ABORT(12): Fehlschlag-Filter reduzierte $NPAIRS -> $NOK bei 0 Mustern (Werkzeugdefekt)" >&2; exit 12; fi
+  echo "ABORT(12): failure filter reduced $NPAIRS -> $NOK with 0 patterns (tool defect)" >&2; exit 12; fi
 cut -f2 "$WORK/pairs_ok.tsv" | sort -u > "$WORK/qt_raw.txt"
-rcpt "S4 paare=$NPAIRS fehler_ids=$NFAIL verbleibend=$NOK rohpfade=$(wc -l < "$WORK/qt_raw.txt" | tr -d ' ')"
+rcpt "S4 pairs=$NPAIRS error_ids=$NFAIL remaining=$NOK raw_paths=$(wc -l < "$WORK/qt_raw.txt" | tr -d ' ')"
 
-# ============================== S6 Desktop-Rohpfade ==============================
+# ============================== S6 Desktop raw paths ==============================
 : > "$WORK/qd_raw.txt"
 NAUDIT=0; DESK_FIND_RC=0; DESK_JQ_RC=0; DESK_UNREAD=0
 if [ "$DESK_STATUS" = "ok" ]; then
@@ -619,13 +619,13 @@ if [ "$DESK_STATUS" = "ok" ]; then
   "$FINDBIN" "$DESK" -name audit.jsonl -print0 > "$WORK/audits.z" 2>"$WORK/desk_find.err"; DESK_FIND_RC=$?
   set -e
   NAUDIT=$(tr -dc '\0' < "$WORK/audits.z" | wc -c | tr -d ' ')
-  # Lesbarkeits-Zensus wie S1a — ein Teilausfall darf nicht als "ok:N" durchgehen.
+  # Readability census like S1a — a partial failure must not pass as "ok:N".
   while IFS= read -r -d '' af; do [ -r "$af" ] || DESK_UNREAD=$((DESK_UNREAD+1)); done < "$WORK/audits.z"
   if [ "$DESK_FIND_RC" -ne 0 ] || [ "$DESK_UNREAD" -gt 0 ]; then
-    echo "ABORT(16): S1b/S6-Desktopscan UNVOLLSTAENDIG — find_rc=$DESK_FIND_RC unlesbar=$DESK_UNREAD von $NAUDIT" >&2; exit 16; fi
+    echo "ABORT(16): S1b/S6 desktop scan INCOMPLETE — find_rc=$DESK_FIND_RC unreadable=$DESK_UNREAD of $NAUDIT" >&2; exit 16; fi
   if [ "$NAUDIT" -gt 0 ]; then
-    # Desktop-Ereignisse in DIESELBE Form bringen wie S3 (kein cwd im audit.jsonl ->
-    # relative Ziele bleiben unaufloesbar und werden als solche gemeldet, nicht geraten).
+    # Bring desktop events into the SAME shape as S3 (no cwd in audit.jsonl ->
+    # relative targets stay unresolvable and are reported as such, not guessed).
     set +e
     xargs -0 -n 40 jq -c --arg s "$WSTART" --arg e "$WEND" --arg pk "$PKEYS" --arg known "$KNOWN" '
       ($pk|split(",")) as $keys |
@@ -646,14 +646,14 @@ if [ "$DESK_STATUS" = "ok" ]; then
       < "$WORK/audits.z" 2>"$WORK/desk_jq.err" > "$WORK/devents.jsonl"; DESK_JQ_RC=$?
     set -e
     if [ "$DESK_JQ_RC" -ne 0 ]; then
-      { echo "ABORT(16): S6-Desktop-jq scheiterte (rc=$DESK_JQ_RC) — Teilausfall statt stiller Untererfassung"
+      { echo "ABORT(16): S6 desktop jq FAILED (rc=$DESK_JQ_RC) — partial failure, not silent undercounting"
         head -3 "$WORK/desk_jq.err" | sed 's/^/  jq: /'; } >&2
       exit 16
     fi
     python3 "$WORK/extract.py" "$WORK/toolmap.tsv" "$WORK/toolmap_re.tsv" "$WORK/devents.jsonl" \
             "$WORK/dpairs.tsv" "$WORK/unknown_qd.tsv" 2> "$WORK/extract_qd.meta"
     cut -f2 "$WORK/dpairs.tsv" | sort -u > "$WORK/qd_raw.txt"
-    # Q_B FUER DEN DESKTOP-ZWEIG — derselbe Erkenner wie im CLI-Zweig (Defekt B/2).
+    # Q_B FOR THE DESKTOP BRANCH — the same recognizer as in the CLI branch (defect B/2).
     python3 "$WORK/qb.py" < "$WORK/devents.jsonl" > "$WORK/qbd_raw.tsv" 2> "$WORK/qbd.meta"
   fi
 fi
@@ -661,7 +661,7 @@ fi
 [ -f "$WORK/qbd.meta" ] || echo '{"ncmds":0,"unparsed":0}' > "$WORK/qbd.meta"
 [ -f "$WORK/unknown_qd.tsv" ] || : > "$WORK/unknown_qd.tsv"
 CERT_S1B="status=$DESK_STATUS;find_rc=$DESK_FIND_RC;jq_rc=$DESK_JQ_RC;audits=$NAUDIT;unlesbar=$DESK_UNREAD;state=$( [ "$DESK_STATUS" = ok ] && echo verified || echo degraded_missing )"
-rcpt "S6 desktop_status=$DESK_STATUS audit_dateien=$NAUDIT rohpfade=$(wc -l < "$WORK/qd_raw.txt" | tr -d ' ') desktop_bash_calls=$(jq -r '.ncmds' "$WORK/qbd.meta") desktop_bash_ziele=$(awk -F'\t' '$1=="F"' "$WORK/qbd_raw.tsv" | wc -l | tr -d ' ')"
+rcpt "S6 desktop_status=$DESK_STATUS audit_files=$NAUDIT raw_paths=$(wc -l < "$WORK/qd_raw.txt" | tr -d ' ') desktop_bash_calls=$(jq -r '.ncmds' "$WORK/qbd.meta") desktop_bash_targets=$(awk -F'\t' '$1=="F"' "$WORK/qbd_raw.tsv" | wc -l | tr -d ' ')"
 
 # ============================== canon.py ==============================
 cat > "$WORK/canon.py" <<'PYEOF'
@@ -733,9 +733,9 @@ def ignored(wc, rel):
 def resolve(p):
     """-> (workcopy, relpath, flag, worktree)
 
-    workcopy ist ein ATTRIBUT, kein Schluesselbestandteil. Der Schluessel entsteht
-    erst oben aus <repo_id>::<relpfad>. (Der frueherere Name 'workcopy_id' trug noch
-    die alte Schluessel-Semantik und ist deshalb entfernt.)
+    workcopy is an ATTRIBUTE, not part of the key. The key is formed only
+    above, from <repo_id>::<relpath>. (The earlier name 'workcopy_id' still
+    carried the old key semantics and has therefore been removed.)
     """
     m = WT.match(p)
     wtname = m.group('name') if m else '-'
@@ -754,12 +754,12 @@ def resolve(p):
             return os.path.dirname(cd), rel, 'ok', wtname
     return 'fs', p, 'UNRESOLVED', wtname
 
-# ZAEHLBASIS: REPO-IDENTITAET (Nutzerentscheidung 1, verbindlich).
-# item_key := <repo_id>::<relpfad> fuer Git-Verwaltetes, fs::<pfad> sonst.
-# Die Arbeitskopie ist ATTRIBUT (Spalte 9), NIE Schluessel. Damit kollabieren
-# Worktrees UND Klone auf EINEN Schluessel; der A<->B-Sync bleibt ueber das
-# Attribut sichtbar (workcopies[]), ohne dass eine Datei zweimal zaehlt.
-# Ausgabespalten: dec key flag cat repo_id worktree src raw workcopy
+# COUNT BASIS: REPO IDENTITY (user decision 1, binding).
+# item_key := <repo_id>::<relpath> for git-managed files, fs::<path> otherwise.
+# The work copy is an ATTRIBUTE (column 9), NEVER the key. This collapses
+# worktrees AND clones onto ONE key; the A<->B sync stays visible via the
+# attribute (workcopies[]), without a file counting twice.
+# Output columns: dec key flag cat repo_id worktree src raw workcopy
 for line in sys.stdin:
     line = line.rstrip('\n')
     if not line: continue
@@ -786,15 +786,15 @@ for line in sys.stdin:
     print('\t'.join(['keep', key, flag, '-', rid, wt, src, raw, wcout]))
 PYEOF
 
-# ---- Pass 1: Q_T + Q_D (+ CANARY fuer S8) --------------------------------
+# ---- Pass 1: Q_T + Q_D (+ CANARY for S8) --------------------------------
 CANARY="/Volumes/<canary>/CANARY-$D.md"
 { awk '{print "T\t" $0}' "$WORK/qt_raw.txt"
   awk '{print "D\t" $0}' "$WORK/qd_raw.txt"
   if [ "$FAULT" != "f" ]; then echo -e "C\t$CANARY"; fi
 } > "$WORK/pass1.in"
 python3 "$WORK/canon.py" < "$WORK/pass1.in" > "$WORK/pass1.tsv"
-if [ ! -f "$WORK/pass1.tsv" ]; then echo "ABORT(9): Senke pass1.tsv nicht geschrieben" >&2; exit 9; fi
-if [ ! -s "$WORK/pass1.tsv" ]; then echo "ABORT(9): pass1.tsv leer trotz Eingabe" >&2; exit 9; fi
+if [ ! -f "$WORK/pass1.tsv" ]; then echo "ABORT(9): sink pass1.tsv not written" >&2; exit 9; fi
+if [ ! -s "$WORK/pass1.tsv" ]; then echo "ABORT(9): pass1.tsv empty despite input" >&2; exit 9; fi
 
 awk -F'\t' '($1=="keep"||$1=="rescued") && $7=="T" {print $2}' "$WORK/pass1.tsv" | sort -u > "$WORK/qt.txt"
 awk -F'\t' '($1=="keep"||$1=="rescued") && $7=="D" {print $2}' "$WORK/pass1.tsv" | sort -u > "$WORK/qd.txt"
@@ -802,25 +802,26 @@ awk -F'\t' '($1=="keep"||$1=="rescued") && $7=="C" {print $2}' "$WORK/pass1.tsv"
 NQT=$(wc -l < "$WORK/qt.txt" | tr -d ' '); NQD=$(wc -l < "$WORK/qd.txt" | tr -d ' ')
 rcpt "S5 Q_T=$NQT Q_D=$NQD"
 
-# ============================== S7d Q_B (Bash-Schreibziele) ==============================
+# ============================== S7d Q_B (bash write targets) ==============================
 python3 "$WORK/qb.py" < "$WORK/events.jsonl" > "$WORK/qb_raw.tsv" 2> "$WORK/qb.meta"
 NBASH=$(jq -r '.ncmds' "$WORK/qb.meta"); NBUNPARSED=$(jq -r '.unparsed' "$WORK/qb.meta")
 NBASHD=$(jq -r '.ncmds' "$WORK/qbd.meta")
-# CLI- und Desktop-Zweig laufen durch DENSELBEN Erkenner und werden hier vereinigt.
+# The CLI and desktop branches run through the SAME recognizer and are merged here.
 cat "$WORK/qb_raw.tsv" "$WORK/qbd_raw.tsv" > "$WORK/qb_all.tsv"
 awk -F'\t' '$1=="F"{print "B\t" $2}' "$WORK/qb_all.tsv" | sort -u > "$WORK/qb_files.in"
 awk -F'\t' '$1=="DIR"{print $2}' "$WORK/qb_all.tsv" | sort -u > "$WORK/qb_dirs.txt"
 awk -F'\t' '$1=="F"{print $3}' "$WORK/qb_all.tsv" | sort | uniq -c | sort -rn | awk '{printf "%s:%s ", $2, $1}' > "$WORK/qb_ops.txt"
-rcpt "S7d bash_calls=$NBASH(+desktop $NBASHD) unparsebar=$NBUNPARSED qb_dateiziele=$(wc -l < "$WORK/qb_files.in" | tr -d ' ') qb_verzeichnisziele=$(wc -l < "$WORK/qb_dirs.txt" | tr -d ' ') ops=[$(cat "$WORK/qb_ops.txt")]"
+rcpt "S7d bash_calls=$NBASH(+desktop $NBASHD) unparseable=$NBUNPARSED qb_file_targets=$(wc -l < "$WORK/qb_files.in" | tr -d ' ') qb_dir_targets=$(wc -l < "$WORK/qb_dirs.txt" | tr -d ' ') ops=[$(cat "$WORK/qb_ops.txt")]"
 
-# ============================== S7c Q_G (Git-Inhaltsbeweis) ==============================
-# Repo-Abdeckung = roots.txt  UNION  aus Q_T/Q_D abgeleitete Arbeitskopien.
-# DEFEKT-URSACHE 2 (Runde 5): die Repo-Menge war roots.txt UNION der aus Q_T/Q_D
-# abgeleiteten Arbeitskopien. Fuer jeden Tag VOR der Transkript-Epoche traegt der
-# zweite Summand nichts bei — die Git-Achse sah dann nur die 3 roots und war fuer
-# jedes andere Repo strukturell blind. Gemessen: am 2026-01-15 liegen alle Commits
-# in einem Repo, das in roots.txt nicht vorkommt. Deshalb dritte, quellenunabhaengige
-# Achse: Dateisystem-Discovery ueber LOGBOOK_GIT_ROOTS (Baumwurzeln, nicht Repos).
+# ============================== S7c Q_G (git content proof) ==============================
+# Repo coverage = roots.txt  UNION  work copies derived from Q_T/Q_D.
+# DEFECT ROOT CAUSE 2 (round 5): the repo set was roots.txt UNION the work
+# copies derived from Q_T/Q_D. For every day BEFORE the transcript epoch the
+# second term contributes nothing — the git axis then saw only the 3 roots and
+# was structurally blind for every other repo. Measured: on 2026-01-15 all
+# commits sit in a repo that doesn't appear in roots.txt. Hence a third,
+# source-independent axis: filesystem discovery via LOGBOOK_GIT_ROOTS (tree
+# roots, not repos).
 : > "$WORK/repos_disc.txt"
 GITROOTS="${LOGBOOK_GIT_ROOTS:-}"
 NDISC=0
@@ -829,28 +830,28 @@ if [ -n "$GITROOTS" ] && [ -r "$GITROOTS" ]; then
     [ -n "$tr0" ] || continue
     case "$tr0" in \#*) continue ;; esac
     if [ ! -d "$tr0" ]; then
-      echo "ABORT(23): Git-Discovery-Wurzel fehlt: $tr0 (Volume nicht gemountet?) — eine stumm uebersprungene Wurzel ist eine stille Untererfassung" >&2; exit 23; fi
+      echo "ABORT(23): git discovery root missing: $tr0 (volume not mounted?) — a silently skipped root is silent undercounting" >&2; exit 23; fi
     "$FINDBIN" "$tr0" -maxdepth "${LOGBOOK_GIT_DEPTH:-5}" -type d -name .git -not -path '*/node_modules/*' 2>/dev/null \
       | while IFS= read -r gd; do dirname "$gd"; done
   done < "$GITROOTS" | sort -u > "$WORK/repos_disc.txt"
   NDISC=$(wc -l < "$WORK/repos_disc.txt" | tr -d ' ')
 fi
 { cat "$WORK/roots_ok.txt" "$WORK/repos_disc.txt"
-  # Arbeitskopie kommt jetzt aus Spalte 9 (Attribut), NICHT mehr aus dem Schluessel.
+  # Work copy now comes from column 9 (attribute), no longer from the key.
   awk -F'\t' '($1=="keep"||$1=="rescued") && $9!="-" && $9!="" {print $9}' "$WORK/pass1.tsv"
 } | sort -u > "$WORK/repos_cand.txt"
-rcpt "S7b git_discovery wurzeln=$( [ -r "${GITROOTS:-/nonexistent}" ] && wc -l < "$GITROOTS" | tr -d ' ' || echo 0) repos_gefunden=$NDISC"
-# ABORT(24): ein Tag VOR der Transkript-Epoche hat per Konstruktion keine T/D/Signals-Achse
-# (siehe S0e). Bleibt dann auch die Git-Discovery leer (LOGBOOK_GIT_ROOTS nicht gesetzt oder
-# 0 Repos gefunden), ist KEINE Achse mehr tragfaehig — ein "items=0" waere nicht von "nicht
-# gemessen" unterscheidbar. Das ist die stille Nullzaehlung, die der Wächter verhindern soll.
+rcpt "S7b git_discovery roots=$( [ -r "${GITROOTS:-/nonexistent}" ] && wc -l < "$GITROOTS" | tr -d ' ' || echo 0) repos_found=$NDISC"
+# ABORT(24): a day BEFORE the transcript epoch has, by construction, no T/D/signals
+# axis (see S0e). If git discovery is then also empty (LOGBOOK_GIT_ROOTS not set or
+# 0 repos found), NO axis is viable anymore — an "items=0" would be indistinguishable
+# from "not measured". This is the silent zero-count the guard is meant to prevent.
 if [ "$TR_STATE" != "verified" ] && [ "$NDISC" -eq 0 ]; then
-  echo "ABORT(24): Tag liegt vor der Transkript-Epoche (ab $EP_TR) UND keine Discovery-Repos gefunden (LOGBOOK_GIT_ROOTS nicht gesetzt oder leer) — keine tragfaehige Achse fuer diesen Tag besetzt" >&2
+  echo "ABORT(24): day is before the transcript epoch (starting $EP_TR) AND no discovery repos found (LOGBOOK_GIT_ROOTS not set or empty) — no viable axis covers this day" >&2
   exit 24
 fi
-# WICHTIG (Konflikt-Aufloesung A): ein Commit gehoert zur HISTORIE, nicht zur Arbeitskopie.
-# Q_G wird deshalb GENAU EINMAL PRO repo_id gescannt — sonst zaehlt ein Klon (A und B)
-# jeden Commit doppelt.
+# IMPORTANT (conflict resolution A): a commit belongs to HISTORY, not the work copy.
+# Q_G is therefore scanned EXACTLY ONCE PER repo_id — otherwise a clone (A and B)
+# would count every commit twice.
 : > "$WORK/repos_all.tsv"
 while read -r r; do
   [ -d "$r" ] || continue
@@ -875,12 +876,12 @@ def g(repo, *a):
     return r.stdout if r.returncode == 0 else ''
 nmerge = 0
 for repo in [l.strip() for l in sys.stdin if l.strip()]:
-    # KEIN --since/--until: beide filtern auf die COMMITTER-Datum-Achse, die ein
-    # spaeterer Rebase auf den Rebase-Tag zuruecksetzt, waehrend das Autor-Datum
-    # stehen bleibt. Fuer den Backfill ist genau das der Normalfall. Gefiltert wird
-    # deshalb in Python auf (Autor-Datum ODER Committer-Datum) == Zieltag.
-    # Diese Achse liest AUSSCHLIESSLICH die Commit-Historie — nie das reflog. Sie ist
-    # damit von gc.reflogExpire (90 Tage) unabhaengig und traegt alte Tage.
+    # NO --since/--until: both filter on the COMMITTER-date axis, which a later
+    # rebase resets to the rebase day while the author date stays put. For the
+    # backfill that's exactly the normal case. Filtering is therefore done in
+    # Python on (author date OR committer date) == target day.
+    # This axis reads EXCLUSIVELY the commit history — never the reflog. It is
+    # therefore independent of gc.reflogExpire (90 days) and covers old days.
     log = g(repo, 'log', '--all',
             '--date=format-local:%Y-%m-%dT%H:%M:%S', '--pretty=%H|%ad|%cd|%P')
     for line in log.splitlines():
@@ -907,48 +908,48 @@ print('merges=%d' % nmerge, file=sys.stderr)
 PYEOF
 python3 "$WORK/qg.py" "$D" < "$WORK/repos.txt" > "$WORK/qg_raw.tsv" 2> "$WORK/qg.meta"
 NMERGE=$(sed -n 's/^merges=//p' "$WORK/qg.meta")
-# STRICT gewinnt: eine Datei, die in EINEM Commit des Tages strict ist, ist strict —
-# auch wenn ein anderer Commit desselben Tages sie ambig macht.
+# STRICT wins: a file that is strict in ONE commit of the day is strict —
+# even if another commit of the same day makes it ambiguous.
 awk -F'\t' '$1=="STRICT"{print $2 "/" $4}' "$WORK/qg_raw.tsv" | sort -u > "$WORK/g_strict_paths.txt"
 awk -F'\t' '$1=="AMBIG"{print $2 "/" $4}'  "$WORK/qg_raw.tsv" | sort -u > "$WORK/g_ambig_all.txt"
 awk -v PF="$WORK/g_strict_paths.txt" 'FILENAME==PF{s[$0]=1;next} !($0 in s)' \
   "$WORK/g_strict_paths.txt" "$WORK/g_ambig_all.txt" > "$WORK/g_ambig_paths.txt"
 awk '{print "G\t" $0}' "$WORK/g_strict_paths.txt" > "$WORK/qg_strict.in"
 awk '{print "g\t" $0}' "$WORK/g_ambig_paths.txt"  > "$WORK/qg_ambig.in"
-rcpt "S7c repo_ids=$NREPO arbeitskopien=$NREPO_WC merge_commits=$NMERGE g_strict=$(wc -l < "$WORK/qg_strict.in" | tr -d ' ') g_ambig=$(wc -l < "$WORK/qg_ambig.in" | tr -d ' ')"
+rcpt "S7c repo_ids=$NREPO work_copies=$NREPO_WC merge_commits=$NMERGE g_strict=$(wc -l < "$WORK/qg_strict.in" | tr -d ' ') g_ambig=$(wc -l < "$WORK/qg_ambig.in" | tr -d ' ')"
 
 # ---- Pass 2: Q_B + Q_G (strict + ambig) ---------------------------------
 cat "$WORK/qb_files.in" "$WORK/qg_strict.in" "$WORK/qg_ambig.in" > "$WORK/pass2.in"
 if [ -s "$WORK/pass2.in" ]; then
   python3 "$WORK/canon.py" < "$WORK/pass2.in" > "$WORK/pass2.tsv"
 else : > "$WORK/pass2.tsv"; fi
-# Q_B: schwaechste Beweisklasse -> striktestes Aufnahmekriterium.
-# Nur Ziele, die in eine bekannte Arbeitskopie aufloesen (flag != UNRESOLVED), zaehlen.
+# Q_B: weakest evidence class -> strictest admission criterion.
+# Only targets that resolve into a known work copy (flag != UNRESOLVED) count.
 awk -F'\t' '($1=="keep"||$1=="rescued") && $7=="B" && $3!="UNRESOLVED" {print $2}' "$WORK/pass2.tsv" | sort -u > "$WORK/qb.txt"
 awk -F'\t' '($1=="keep"||$1=="rescued") && $7=="B" && $3=="UNRESOLVED" {print $2}' "$WORK/pass2.tsv" | sort -u > "$WORK/qb_unresolved.txt"
 
-# ============================== S12 Q_V (VCS-Operationen) ==============================
-# EIGENE KATEGORIE, GETRENNT von items. Eine VCS-Operation materialisiert Dateien in eine
-# Arbeitskopie; das ist KEIN Item (sonst waere die Zahl nicht mehr invariant gegen
-# Arbeitsorganisation: derselbe Code direkt auf development geschrieben vs. ueber einen
-# Feature-Branch gemergt ergaebe verschiedene Tageszahlen). Verschwinden lassen ist aber
-# ebenso falsch — ein Merge mit Konflikten ist echte Arbeit. Deshalb eigene Metrik.
-# DREI UNABHAENGIGE ACHSEN (Antwort auf den Common-Mode-Befund):
-#   V1 reflog       — loest `git -C $VAR merge` auf (Ziel steht nicht im Kommandostring)
-#   V2 transkript   — sieht `merge --no-commit` (keine HEAD-Bewegung, kein reflog-Eintrag)
-#   V3 merge-commit — `git diff <sha>^1 <sha>`, NIE `diff-tree` (das liefert bei Merges 0)
-# Keine Einzelachse erfasst den Tag vollstaendig; das ist gemessen, nicht angenommen.
+# ============================== S12 Q_V (VCS operations) ==============================
+# ITS OWN CATEGORY, SEPARATE from items. A VCS operation materializes files into a
+# work copy; that is NOT an item (otherwise the number would no longer be invariant
+# against work organization: the same code written directly on development vs.
+# merged via a feature branch would yield different daily counts). But making it
+# disappear is equally wrong — a merge with conflicts is real work. Hence its own metric.
+# THREE INDEPENDENT AXES (answer to the common-mode finding):
+#   V1 reflog       — resolves `git -C $VAR merge` (the target isn't in the command string)
+#   V2 transcript   — sees `merge --no-commit` (no HEAD movement, no reflog entry)
+#   V3 merge-commit — `git diff <sha>^1 <sha>`, NEVER `diff-tree` (that returns 0 for merges)
+# No single axis covers the day completely; that is measured, not assumed.
 cat > "$WORK/qv2.py" <<'QVEOF'
 #!/usr/bin/env python3
-"""Q_V — VCS-Operationen als eigene Kategorie (v3.3).
+"""Q_V — VCS operations as their own category (v3.3).
 
-Drei UNABHAENGIGE Achsen, Union auf op_key:
-  V1 reflog   je Arbeitskopie  -> HEAD-bewegende Ops (auch ausserhalb Claude)
-  V2 transkript (Bash)         -> aufgerufene Kommandos, auch ohne HEAD-Bewegung
-  V3 merge-commits (Q_G)       -> Merges, die einen Merge-Commit erzeugt haben
+Three INDEPENDENT axes, union on op_key:
+  V1 reflog   per work copy     -> HEAD-moving ops (also outside Claude)
+  V2 transcript (Bash)          -> invoked commands, even without HEAD movement
+  V3 merge-commits (Q_G)        -> merges that produced a merge commit
 
-Ausgabe: JSON  {vcs_operationen:[...], vcs_materialisiert:[repo_id::relpfad], zaehler:{}}
-Schreibt NUR nach stdout. Keine Mutation.
+Output: JSON  {vcs_operationen:[...], vcs_materialisiert:[repo_id::relpath], zaehler:{}}
+Writes ONLY to stdout. No mutation.
 """
 import json, os, re, shlex, subprocess, sys, datetime as dt
 from datetime import datetime, timezone
@@ -956,7 +957,7 @@ from zoneinfo import ZoneInfo
 
 DAY = sys.argv[1]
 ROOTS = sys.argv[2]
-TZ = ZoneInfo(os.environ["TZ"])  # IMP-219: Systemzeitzone statt hartcodiertem Namen
+TZ = ZoneInfo(os.environ["TZ"])  # IMP-219: system timezone instead of a hardcoded name
 d = datetime.strptime(DAY, "%Y-%m-%d")
 LO = datetime(d.year, d.month, d.day, tzinfo=TZ)
 HI = LO + dt.timedelta(days=1)
@@ -967,7 +968,7 @@ def git(wc, *a):
     r = subprocess.run(["git","-C",wc,*a], capture_output=True, text=True)
     return r.returncode, r.stdout.strip()
 
-# ---------- Arbeitskopien + repo_id ----------
+# ---------- Work copies + repo_id ----------
 workcopies = []
 for line in open(ROOTS):
     root = line.split("\t")[0].strip()
@@ -998,8 +999,8 @@ def diff_files(wc, a, b):
     return [x for x in out.splitlines() if x] if rc == 0 else None
 
 # ---------- V1: reflog ----------
-# Nur ARBEITSKOPIE-schreibende Selektoren; "commit:" bewegt HEAD, schreibt aber
-# die Arbeitskopie NICHT -> ausgeschlossen.
+# Only WORK-COPY-writing selectors; "commit:" moves HEAD but does NOT write
+# the work copy -> excluded.
 RX = re.compile(r"^(?P<new>[0-9a-f]+) HEAD@\{(?P<ts>[^}]+)\}: (?P<sel>.*)$")
 WRITE_SEL = re.compile(r"^(merge |pull|rebase|checkout: moving|reset: moving|"
                        r"cherry-pick|revert|clone:|am |commit \(merge\)|"
@@ -1021,7 +1022,7 @@ for wc in workcopies:
         new = m.group("new")
         _rc,_full = git(wc,"rev-parse",new)
         if _rc==0 and _full: new=_full
-        # Vorgaenger = naechste reflog-Zeile (aeltere)
+        # Predecessor = next reflog line (older)
         old = None
         for j in range(idx+1, len(lines)):
             mm = RX.match(lines[j])
@@ -1035,7 +1036,7 @@ for wc in workcopies:
         if files:
             for f in files: materialisiert.add(f"{REPO[wc]}::{f}")
 
-# ---------- V3: Merge-Commits im Fenster ----------
+# ---------- V3: merge commits in the window ----------
 seen_repo = set()
 for wc in workcopies:
     rid = REPO[wc]
@@ -1058,7 +1059,7 @@ for wc in workcopies:
         if files:
             for f in files: materialisiert.add(f"{rid}::{f}")
 
-# ---------- V2: Transkripte ----------
+# ---------- V2: transcripts ----------
 WRITE_VERBS = {"merge","rebase","cherry-pick","revert","pull","stash","clean",
                "apply","am","checkout","switch","restore","reset","clone",
                "submodule","worktree"}
@@ -1133,7 +1134,7 @@ for p in tfiles:
                                "ziel_c": cdir or "", "kommando": " ".join(st)[:180],
                                "tool_use_id": b.get("id","")})
 
-# V2 an V1/V3 anheften (Zeitfenster +/- 15 min, gleiche Arbeitskopie ODER -C-Ziel)
+# Attach V2 to V1/V3 (time window +/- 15 min, same work copy OR -C target)
 def wc_of(row):
     cand = row["ziel_c"] or row["cwd"]
     if cand.startswith("$") or not cand: return None
@@ -1190,16 +1191,16 @@ set +e
 python3 "$WORK/qv2.py" "$D" "$ROOTS" > "$WORK/vcs.json" 2>"$WORK/qv2.err"; QV_RC=$?
 set -e
 if [ "$QV_RC" -ne 0 ]; then
-  { echo "ABORT(21): S12/Q_V scheiterte (rc=$QV_RC) — VCS-Achse nicht auswertbar"
+  { echo "ABORT(21): S12/Q_V FAILED (rc=$QV_RC) — VCS axis not evaluable"
     head -5 "$WORK/qv2.err" | sed 's/^/  qv2: /'; } >&2
   exit 21
 fi
 jq -r '.vcs_materialisiert[]' "$WORK/vcs.json" | sort -u > "$WORK/vcs_materialisiert.txt"
 NVCS=$(jq -r '.zaehler.operationen' "$WORK/vcs.json")
 NVCSMAT=$(wc -l < "$WORK/vcs_materialisiert.txt" | tr -d ' ')
-rcpt "S12 vcs_operationen=$NVCS dateien_materialisiert=$NVCSMAT achsen=$(jq -c '.zaehler.achsen' "$WORK/vcs.json") dryrun_verworfen=$(jq -r '.zaehler.dryrun_verworfen' "$WORK/vcs.json")"
+rcpt "S12 vcs_operations=$NVCS files_materialized=$NVCSMAT axes=$(jq -c '.zaehler.achsen' "$WORK/vcs.json") dryrun_discarded=$(jq -r '.zaehler.dryrun_verworfen' "$WORK/vcs.json")"
 
-# Union + Absorption in EINEM deterministischen Schritt (Konflikt A + B).
+# Union + absorption in ONE deterministic step (conflict A + B).
 python3 - "$WORK" > "$WORK/union.meta" <<'PY'
 import sys, os
 W = sys.argv[1]
@@ -1217,27 +1218,27 @@ def lines(f):
     if not os.path.exists(p): return []
     return [l for l in open(p).read().split('\n') if l]
 
-# ZAEHLBASIS REPO-IDENTITAET: Arbeitskopie-Beweis und Git-Inhaltsbeweis teilen sich
-# EINEN Schluesselraum (<repo_id>::<relpfad>). Die frueheren drei Identitaetsbegriffe
-# (Item=Arbeitskopie, Absorption=Repo, Kollaps=Repo-ohne-Worktree) fallen damit zu EINER
-# Achse zusammen: "Absorption" ist keine Sonderregel mehr, sondern die gewoehnliche
-# Vereinigung auf dem Schluessel. Sie wird nur noch als KENNZAHL berichtet.
-# 1) Arbeitskopie-Items (T, D, B); workcopies wird als ATTRIBUT mitgefuehrt.
+# COUNT BASIS REPO IDENTITY: work-copy evidence and git content proof share
+# ONE key space (<repo_id>::<relpath>). The former three identity concepts
+# (item=work copy, absorption=repo, collapse=repo-without-worktree) thereby fall
+# into ONE axis: "absorption" is no longer a special rule, just the ordinary
+# union on the key. It is now reported only as a METRIC.
+# 1) Work-copy items (T, D, B); workcopies is carried along as an ATTRIBUTE.
 items = {}             # key -> set(evidence)
 workcopies = {}        # key -> set(workcopy)
 qb_ok = set(lines('qb.txt'))
-wc_keys = set()        # Schluessel mit Arbeitskopie-Beleg (fuer die Absorptionskennzahl)
+wc_keys = set()        # keys with work-copy evidence (for the absorption metric)
 for c in rows('pass1.tsv') + rows('pass2.tsv'):
     dec, key, flag, cat, rid, wt, src, raw, wcp = c[:9]
     if dec not in ('keep', 'rescued'): continue
-    if src == 'C': continue                      # Canary
-    if src in ('G', 'g'): continue               # Git separat (andere Beweisklasse)
-    if src == 'B' and key not in qb_ok: continue # unaufgeloeste Bash-Ziele raus
+    if src == 'C': continue                      # canary
+    if src in ('G', 'g'): continue               # git handled separately (different evidence class)
+    if src == 'B' and key not in qb_ok: continue # drop unresolved bash targets
     items.setdefault(key, set()).add({'T': 'T', 'D': 'D', 'B': 'B'}[src])
     wc_keys.add(key)
     if wcp and wcp != '-': workcopies.setdefault(key, set()).add(wcp)
 
-# 2) B-dir-Evidenz: ambige G-Pfade, deren Verzeichnis statisch aufgeloestes Bash-Ziel war
+# 2) B-dir evidence: ambiguous G paths whose directory was a statically resolved bash target
 bdirs = set(os.path.realpath(d) for d in lines('qb_dirs.txt'))
 bdir_hit = set()
 g_strict, g_ambig = {}, {}
@@ -1262,14 +1263,14 @@ for k in sorted(g_ambig):
     else:
         gamb_unres.append(k)
 
-# 3) S12 ANTI-DOPPELZAEHL-REGEL — die einzige Verzahnung mit vcs_operationen.
-# Eine Datei, die eine VCS-Operation nur MATERIALISIERT hat, ist kein Item: dieselbe
-# Datei wurde am Verfassungstag bereits gezaehlt, und die Tagessumme wuerde sonst
-# Merge-Haeufigkeit statt Arbeit messen. Unterdrueckt wird aber NUR, wenn der
-# Evidenzsatz AUSSCHLIESSLICH {Gm} ist. Sobald T/D/B ODER ein G-strict aus einem
-# NICHT-Merge-Commit vorliegt, bleibt die Datei Item — Gm waechst dann nur ins
-# evidence-Set. Damit zaehlt eine gemergte UND danach bearbeitete Datei genau EINMAL
-# (ueber ihr Edit-Ereignis), eine rein materialisierte NIE.
+# 3) S12 ANTI-DOUBLE-COUNT RULE — the only interlock with vcs_operationen.
+# A file that a VCS operation only MATERIALIZED is not an item: the same file
+# was already counted on the day it was authored, and the daily total would
+# otherwise measure merge frequency instead of work. But it is suppressed ONLY
+# when the evidence set is EXCLUSIVELY {Gm}. As soon as T/D/B OR a G-strict from
+# a NON-merge commit is present, the file stays an item — Gm then only grows
+# into the evidence set. This way a file that was merged AND then edited counts
+# exactly ONCE (via its edit event), and a purely materialized one NEVER.
 mat = set(lines('vcs_materialisiert.txt'))
 gm_only = []
 for k in sorted(mat):
@@ -1288,7 +1289,7 @@ with open(os.path.join(W, 'items_evidence.tsv'), 'w') as fh:
                                    ','.join(sorted(workcopies.get(k, ['-'])))))
 with open(os.path.join(W, 'git_ambiguous.txt'), 'w') as fh:
     for k in gamb_unres: fh.write(k + '\n')
-# sync_pairs jetzt ueber das ATTRIBUT: derselbe Schluessel in >=2 Arbeitskopien beruehrt.
+# sync_pairs now via the ATTRIBUTE: the same key touched in >=2 work copies.
 sync = sorted(k for k, v in workcopies.items() if len(v) > 1)
 with open(os.path.join(W, 'sync_pairs.txt'), 'w') as fh:
     for k in sync: fh.write(k + '\t' + ','.join(sorted(workcopies[k])) + '\n')
@@ -1301,33 +1302,33 @@ read -r _ NQT_E NQD_E NQG_E NQB_E NBDIR_E _ _ <<<"$(sed -e 's/[a-zA-Z_]*=//g' "$
 UNION_META=$(cat "$WORK/union.meta")
 rcpt "S10-union $UNION_META"
 
-# ============================== S7 Q_M (Handarbeit) ==============================
+# ============================== S7 Q_M (manual work) ==============================
 : > "$WORK/qm.txt"
 if [ "$MAN_STATUS" = "ok" ]; then MANUAL_BUCKET=0; MANUAL_PY=0
 else MANUAL_BUCKET=null; MANUAL_PY=None; fi
 rcpt "S7 Q_M bucket=$MANUAL_BUCKET"
 
-# ============================== S10 Vereinigung (items.txt kommt aus union.py) ==============================
-if [ ! -f "$WORK/items.txt" ]; then echo "ABORT(9): Senke items.txt nicht geschrieben" >&2; exit 9; fi
-# "leer trotz Eingabe" nur noch, wenn es EINGABE GAB. Ein belegbar arbeitsfreier Alttag
-# muss 0 liefern duerfen — sonst ist "0" per Konstruktion unaussprechbar.
+# ============================== S10 union (items.txt comes from union.py) ==============================
+if [ ! -f "$WORK/items.txt" ]; then echo "ABORT(9): sink items.txt not written" >&2; exit 9; fi
+# "empty despite input" only when there WAS input. A demonstrably work-free old
+# day must be allowed to deliver 0 — otherwise "0" is unspeakable by construction.
 NIN_PASS=$(awk -F'\t' '($1=="keep"||$1=="rescued") && $7!="C"' "$WORK/pass1.tsv" "$WORK/pass2.tsv" | wc -l | tr -d ' ')
 if [ ! -s "$WORK/items.txt" ] && [ "$NIN_PASS" -gt 0 ]; then
-  echo "ABORT(9): items.txt leer trotz $NIN_PASS Eingabezeilen" >&2; exit 9; fi
+  echo "ABORT(9): items.txt empty despite $NIN_PASS input lines" >&2; exit 9; fi
 ITEMS=$(wc -l < "$WORK/items.txt" | tr -d ' ')
 SHA=$(shasum -a 256 "$WORK/items.txt" | cut -d' ' -f1)
 
-# ============================== S8 Selbstpruefung ==============================
-# (1) CANARY — muss die gesamte Kanonisierungskette ueberleben
+# ============================== S8 self-check ==============================
+# (1) CANARY — must survive the entire canonicalization chain
 NCAN=$(wc -l < "$WORK/canary.txt" | tr -d ' ')
 if [ "$NCAN" -ne 1 ]; then
-  echo "ABORT(11): SELBSTPRUEFUNG DEFEKT — Canary hat die Kette nicht ueberlebt ($NCAN)" >&2; exit 11; fi
+  echo "ABORT(11): SELF-CHECK DEFECT — canary did not survive the chain ($NCAN)" >&2; exit 11; fi
 
-# (2) Zweitzaehler ueber anderen Codepfad
+# (2) Second counter via a different code path
 NQT2=$(python3 -c "import sys;print(len(set(l for l in open(sys.argv[1]).read().split('\n') if l)))" "$WORK/qt.txt")
-if [ "$NQT" -ne "$NQT2" ]; then echo "ABORT(11): Zweitzaehler weicht ab ($NQT vs $NQT2)" >&2; exit 11; fi
+if [ "$NQT" -ne "$NQT2" ]; then echo "ABORT(11): second counter diverges ($NQT vs $NQT2)" >&2; exit 11; fi
 
-# (3) I4 — Signals als Hook-Ausfall-Detektor (nie gezaehlt). Feld ist .ts, nicht .timestamp.
+# (3) I4 — signals as a hook-failure detector (never counted). Field is .ts, not .timestamp.
 set +e
 jq -r --arg s "$WSTART" --arg e "$WEND" '
   select(.ts != null)
@@ -1337,7 +1338,7 @@ jq -r --arg s "$WSTART" --arg e "$WEND" '
 I4_JQ_RC=${PIPESTATUS[0]}
 set -e
 if [ "$I4_JQ_RC" -ne 0 ]; then
-  echo "ABORT(15): I4-Detektor-jq scheiterte (rc=$I4_JQ_RC) — der Ausfall-Detektor selbst ist blind" >&2; exit 15; fi
+  echo "ABORT(15): I4 detector jq FAILED (rc=$I4_JQ_RC) — the failure detector itself is blind" >&2; exit 15; fi
 awk '{print "S\t" $0}' "$WORK/sig_raw.txt" > "$WORK/sig.in"
 if [ -s "$WORK/sig.in" ]; then python3 "$WORK/canon.py" < "$WORK/sig.in" > "$WORK/sig.tsv"
 else : > "$WORK/sig.tsv"; fi
@@ -1345,38 +1346,40 @@ awk -F'\t' '($1=="keep"||$1=="rescued"){print $2}' "$WORK/sig.tsv" | sort -u > "
 NSIG=$(wc -l < "$WORK/qsig.txt" | tr -d ' ')
 awk -v PF="$WORK/qt.txt" 'FILENAME==PF{r[$0]=1;next} !($0 in r)' "$WORK/qt.txt" "$WORK/qsig.txt" > "$WORK/i4_gap.txt"
 I4=$(wc -l < "$WORK/i4_gap.txt" | tr -d ' ')
-# WAECHTER-ENTKOPPLUNG: ein Waechter darf nicht an der Quelle haengen, die er ueberwacht.
-# Die alte Bedingung `NSIG>0 && NQT==0` teilte mit ihrem Schutzobjekt Platte, Rechte und
-# Rotation ($HOME/.claude) — ein leeres-aber-gueltiges Archiv setzte NSIG=0 und machte den
-# einzigen Waechter gegen einen blinden Transkriptzweig strukturell unausloesbar.
-# Jetzt feuert ABORT(13), sobald Q_T=0 und EIN Zeuge aus VIER unabhaengigen Achsen lebt.
-# Die Git-Achse (Repos AUSSERHALB $HOME/.claude) teilt weder Verzeichnisbaum noch Rotation
-# noch Rechte mit dem Transkriptzweig — sie ist die quellenunabhaengige Mindesterwartung.
+# GUARD DECOUPLING: a guard must not depend on the source it monitors.
+# The old condition `NSIG>0 && NQT==0` shared disk, permissions, and rotation
+# ($HOME/.claude) with the object it protects — an empty-but-valid archive set
+# NSIG=0 and made the only guard against a blind transcript branch structurally
+# unfireable.
+# Now ABORT(13) fires as soon as Q_T=0 and ONE witness from FOUR independent
+# axes is alive. The git axis (repos OUTSIDE $HOME/.claude) shares neither
+# directory tree nor rotation nor permissions with the transcript branch — it
+# is the source-independent minimum expectation.
 NGSTRICT=$(wc -l < "$WORK/g_strict_paths.txt" | tr -d ' ')
 NQD_RAW=$(wc -l < "$WORK/qd_raw.txt" | tr -d ' ')
 ZEUGEN="signals=$NSIG events=$NEV pairs=$NPAIRS desktop=$NQD_RAW git_strict=$NGSTRICT vcs=$NVCS"
-# Epochenbewusst: ein Transkriptzweig, den es am Zieltag NICHT GAB, ist nicht blind.
+# Epoch-aware: a transcript branch that did NOT EXIST YET on the target day is not blind.
 if [ "$TR_STATE" = "verified" ] && [ "$NQT" -eq 0 ] \
    && { [ "$NSIG" -gt 0 ] || [ "$NEV" -gt 0 ] || [ "$NPAIRS" -gt 0 ] \
      || [ "$NQD_RAW" -gt 0 ] || [ "$NGSTRICT" -gt 0 ] || [ "$NVCS" -gt 0 ]; }; then
-  echo "ABORT(13): Q_T=0, aber unabhaengige Zeugen leben ($ZEUGEN) — Transkriptzweig blind" >&2; exit 13; fi
-# ABORT(17): zweites, unabhaengiges Netz. Greift genau dann, wenn ABORT(13) NICHT greift
-# (lebender Transkriptzweig), und beweist einen Hook-/Rotationsausfall.
+  echo "ABORT(13): Q_T=0, but independent witnesses are alive ($ZEUGEN) — transcript branch blind" >&2; exit 13; fi
+# ABORT(17): a second, independent net. Fires exactly when ABORT(13) does NOT
+# (a live transcript branch), and proves a hook/rotation failure.
 if [ "$SIG_EMPTY_DAYS" -ge 2 ] && [ "$NEV" -gt 0 ]; then
-  echo "ABORT(17): beide signals-Archive state=empty_verified, aber $NEV Ereigniszeilen im Fenster — Hook- oder Rotationsausfall" >&2; exit 17; fi
-rcpt "S8 canary=ueberlebt zweitzaehler=$NQT2 OK Q_signals=$NSIG i4_gap=$I4 zeugen=[$ZEUGEN]"
+  echo "ABORT(17): both signals archives state=empty_verified, but $NEV event lines in the window — hook or rotation failure" >&2; exit 17; fi
+rcpt "S8 canary=survived second_counter=$NQT2 OK Q_signals=$NSIG i4_gap=$I4 witnesses=[$ZEUGEN]"
 
-# ============================== R6 Abbruchbedingungen ==============================
+# ============================== R6 abort conditions ==============================
 if [ "$FAULT" = "e" ]; then ITEMS=0; fi
 MAXSRC=$(( NEV + NSIG + NOK + $(wc -l < "$WORK/qd_raw.txt" | tr -d ' ') ))
 if [ "$ITEMS" -eq 0 ] && [ "$MAXSRC" -gt 0 ]; then
-  echo "ABORT(7): items=0, WAEHREND Quellen liefern (events=$NEV signals=$NSIG rohpaare=$NOK desktop=$(wc -l < "$WORK/qd_raw.txt" | tr -d ' '))" >&2; exit 7; fi
+  echo "ABORT(7): items=0, WHILE sources deliver (events=$NEV signals=$NSIG raw_pairs=$NOK desktop=$(wc -l < "$WORK/qd_raw.txt" | tr -d ' '))" >&2; exit 7; fi
 if [ "$ITEMS" -eq 0 ]; then
-  rcpt "S10 items=0 — KEINE Quelle liefert; Tag wird als belegbar arbeitsfrei ausgewiesen (nicht als Messfehler)"; fi
+  rcpt "S10 items=0 — NO source delivers; day is reported as demonstrably work-free (not a measurement error)"; fi
 UNIQ_KEPT=$(awk -F'\t' '($1=="keep"||$1=="rescued") && $7=="T"{print $2}' "$WORK/pass1.tsv" | sort -u | wc -l | tr -d ' ')
-# ABORT(14) mit QUELLENUEBERGREIFENDER Bezugsgroesse. Frueher MIN=UNIQ_KEPT/2, wobei
-# UNIQ_KEPT ausschliesslich aus Q_T stammte: bei Q_T=0 war MIN=0 und die Schwelle
-# neutralisierte sich selbst genau dann, wenn die Quelle ausfiel, gegen die sie schuetzt.
+# ABORT(14) with a CROSS-SOURCE reference size. Previously MIN=UNIQ_KEPT/2, where
+# UNIQ_KEPT came exclusively from Q_T: at Q_T=0, MIN was 0 and the threshold
+# neutralized itself exactly when the source it protects against failed.
 REF=$UNIQ_KEPT; REFQ=Q_T
 for pair in "$NGSTRICT:G_strict" "$NQD_RAW:Q_D" "$NSIG:Q_signals"; do
   v=${pair%%:*}; q=${pair##*:}
@@ -1384,10 +1387,10 @@ for pair in "$NGSTRICT:G_strict" "$NQD_RAW:Q_D" "$NSIG:Q_signals"; do
 done
 MIN=$(( REF / 2 ))
 if [ "$ITEMS" -lt "$MIN" ]; then
-  echo "ABORT(14): items=$ITEMS < 50% von REF=$REF (Herkunft $REFQ)" >&2; exit 14; fi
-rcpt "S10 plausibilitaet_bezug=$REF quelle=$REFQ mindest_erwartung=$MIN (uniq_kept=$UNIQ_KEPT)"
+  echo "ABORT(14): items=$ITEMS < 50% of REF=$REF (origin $REFQ)" >&2; exit 14; fi
+rcpt "S10 plausibility_reference=$REF source=$REFQ minimum_expectation=$MIN (uniq_kept=$UNIQ_KEPT)"
 
-# ============================== Ausgabe ==============================
+# ============================== Output ==============================
 STATUS=ok; [ "$MAN_STATUS" = "ok" ] || STATUS=DEGRADED
 [ "$TR_STATE" = "verified" ] || STATUS=DEGRADED
 [ "$SIG_PRE_DAYS" -eq 0 ] || STATUS=DEGRADED
@@ -1396,38 +1399,68 @@ jl() { sort -u | python3 -c "import sys,json;print(json.dumps([l for l in sys.st
 exclq() { awk -F'\t' -v c="$1" -v s="$2" '$1=="drop" && $7==s && $4 ~ ("^" c) {n++} END{print n+0}' "$WORK/pass1.tsv" "$WORK/pass2.tsv"; }
 SYNC=$(wc -l < "$WORK/sync_pairs.txt" | tr -d ' ')
 
-# ---- ZERTIFIKATSPFLICHT (ABORT 18) --------------------------------------------------
-# Kein Feld in `sources` darf einen Literalwert tragen — dieselbe Regel wie
-# "keine Logzeile ohne count_basis". Ein hartkodiertes "ok" ist eine Behauptung,
-# kein Messwert (im Originalskript stand "ok" als String in der Emitter-Zeile).
+# ---- CERTIFICATE REQUIREMENT (ABORT 18) --------------------------------------------------
+# No field in `sources` may carry a literal value — the same rule as
+# "no log line without count_basis". A hardcoded "ok" is an assertion,
+# not a measurement (the original script had "ok" as a string in the emitter line).
 CERT_S1E="manifest=$MAN_STATUS;state=$( [ "$MAN_STATUS" = ok ] && echo verified || echo degraded_missing )"
 CERT_S1B="${CERT_S1B};epoche=$EP_DESK"
 for cv in "S1a:$CERT_S1A" "S1b:$CERT_S1B" "S1c:$CERT_S1C" "S1d:$CERT_S1D" "S1e:$CERT_S1E"; do
   nm=${cv%%:*}; val=${cv#*:}
   case "$val" in
-    '' ) echo "ABORT(18): Zertifikat fuer $nm ist leer — Quelle wurde nicht nachweislich gelesen" >&2; exit 18 ;;
+    '' ) echo "ABORT(18): certificate for $nm is empty — source was not demonstrably read" >&2; exit 18 ;;
     *state=* ) : ;;
-    * ) echo "ABORT(18): Zertifikat fuer $nm ohne state= : '$val'" >&2; exit 18 ;;
+    * ) echo "ABORT(18): certificate for $nm without state= : '$val'" >&2; exit 18 ;;
   esac
 done
 
-# ---- EVIDENCE_TIER (Pflichtfeld, 1-4) ------------------------------------------------
-# 1 = alle vier Achsen verifiziert (Transkript, Desktop, Signals, Git/VCS)
-# 2 = eine Achse degradiert oder leer-verifiziert
-# 3 = zwei Achsen fehlen; 4 = nur noch EINE Achse traegt den Tag (duenner Tag)
+# ---- EVIDENCE_TIER (mandatory field, 1-4) ------------------------------------------------
+# 1 = all four axes verified (transcript, desktop, signals, git/VCS)
+# 2 = one axis degraded or empty-verified
+# 3 = two axes missing; 4 = only ONE axis carries the day anymore (thin day)
 TIER=1; TIER_GRUND=""
 [ "$DESK_STATUS" = "ok" ]   || { TIER=$((TIER+1)); TIER_GRUND="$TIER_GRUND desktop_$DESK_STATUS;"; }
 [ "$SIG_EMPTY_DAYS" -eq 0 ] || { TIER=$((TIER+1)); TIER_GRUND="$TIER_GRUND signals_leer($SIG_EMPTY_DAYS/2);"; }
 [ "$SIG_PRE_DAYS" -eq 0 ]   || { TIER=$((TIER+1)); TIER_GRUND="$TIER_GRUND signals_vor_epoche($SIG_PRE_DAYS/2,ab_$EP_SIG);"; }
 [ "$TR_STATE" = "verified" ] || { TIER=$((TIER+1)); TIER_GRUND="$TIER_GRUND transkripte_vor_epoche(ab_$EP_TR);"; }
 [ "$MAN_STATUS" = "ok" ]    || { TIER=$((TIER+1)); TIER_GRUND="$TIER_GRUND manifest_fehlt;"; }
-# reflog-Retention: gc.reflogExpire liegt bei 90 Tagen. Fuer aeltere Tage faellt Achse V1
-# aus; das MUSS den Tier senken, sonst wirkt ein alter Tag so vollstaendig gemessen wie
-# ein neuer. Der Backfill reicht 168 Tage zurueck — die aeltere Haelfte ist betroffen.
+# reflog retention: gc.reflogExpire is 90 days. For older days, axis V1 drops
+# out; this MUST lower the tier, otherwise an old day would look as fully
+# measured as a new one. The backfill reaches back 168 days — the older half
+# is affected.
 AGE=$(python3 -c "import sys,datetime;print((datetime.date.today()-datetime.date.fromisoformat(sys.argv[1])).days)" "$D")
 if [ "$AGE" -gt 90 ]; then TIER=$((TIER+1)); TIER_GRUND="$TIER_GRUND reflog_retention_ueberschritten(${AGE}d>90d);"; fi
 [ "$TIER" -le 4 ] || TIER=4
 [ -n "$TIER_GRUND" ] || TIER_GRUND=" alle_achsen_verifiziert;"
+# nicht_erfassbar[] sentences are copied verbatim into the logbook entry, so
+# they follow the logbook language (CLAUDE_DAILY_DOCS_LANG, same switch and
+# same env.local.sh fallback as SKILL.md's Output section). The JSON key stays.
+# Read only this one value from env.local.sh (no sourcing: a counting run
+# must not inherit arbitrary shell state).
+if [ -z "${CLAUDE_DAILY_DOCS_LANG:-}" ] && [ -f "$HOME/.claude/env.local.sh" ]; then
+  CLAUDE_DAILY_DOCS_LANG=$(sed -n 's/^[[:space:]]*export[[:space:]]*CLAUDE_DAILY_DOCS_LANG=["'\'']\{0,1\}\([a-z]*\).*/\1/p' "$HOME/.claude/env.local.sh" | tail -1)
+fi
+if [ "${CLAUDE_DAILY_DOCS_LANG:-en}" = "de" ]; then
+  NE1="Uncommittete Arbeit und Edit-und-Revert am selben Tag: Q_G meldet nur das Netto-Delta zum Vorgaenger-Blob."
+  NE2="Schreibvorgaenge ausserhalb der Werkzeugebene (Hooks, Framework-Skripte) erzeugen kein tool_use und sind auf keiner Achse sichtbar."
+  NE3="Externe Systeme (Notion, Deploys, Kommunikation) haben per Konstruktion 0 Items — bewusste Eigenschaft der Zaehlbasis, kein Messfehler."
+  NE4="git merge --no-commit und git checkout -- <pfad> im Terminal ausserhalb einer Claude-Session: keine HEAD-Bewegung (kein reflog) und kein Transkript."
+  NE5="Umfang entfernter Arbeitskopien (git worktree remove): dateien=null, nicht 0 — nicht rekonstruierbar."
+  if [ "$AGE" -gt 90 ]; then NE6="reflog-Retention ueberschritten (${AGE}d > 90d): Achse V1 faellt fuer diesen Tag aus."
+  else NE6="Fuer diesen Tag keine retentionsbedingte Achsen-Luecke (Alter ${AGE}d <= 90d)."; fi
+  if [ "$MAN_STATUS" = ok ]; then NE7="Handarbeits-Zweig gemessen."
+  else NE7="Handarbeits-Zweig (Q_M) nicht messbar: kein manifest-$PREV — buckets.manual ist null, nicht 0."; fi
+else
+  NE1="Uncommitted work and edit-then-revert on the same day: Q_G reports only the net delta against the previous blob."
+  NE2="Writes outside the tool layer (hooks, framework scripts) produce no tool_use and are visible on no axis."
+  NE3="External systems (Notion, deploys, communication) have 0 items by construction — a deliberate property of the count basis, not a measurement error."
+  NE4="git merge --no-commit and git checkout -- <path> in a terminal outside a Claude session: no HEAD movement (no reflog) and no transcript."
+  NE5="Size of removed working copies (git worktree remove): files=null, not 0 — not reconstructable."
+  if [ "$AGE" -gt 90 ]; then NE6="reflog retention exceeded (${AGE}d > 90d): axis V1 drops out for this day."
+  else NE6="No retention-related axis gap for this day (age ${AGE}d <= 90d)."; fi
+  if [ "$MAN_STATUS" = ok ]; then NE7="Manual-work branch measured."
+  else NE7="Manual-work branch (Q_M) not measurable: no manifest-$PREV — buckets.manual is null, not 0."; fi
+fi
 python3 - > "$WORK/out.json" <<PY
 import json
 _VCS = json.load(open("$WORK/vcs.json"))
@@ -1476,10 +1509,10 @@ for l in open('$WORK/items_evidence.tsv'):
     p=l.rstrip('\n').split('\t')
     if len(p)>=3 and p[2] not in ('-',''): d[p[0]]=p[2].split(',')
 print(json.dumps(d,ensure_ascii=False))"),
- # NIE JSON per Kommandosubstitution in Python-Quelltext einsetzen: ein JSON-null ist
- # gueltiges JSON und ungueltiges Python (NameError). Deshalb hier json.load, kein jq.
- # (Backticks in diesem Heredoc sind ebenfalls verboten — es ist UNQUOTED, die Shell
- #  fuehrt sie sonst als Kommando aus; im ersten Lauf real passiert.)
+ # NEVER splice JSON into Python source via command substitution: a JSON null
+ # is valid JSON and invalid Python (NameError). Hence json.load here, not jq.
+ # (Backticks in this heredoc are likewise forbidden — it is UNQUOTED, the shell
+ #  would otherwise execute them as a command; this actually happened on the first run.)
  "vcs_operationen": _VCS["vcs_operationen"],
  "vcs_zaehler": _VCS["zaehler"],
  "vcs_arbeitskopien_gescannt": _VCS["arbeitskopien_gescannt"],
@@ -1496,13 +1529,7 @@ print(json.dumps(d,ensure_ascii=False))"),
  "signals_leere_tage": $SIG_EMPTY_DAYS,
  "plausibilitaet_bezug": {"referenz": $REF, "quelle": "$REFQ", "mindest_erwartung": $MIN},
  "nicht_erfassbar": [
-   "Uncommittete Arbeit und Edit-und-Revert am selben Tag: Q_G meldet nur das Netto-Delta zum Vorgaenger-Blob.",
-   "Schreibvorgaenge ausserhalb der Werkzeugebene (Hooks, Framework-Skripte) erzeugen kein tool_use und sind auf keiner Achse sichtbar.",
-   "Externe Systeme (Notion, Deploys, Kommunikation) haben per Konstruktion 0 Items — bewusste Eigenschaft der Zaehlbasis, kein Messfehler.",
-   "git merge --no-commit und git checkout -- <pfad> im Terminal ausserhalb einer Claude-Session: keine HEAD-Bewegung (kein reflog) und kein Transkript.",
-   "Umfang entfernter Arbeitskopien (git worktree remove): dateien=null, nicht 0 — nicht rekonstruierbar.",
-   "$( [ "$AGE" -gt 90 ] && echo "reflog-Retention ueberschritten (${AGE}d > 90d): Achse V1 faellt fuer diesen Tag aus." || echo "Fuer diesen Tag keine retentionsbedingte Achsen-Luecke (Alter ${AGE}d <= 90d)." )",
-   "$( [ "$MAN_STATUS" = ok ] && echo "Handarbeits-Zweig gemessen." || echo "Handarbeits-Zweig (Q_M) nicht messbar: kein manifest-$PREV — buckets.manual ist null, nicht 0." )"
+   "$NE1", "$NE2", "$NE3", "$NE4", "$NE5", "$NE6", "$NE7"
  ],
  "i4_gap": $I4,
  "nebenmetriken": {"ereigniszeilen": $NEV, "schreibpaare_roh": $NPAIRS,

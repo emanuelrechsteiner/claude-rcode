@@ -12,6 +12,36 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-26
+
+English throughout, and self-improvement front and center.
+
+### Changed
+
+- The framework, its docs and ADRs (renamed: `docs/adr/0002-rcode-plan-follows-practice.md`,
+  `docs/adr/0003-vault-and-gate.md`) and the Cockpit are English throughout.
+  The `Hausbau` output style's instruction text is English and still answers
+  in the asker's language. German input keywords (skill triggers, report-only
+  classifier phrases) remain accepted aliases alongside their English forms.
+
+### Added
+
+- Self-improvement is presented as a headline feature on the website home
+  page and in the README.
+- `CLAUDE_DAILY_DOCS_LANG` (`en` default, or `de`) in `~/.claude/env.local.sh`
+  sets the language of the daily-docs logbook: its headings and the
+  "not capturable" sentences `logbook-count.sh` emits. JSON keys are unchanged.
+
+### Fixed
+
+- `scripts/tests/routine-run-regression.sh` ran its real-`claude` parser probe
+  in the project folder, which started a short-lived Claude session there. It
+  now runs in a throwaway folder.
+- Cockpit (companion repo `claude-cockpit`): the pane follows the session in
+  its folder that was most recently active, not the one that started last, so
+  a short-lived background `claude -p` call can no longer take it over and
+  leave every card waiting.
+
 ## [1.5.0] - 2026-09-26
 
 Plain developer language by default, and a Cockpit that always shows the
@@ -102,7 +132,7 @@ what the framework does. No rule, hook, skill, agent, script or setting changed.
 Pseudonymized by design: real names, machine paths and personal identifiers
 never enter the framework. They live only in a local vault on the
 developer's machine; the framework carries tokens. Decision record:
-`docs/adr/0003-tresor-und-tor.md`.
+`docs/adr/0003-vault-and-gate.md`.
 
 ### Added
 
@@ -198,7 +228,7 @@ developer's machine; the framework carries tokens. Decision record:
 ### Changed
 
 - Public history restarted with a single commit; it replaces 1.0.0 and 1.0.1.
-- R.Code "plan follows practice" rework (`docs/adr/0002-rcode-plan-folgt-praxis.md`):
+- R.Code "plan follows practice" rework (`docs/adr/0002-rcode-plan-follows-practice.md`):
   `/team-lead` is the main entrance, `.rcode/config.json` gains a `tracker`
   field (`github` or `plan`), binding glossary, two-tier ADRs.
 
@@ -212,7 +242,8 @@ developer's machine; the framework carries tokens. Decision record:
 
 Superseded. Their history was replaced by 1.1.0 and is no longer available.
 
-[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.3.0...v1.4.0

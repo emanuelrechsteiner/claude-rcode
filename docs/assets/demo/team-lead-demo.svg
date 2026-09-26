@@ -9,7 +9,7 @@
 <rect x="0" y="0" width="880" height="460" fill="#0c0c0c"/>
 <rect x="24" y="24" width="560" height="412" rx="4" fill="#151515" stroke="#3a3a3a" stroke-width="1"/>
 <line x1="24" y1="60" x2="584" y2="60" stroke="#3a3a3a" stroke-width="1"/>
-<text x="40" y="46" font-size="13" fill="#9a9a9a">claude — demo-projekt</text>
+<text x="40" y="46" font-size="13" fill="#9a9a9a">claude — demo-project</text>
 <g clip-path="url(#clipPrompt2)"><text x="40" y="96" font-size="16" fill="#ececec">$ /team-lead "Add a /health endpoint with a test"</text></g>
 <g opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.2143;0.2286;1" values="0;0;1;1"/>
 <text x="40" y="120" font-size="16" fill="#9a9a9a">Dispatching 3 parallel agents on disjoint</text>

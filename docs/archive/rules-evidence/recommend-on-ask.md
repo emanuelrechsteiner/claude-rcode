@@ -1,11 +1,11 @@
 <!--
 Status: ARCHIVED
 Last Updated: 2026-09-24
-Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich aus rules/recommend-on-ask.md ausgelagert wurden — die Regel selbst bleibt dort; hier steht das „Warum" in voller Länge.
+Purpose: Evidence, incidents, and measurements moved verbatim out of rules/recommend-on-ask.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
-# Belege zu `rules/recommend-on-ask.md`
+# Evidence for `rules/recommend-on-ask.md`
 
-> Ausgelagert 2026-09-24 (IMP-217). Jeder Block steht unter der Überschrift, unter der er in der Regel stand, und ist unverändert übernommen.
+> Moved out 2026-09-24 (IMP-217). Every block sits under the same heading it had in the rule, and is carried over unchanged.
 
 ## Why This Matters
 

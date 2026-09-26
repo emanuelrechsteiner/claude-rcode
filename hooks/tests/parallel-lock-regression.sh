@@ -12,9 +12,9 @@ set -u
 # IMP-140 (2026-08-22): switched from hardcoded $HOME/.claude/... to the
 # self-relative + override pattern every other suite in this directory
 # already uses (gate-regression.sh, controller-first-regression.sh, etc.) —
-# this file was the one outlier still hardcoded to the installed (Haus)
+# this file was the one outlier still hardcoded to the installed (live-install)
 # copy, which made it structurally incapable of testing an edit made only
-# in the Bauhof working copy (this repo never writes to ~/.claude directly;
+# in the workshop working copy (this repo never writes to ~/.claude directly;
 # changes only reach it via `claude-deploy`). Defaults are unchanged when run
 # from the installed location, so this is not a behavior change post-deploy.
 HOOKS_DIR="$(cd "$(dirname "$0")/.." && pwd)"

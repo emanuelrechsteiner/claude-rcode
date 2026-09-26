@@ -127,7 +127,7 @@ check_routine() {
     done <<< "$reversed"
 
     if [[ "$streak" -ge 2 ]]; then
-        echo "🚨 ROUTINE LIVENESS: '$name' — $streak consecutive failed runs (IMP-191). Letzter Fehler ($(fmt_epoch "$last_error_epoch")): ${last_error_reason:-<kein Grund im Log>} · Erster Fehlzeitpunkt der Serie: $(fmt_epoch "$first_error_epoch")."
+        echo "🚨 ROUTINE LIVENESS: '$name' — $streak consecutive failed runs (IMP-191). Last error ($(fmt_epoch "$last_error_epoch")): ${last_error_reason:-<no reason in log>} · First failure time of the streak: $(fmt_epoch "$first_error_epoch")."
         echo "    Log: $logfile"
     fi
 
@@ -138,7 +138,7 @@ check_routine() {
         local age=$(( NOW_EPOCH - newest_epoch ))
         if [[ "$age" -gt "$stale_secs" ]]; then
             local age_days=$(( age / 86400 ))
-            echo "⚠️  ROUTINE LIVENESS: '$name' hat seit ${age_days} Tag(en) gar nicht gefeuert (letzter Eintrag $(fmt_epoch "$newest_epoch"), Status '$newest_status'; Toleranz: $stale_label)."
+            echo "⚠️  ROUTINE LIVENESS: '$name' has not fired at all in ${age_days} day(s) (last entry $(fmt_epoch "$newest_epoch"), status '$newest_status'; tolerance: $stale_label)."
             echo "    Log: $logfile"
         fi
     fi
@@ -146,6 +146,6 @@ check_routine() {
 
 check_routine "daily-docs"          "daily-docs-log"     172800 "48h"
 check_routine "nightly-observation" "nightly-obs-log"    172800 "48h"
-check_routine "weekly-improve"      "weekly-improve-log" 691200 "8 Tage"
+check_routine "weekly-improve"      "weekly-improve-log" 691200 "8 days"
 
 exit 0

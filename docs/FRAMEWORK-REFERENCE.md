@@ -1,82 +1,87 @@
 <!--
 Status: ACTIVE
 Last Updated: 2026-09-24
-Purpose: Vollständiges Bestandsverzeichnis des Frameworks mit seiner Geschichte — am 2026-09-24 (IMP-217) wörtlich aus CLAUDE.md ausgelagert. CLAUDE.md ist seitdem der Wegweiser; dieses Dokument wird bei Bedarf gelesen, nicht in jeder Sitzung geladen.
+Purpose: Full inventory of the framework with its history — moved out of CLAUDE.md verbatim on 2026-09-24 (IMP-217). CLAUDE.md is the signpost since then; this document is read on demand, not loaded every session.
 -->
-# Framework Reference — Bestandsverzeichnis und Chronik
+# Framework Reference — Inventory and Chronicle
 
-> Ausgelagert 2026-09-24 (IMP-217). Der Text unten ist der unveränderte Wortlaut der bisherigen CLAUDE.md-Abschnitte (Stand 2026-09-24); Zahlen darin sind Momentaufnahmen ihres jeweiligen Datums — die Bestandszahlen liefert weiterhin nur `scripts/framework-inventory.sh`. Die auto-geladene Kurzfassung steht in `CLAUDE.md`, die Architektur in `HARNESS.md`, die Baustellenordnung in `docs/WORKING-IN-THIS-REPO.md`.
+> Moved out 2026-09-24 (IMP-217). The text below is the unchanged wording of the former CLAUDE.md sections (as of 2026-09-24); the numbers in it are snapshots of their respective date — only `scripts/framework-inventory.sh` still delivers the live inventory counts. The auto-loaded short version lives in `CLAUDE.md`, the architecture in `HARNESS.md`, the repo working rules in `docs/WORKING-IN-THIS-REPO.md`.
 
 ## System Architecture
 
-This environment includes auto-loaded rules (`~/.claude/rules/`), commands, skills, agents, hooks, and scheduled tasks. **Exact counts are GENERATED, never hand-maintained** (they drifted in 3 docs simultaneously — IMP-083): run `~/.claude/scripts/framework-inventory.sh` for disk truth (`--json`, `--check key=N` for audits). Snapshot 2026-08-22 (nach Serena-Write-Gate, IMP-130/131), rules count corrected 2026-09-23 (`phase-backward-transitions.md` moved out of `rules/`, see above) and again 2026-09-24 (IMP-218 demoted `release-cli-discipline`/`cloud-cli-discipline` to on-demand skills). **Rules is the one count that differs by location — state both, never one:** Bauhof = **21 rules** (tracked `*.md` in `rules/`, measured via `ls rules/*.md | wc -l` / `CLAUDE_DIR="$PWD" bash scripts/framework-inventory.sh --json | jq .rules` run against the Bauhof); Haus = **24 rules after the next `claude-deploy`** (the same 21 tracked files plus 3 git-ignored `*.local.md` overlays that exist only on the deployed machine and never sync to the Bauhof — `identity.local.md`, `reminders.local.md`, and a third, more personal overlay whose name is itself a registered Tresor `<private-layer>` marker (`docs/adr/0003-tresor-und-tor.md`) and is deliberately not repeated here — confirmed via `ls ~/.claude/rules/*.local.md`). Remaining counts don't have a Bauhof/Haus split (measured 2026-09-23 in both via `framework-inventory.sh --json`): 22 commands · 51 skills · 41 hooks on disk / 42 registered · 12 agents · 3 scheduled tasks. Architecture documented in `~/.claude/HARNESS.md`. Token optimization is active via `env` settings.
+This environment includes auto-loaded rules (`~/.claude/rules/`), commands, skills, agents, hooks, and scheduled tasks. **Exact counts are GENERATED, never hand-maintained** (they drifted in 3 docs simultaneously — IMP-083): run `~/.claude/scripts/framework-inventory.sh` for disk truth (`--json`, `--check key=N` for audits). Snapshot 2026-08-22 (after the Serena write gate, IMP-130/131), rules count corrected 2026-09-23 (`phase-backward-transitions.md` moved out of `rules/`, see above) and again 2026-09-24 (IMP-218 demoted `release-cli-discipline`/`cloud-cli-discipline` to on-demand skills). **Rules is the one count that differs by location — state both, never one:** workshop = **21 rules** (tracked `*.md` in `rules/`, measured via `ls rules/*.md | wc -l` / `CLAUDE_DIR="$PWD" bash scripts/framework-inventory.sh --json | jq .rules` run against the workshop); live install = **24 rules after the next `claude-deploy`** (the same 21 tracked files plus 3 git-ignored `*.local.md` overlays that exist only on the deployed machine and never sync to the workshop — `identity.local.md`, `reminders.local.md`, and a third, more personal overlay whose name is itself a registered vault `<private-layer>` marker (`docs/adr/0003-vault-and-gate.md`) and is deliberately not repeated here — confirmed via `ls ~/.claude/rules/*.local.md`). Remaining counts don't have a workshop/live-install split (measured 2026-09-23 in both via `framework-inventory.sh --json`): 22 commands · 51 skills · 41 hooks on disk / 42 registered · 12 agents · 3 scheduled tasks. Architecture documented in `~/.claude/HARNESS.md`. Token optimization is active via `env` settings.
 
-> **Last major update:** 2026-08-01 — Umsetzung `meta-proposal-2026-30` (IMP-110..122), 182 regression cases green. **Three findings turned out worse than reported:** the lock registry was not leaking but *self-blocking* (a claim denied the file to its own subagent AND the orchestrator until TTL — write fan-outs were unusable, IMP-114); the ACK-token signature was computed over the *data-stripped* command, so two deletes with different quoted targets shared one signature and a token approved for A also authorized B (IMP-119); and `had_controller_step` alone would have been worthless because the compliant path exits the hook silently (IMP-116). **One reported finding was wrong:** `guard-unsafe.sh` never blocked `grep` — the four overrides were reflex prefixes, now logged as `OVERRIDE-UNNECESSARY` (IMP-118). Also: the weekly loop finally writes back (25 findings across 4 runs had produced 0 ledger entries, IMP-112), `zcat`→`gunzip -c` (BSD `zcat` read `.gz` as empty, hiding 1,286 signals, IMP-110), `agent_invocations` measured for the first time (IMP-115), loopback FPs removed from the web-fetch gate (46% of its log, IMP-117). Report: `plans/imp-triage-2026-08-01.md`. Previous: 2026-07-03 — Fable-5-Metareview (IMP-073..086): ledger backfilled + honest computed metrics, gate regression suite (28 cases) + rm-as-data FP fix, measurement loop closed (verification blocks, /meta --verify operational, staleness escalation), MCP agency gate (`mcp-agency-gate.sh`), rules diet (gate+arbiter → `agency-bands`; 4 micro-rules → `release-cli-discipline`; 4 conditional rules demoted to on-demand skills, ~9K tokens/session saved), model-era refresh (Claude-5 family, window-relative context thresholds), worktree discipline (IMP-070/072), R.Code versioning + `/rcode-upgrade`, drift/restore/retention scripts. Report: `plans/meta-proposal-2026-07-03-fable5-metareview.md`. Previous: 2026-05-27 KB-driven Migration v3.
+> **Last major update:** 2026-08-01 — implementation of `meta-proposal-2026-30` (IMP-110..122), 182 regression cases green. **Three findings turned out worse than reported:** the lock registry was not leaking but *self-blocking* (a claim denied the file to its own subagent AND the orchestrator until TTL — write fan-outs were unusable, IMP-114); the ACK-token signature was computed over the *data-stripped* command, so two deletes with different quoted targets shared one signature and a token approved for A also authorized B (IMP-119); and `had_controller_step` alone would have been worthless because the compliant path exits the hook silently (IMP-116). **One reported finding was wrong:** `guard-unsafe.sh` never blocked `grep` — the four overrides were reflex prefixes, now logged as `OVERRIDE-UNNECESSARY` (IMP-118). Also: the weekly loop finally writes back (25 findings across 4 runs had produced 0 ledger entries, IMP-112), `zcat`→`gunzip -c` (BSD `zcat` read `.gz` as empty, hiding 1,286 signals, IMP-110), `agent_invocations` measured for the first time (IMP-115), loopback FPs removed from the web-fetch gate (46% of its log, IMP-117). Report: `plans/imp-triage-2026-08-01.md`. Previous: 2026-07-03 — Fable-5-Metareview (IMP-073..086): ledger backfilled + honest computed metrics, gate regression suite (28 cases) + rm-as-data FP fix, measurement loop closed (verification blocks, /meta --verify operational, staleness escalation), MCP agency gate (`mcp-agency-gate.sh`), rules diet (gate+arbiter → `agency-bands`; 4 micro-rules → `release-cli-discipline`; 4 conditional rules demoted to on-demand skills, ~9K tokens/session saved), model-era refresh (Claude-5 family, window-relative context thresholds), worktree discipline (IMP-070/072), R.Code versioning + `/rcode-upgrade`, drift/restore/retention scripts. Report: `plans/meta-proposal-2026-07-03-fable5-metareview.md`. Previous: 2026-05-27 KB-driven Migration v3.
 
-### Zwei Orte: Bauhof und bewohntes Haus (NEU 2026-08-04)
+### Two locations: workshop and live install (NEW 2026-08-04)
 
-Dieses Repo existiert an **zwei** Stellen. Wer das nicht weiß, editiert am
-falschen Ort und wundert sich, warum Änderungen verschwinden oder sofort
-scharf sind.
+This repo exists in **two** places. Whoever doesn't know that edits in the
+wrong location and wonders why changes vanish or take effect immediately.
 
-| Ort | Rolle | Pfad |
+| Location | Role | Path |
 |---|---|---|
-| **Bauhof** (Arbeitskopie) | Hier wird entwickelt, geprüft, committet. Nichts wirkt live. | `<BAUHOF>` (siehe `CLAUDE.md`) |
-| **Haus** (Installation) | Was Claude Code tatsächlich liest. Empfängt nur fertige Übergaben. | `~/.claude` |
+| **Workshop** (working copy) | Development, testing, and commits happen here. Nothing here is live. | `<BAUHOF>` (see `CLAUDE.md`) |
+| **Live install** (installation) | What Claude Code actually reads. Receives only finished deploys. | `~/.claude` |
 
-Remotes: Der Bauhof hat `origin` (GitHub) und `live` (→ `~/.claude`);
-das Haus hat `origin` (GitHub) und `workshop` (→ Bauhof).
+Remotes: the workshop has `origin` (GitHub) and `live` (→ `~/.claude`);
+the live install has `origin` (GitHub) and `workshop` (→ the workshop).
 
-**Übergabe:** `claude-deploy [config|cockpit|all]` — verweigert die Arbeit,
-wenn der Bauhof uneingecheckte Änderungen hat, und macht ausschließlich
-Fast-Forward. Wirksam ab der **nächsten** Sitzung.
+**Deploy:** `claude-deploy [config|cockpit|all]` — refuses to run if the
+workshop has uncommitted changes, and only ever fast-forwards. Takes effect
+starting with the **next** session.
 
-**Laufzeitpräferenzen (IMP-127, 2026-08-04):** Zwei Dinge schreibt Claude Code
-im Betrieb selbst ins Haus und ließ damit früher jede Übergabe scheitern —
-`model`/`effortLevel` in `settings.json` (über `/model`, `/config`) und den
-Plugin-Zustand unter `plugins/`. Ersteres wird bei der Übergabe in den Bauhof
-**zurückgezogen** und dort als eigener Commit verbucht (das Haus behält den
-Wert), Letzteres ist nicht mehr versioniert. Weicht das Haus in einer *anderen*
-verfolgten Datei oder einem nicht gelisteten Schlüssel ab, bricht die Übergabe
-weiterhin ab — das ist der Fall „von Hand am bewohnten Haus gearbeitet", und der
-soll auffallen. Liste + Begründung: `RUNTIME_KEYS_JSON` in
-`scripts/deploy-to-live.sh`, Regression: `scripts/tests/deploy-regression.sh`
-(49 Fälle, Stand 2026-09-09 — seit IMP-205 generiert: `framework-inventory.sh --json | jq .test_suites`).
-Seit 2026-09-09 gehört auch `modelSettings` (Aufwandsstufe je Modell, geschrieben von
-`/model` + `/effort`) zu den Laufzeitschlüsseln — die Übergabe brach am 09.09. genau daran ab (IMP-194).
+**Runtime preferences (IMP-127, 2026-08-04):** two things are written into
+the live install by Claude Code itself at runtime, and used to make every
+deploy fail because of it — `model`/`effortLevel` in `settings.json` (via
+`/model`, `/config`) and the plugin state under `plugins/`. The former is
+**pulled back** into the workshop during the deploy and recorded there as
+its own commit (the live install keeps the value); the latter is no longer
+versioned at all. If the live install diverges in *any other* tracked file
+or in a key that isn't listed, the deploy still aborts — that's the "someone
+worked on the live install by hand" case, and it's meant to stand out.
+List + rationale: `RUNTIME_KEYS_JSON` in `scripts/deploy-to-live.sh`,
+regression: `scripts/tests/deploy-regression.sh` (49 cases, as of
+2026-09-09 — generated since IMP-205:
+`framework-inventory.sh --json | jq .test_suites`). Since 2026-09-09,
+`modelSettings` (per-model effort level, written by `/model` + `/effort`)
+is also one of the runtime keys — the deploy failed on exactly this on
+09-09 (IMP-194).
 
-> **Sackgasse (IMP-128, abgeräumt 2026-08-04):** Eine `~/.claude/settings.local.json`
-> löst das nicht — auf **Nutzerebene** liest Claude Code diese Datei nicht (die lokale
-> Ebene existiert nur pro Projekt). Nachgemessen: die dort stehende
-> `NOTION_PARENT_PAGE_ID` ist in der Sitzungsumgebung nicht gesetzt, während der zweite
-> Wert derselben Datei nachweislich aus `~/.zshrc` kommt. Die Vorlage
-> `templates/settings.local.json.template` ist entfernt, `README.md`,
-> `skills/kokonutui-pro`, `agents/documentation-agent`, `docs/RETENTION-POLICY`,
-> `scripts/restore-drill.sh` und das öffentliche Handbuch sind korrigiert.
+> **Dead end (IMP-128, cleared up 2026-08-04):** a `~/.claude/settings.local.json`
+> does not solve this — at the **user level**, Claude Code does not read this
+> file (the local level only exists per project). Verified by measurement:
+> the `NOTION_PARENT_PAGE_ID` entered there is not set in the session
+> environment, while the second value in the same file demonstrably comes
+> from `~/.zshrc`. The template `templates/settings.local.json.template` has
+> been removed; `README.md`, `skills/kokonutui-pro`,
+> `agents/documentation-agent`, `docs/RETENTION-POLICY`,
+> `scripts/restore-drill.sh`, and the public handbook are corrected.
 >
-> **Wo Werte stattdessen hingehören:** Umgebungswerte für Claudes Werkzeuge in die
-> Shell (`~/.zshrc`) — nur dieser Weg ist belegt. Werte, die auch ohne Shell-Profil
-> ankommen müssen, in den `env`-Block von `settings.json` — **niemals Geheimnisse**,
-> diese Datei ist öffentlich. Maschinenstabile, nicht geheime Werte gehören in die
-> Spec, die sie braucht (so gelöst für den Logbuch-Pfad und seit 2026-08-04 auch für
-> die Notion-Seite der `daily-docs`-Routine).
+> **Where values belong instead:** environment values for Claude's tools go
+> into the shell (`~/.zshrc`) — this is the only path proven to work.
+> Values that also need to arrive without a shell profile go into the `env`
+> block of `settings.json` — **never secrets**, this file is public.
+> Machine-stable, non-secret values belong in the spec that needs them (this
+> is how it's solved for the log-file path, and since 2026-08-04 also for
+> the Notion page of the `daily-docs` routine).
 
-**Warum getrennt:** Eine Änderung an einem Hook oder einer Regel in
-`~/.claude` gilt beim nächsten Werkzeugaufruf **derselben** Sitzung — man
-saniert die Elektrik bei anliegendem Strom. Der Bauhof entkoppelt das.
-**Warum das Haus trotzdem vollständig bleibt** (kein Symlink auf die SSD):
-Die SSD ist ein externes Laufwerk. Hinge `~/.claude` daran, startete Claude
-Code ohne eingehängtes Laufwerk **ganz ohne Konfiguration** — kein Regelwerk,
-keine Hooks, keine Berechtigungen.
+**Why they're separate:** a change to a hook or a rule in `~/.claude`
+applies at the next tool call of the **same** session — it's like rewiring
+the electrics while the power is still on. The workshop decouples this.
+**Why the live install stays complete anyway** (no symlink onto the SSD):
+the SSD is an external drive. If `~/.claude` depended on it, Claude Code
+would start with **no configuration at all** whenever the drive isn't
+mounted — no rules, no hooks, no permissions.
 
-**Laufzeitdaten** (`projects/`, `sessions/`, `history.jsonl`, Caches) leben
-ausschließlich im Haus und sind nicht versioniert — der Bauhof kennt sie nicht.
+**Runtime data** (`projects/`, `sessions/`, `history.jsonl`, caches) lives
+exclusively in the live install and is not versioned — the workshop knows
+nothing of it.
 
-Gleiches Muster für das **Cockpit** (Dashboard): Quelle im
-Bauhof-Geschwisterordner `…/cockpit`, installierte Kopie in `~/.claude/cockpit` (dorthin
-zeigen 7 Hook-Einträge und die Statuszeile — ein PreToolUse-Hook, der ins
-Leere greift, kann Werkzeugaufrufe blockieren, deshalb muss die Kopie lokal
-und vollständig sein).
+The same pattern applies to the **Cockpit** (dashboard): source in the
+workshop's sibling directory `…/cockpit`, installed copy at
+`~/.claude/cockpit` (7 hook entries and the status line point there — a
+PreToolUse hook that reaches into nothing can block tool calls, so the copy
+must be local and complete).
 
 ### Auto-Loaded Rules (always in context)
 
@@ -104,11 +109,11 @@ und vollständig sein).
 | **docs-first-integration** | **Fetch library docs (Context7) BEFORE writing integration code**, not after deploy failures (NEW 2026-05-28, merge-intake) |
 | **recommend-on-ask** | **Lead every question / option-set with a concrete recommendation + one-line WHY** (NEW 2026-06-20, IMP-053) |
 | **web-research-trust** | **Standing-allow for web fetch/search/scrape** — no per-URL prompt; pause+ask ONLY when ≥10% malicious-content probability (or the deterministic gate flags it). NEW 2026-07-09, IMP-088 |
-| **domain-docs-convention** | **CONTEXT.md-Glossar pro Projekt** (Begriff prägen ab 3. Umschreibung; Code-Namen folgen dem Glossar) **+ atomare ADRs** in `docs/adr/` (eine Entscheidung pro Datei, unveränderlich, superseded-by statt Edit). Adaptiert aus mattpocock/skills, MIT (NEW 2026-08-03, IMP-124) |
+| **domain-docs-convention** | **Per-project CONTEXT.md glossary** (coin a term from the 3rd paraphrase onward; code names follow the glossary) **+ atomic ADRs** in `docs/adr/` (one decision per file, immutable, superseded-by instead of edited). Adapted from mattpocock/skills, MIT (NEW 2026-08-03, IMP-124) |
 
 > **Demoted to on-demand skills (IMP-079, 2026-07-03):** `legacy-codebase-audit`, `rcode-ios`, `framework-extraction`, `kokonutui-pro` (+ component index) — their headers were already trigger specs; they now load only when their topics come up (~5.8K tokens/session saved).
 >
-> **Removed from this table (2026-09-23, "Plan folgt Praxis"):** `phase-backward-transitions` — the backward-jump protocol it documented now lives at `~/.claude/rcode/stages/backward-transitions.md` and is read by the R.Code stage playbooks when a backward jump is considered, not loaded into every session of every project. See `docs/adr/0002-rcode-plan-folgt-praxis.md`.
+> **Removed from this table (2026-09-23, "Plan folgt Praxis"):** `phase-backward-transitions` — the backward-jump protocol it documented now lives at `~/.claude/rcode/stages/backward-transitions.md` and is read by the R.Code stage playbooks when a backward jump is considered, not loaded into every session of every project. See `docs/adr/0002-rcode-plan-follows-practice.md`.
 
 ### Agents (Task tool — heavy implementation)
 
@@ -253,26 +258,31 @@ Pipeline details in IMP-009 of `~/.claude/global-observation/improvement-ledger.
 
 **Authoritative definitions:** `~/.claude/scheduled-tasks/<task>/SKILL.md` — the scheduler reads the SKILL.md as prompt at fire time (editing the file updates the task, no re-registration). **Runtime state** (schedule/enabled/lastRunAt): `mcp__scheduled-tasks__list_scheduled_tasks` / `/schedule` skill. The old `routines/*.yaml` templates were REMOVED 2026-07-03 — they were a stale second source of truth (nightly said "disabled" while running nightly).
 
-**Zeitgeber-Mechanismus (seit 2026-08-22, IMP-135; Label generisch seit IMP-219, 2026-09-25):** lokale `launchd`-Timer, gebunden an `~/.claude` (nicht an ein Bauhof-relatives oder Cloud-cwd) — Vorlagen unter `scripts/launchd/routine-<task>.plist.template` (Platzhalter `__HOME__`/`__LABEL__`), Läufer `scripts/routine-run.sh <task> [--dry-run]`, Installer `scripts/install-routine-timers.sh` rendert sie zum generischen Label `com.claude-code.routine-<task>` und entlädt bei Bedarf das alte, benutzergebundene Label `com.<user>.claude-routine-<task>` (idempotent, prüft vor der Installation, dass `routine-run.sh` bereits in `~/.claude/scripts/` liegt, `--uninstall` zum Rückbau). Löst die bis 2026-08-02 gültige unversionierte Cloud-Bindung an ein cwd ab, das eine Reorganisation umbenannte — 20 Tage stiller Ausfall ohne jedes Signal. Wachhund gegen einen erneuten stillen Tod: Liveness-Sweep im Quartals-Audit plus ein von der Routine selbst entkoppelter session-end-Alarm (IMP-138, umgesetzt 2026-08-22 — `session-end-check.sh` alarmiert allein auf `DAYS_STALE` und nennt das Alter des neuesten Shards; Regression `hooks/tests/session-end-staleness-regression.sh`, 15 Fälle seit IMP-164).
+**Timer mechanism (since 2026-08-22, IMP-135; label made generic since IMP-219, 2026-09-25):** local `launchd` timers, bound to `~/.claude` (not to a workshop-relative or cloud cwd) — templates under `scripts/launchd/routine-<task>.plist.template` (placeholders `__HOME__`/`__LABEL__`), runner `scripts/routine-run.sh <task> [--dry-run]`, installer `scripts/install-routine-timers.sh` renders them to the generic label `com.claude-code.routine-<task>` and unloads the old, user-bound label `com.<user>.claude-routine-<task>` if present (idempotent, checks before installing that `routine-run.sh` already sits in `~/.claude/scripts/`, `--uninstall` to remove). Replaces the unversioned cloud binding to a cwd, valid until 2026-08-02, that a reorganization renamed — 20 days of silent failure with no signal at all. Watchdog against a repeat silent death: a liveness sweep in the quarterly audit plus a session-end alarm decoupled from the routine itself (IMP-138, implemented 2026-08-22 — `session-end-check.sh` alarms purely on `DAYS_STALE` and names the age of the newest shard; regression `hooks/tests/session-end-staleness-regression.sh`, 15 cases since IMP-164).
 
-**Startfehler des Läufers (IMP-189, gefunden und behoben 2026-09-09):** Der am 22.08. ausgelieferte
-Läufer hatte bis zum 09.09. **keinen einzigen** erfolgreichen Lauf — 39 Fehlläufe (nightly 18, daily 18,
-weekly 3), alle `runner: claude exited 1`. Ursache: `routine-run.sh` übergab die SKILL.md als Argument
-hinter `-p`; deren erste Zeile `---` las der Optionsparser von `claude` 2.1.266 als unbekannte Option
-(`error: unknown option '---`). `--dry-run` ruft `claude` nie auf und konnte das strukturell nicht sehen
-(IMP-190, `proposed`). Fix c165871: Prompt über stdin (`< SKILL.md`), Regression
-`scripts/tests/routine-run-regression.sh` (9 Prüfungen, Fall D gegen die echte Binary). Erste ok-Zeile
-der Nachtroutine 2026-09-09 10:37 nach manuellem Start (3.262 Signale rotiert, 15 Shards und 15
-Metrik-Tageszeilen nachgeholt); die launchd-**Umgebung** gilt erst mit dem Zeitgeber-Lauf 2026-09-10
-02:05 als bewiesen. **Die IMP-138-Alarmzeile stand während des gesamten Ausfalls in jedem Sitzungsende
-(Zähler > 240) und blieb unbeachtet** — ein Wachhund am Sitzungs*anfang*, der die Routine-Logs selbst
-liest, ist IMP-191/192 (`proposed`). Bericht: `plans/meta-proposal-2026-09-09-improvement-run.md`.
+**Runner startup failure (IMP-189, found and fixed 2026-09-09):** the runner
+shipped on 08-22 had **not one single** successful run through 09-09 — 39
+failed runs (nightly 18, daily 18, weekly 3), all `runner: claude exited 1`.
+Cause: `routine-run.sh` passed the SKILL.md as the argument after `-p`;
+its first line, `---`, was read by `claude` 2.1.266's option parser as an
+unknown option (`error: unknown option '---`). `--dry-run` never calls
+`claude` and structurally could not see this (IMP-190, `proposed`). Fix
+c165871: pass the prompt via stdin (`< SKILL.md`), regression
+`scripts/tests/routine-run-regression.sh` (9 checks, case D against the
+real binary). First ok line for the nightly routine: 2026-09-09 10:37 after
+a manual start (3,262 signals rotated, 15 shards and 15 metric day-lines
+caught up); the launchd **environment** itself counts as proven only once
+the timer-fired run of 2026-09-10 02:05 succeeds. **The IMP-138 alarm line
+sat in every session end for the entire outage (counter > 240) and went
+unheeded** — a watchdog at session *start* that reads the routine logs
+itself is IMP-191/192 (`proposed`). Report:
+`plans/meta-proposal-2026-09-09-improvement-run.md`.
 
 | Task | Schedule | Status | Run log (mandatory since IMP-075) |
 |------|----------|--------|-----------------------------------|
-| daily-docs | 07:10 daily | ⚠️ erster Lauf mit repariertem Läufer 2026-09-10 07:10 ausstehend — 18 Fehlläufe 23.08.–09.09. (IMP-189). **Ursache des stillen Notion-Ausfalls behoben 2026-08-04 (IMP-128):** die Parent-Page steht jetzt in `scheduled-tasks/daily-docs/SKILL.md` §B, vorher in `NOTION_PARENT_PAGE_ID` — einer Variable, die nie gesetzt war, weil sie in der nicht gelesenen `settings.local.json` stand. Der Schritt meldet jetzt `partial` **mit Grund** statt still zu überspringen. **Wirkung noch unbewiesen** — die Routine hat den Notion-Schritt seit dem 04.08. wegen IMP-189 nie erreicht. | `daily-docs-log.jsonl` |
-| nightly-observation | 02:05 daily | ✅ ok-Zeile 2026-09-09 10:37 (erste seit 2026-08-02, nach 18 Fehlläufen — IMP-189; manuell gestartet, Zeitgeber-Lauf 2026-09-10 02:05 ausstehend). Step 2 delegated to `compute-daily-metrics.sh`; Step 2b trims the dispatch meter (IMP-115) | `nightly-obs-log.jsonl` |
-| weekly-improve | Sunday 22:06 | ⚠️ nächster Lauf So 2026-09-13 22:06 — 3 Fehlläufe (23.08., 30.08., 06.09., IMP-189), letzter ok-Lauf 2026-07-27. data paths FIXED 2026-07-03; **`zcat`→`gunzip -c` FIXED 2026-08-01 (IMP-110)** — BSD `zcat` read every `.gz` shard as empty with exit 0, so the 2026-07-26 run analysed 1,286 invisible signals; **ledger write-back now mandatory (IMP-112)** | `weekly-improve-log.jsonl` |
+| daily-docs | 07:10 daily | ⚠️ first run with the repaired runner pending for 2026-09-10 07:10 — 18 failed runs 08-23–09-09 (IMP-189). **Cause of the silent Notion outage fixed 2026-08-04 (IMP-128):** the parent page now sits in `scheduled-tasks/daily-docs/SKILL.md` §B, previously in `NOTION_PARENT_PAGE_ID` — a variable that was never set, because it sat in the unread `settings.local.json`. The step now reports `partial` **with a reason** instead of silently skipping. **Effect still unproven** — the routine has never reached the Notion step since 08-04, due to IMP-189. | `daily-docs-log.jsonl` |
+| nightly-observation | 02:05 daily | ✅ ok line 2026-09-09 10:37 (first since 2026-08-02, after 18 failed runs — IMP-189; started manually, timer-fired run 2026-09-10 02:05 pending). Step 2 delegated to `compute-daily-metrics.sh`; Step 2b trims the dispatch meter (IMP-115) | `nightly-obs-log.jsonl` |
+| weekly-improve | Sunday 22:06 | ⚠️ next run Sun 2026-09-13 22:06 — 3 failed runs (08-23, 08-30, 09-06, IMP-189), last ok run 2026-07-27. data paths FIXED 2026-07-03; **`zcat`→`gunzip -c` FIXED 2026-08-01 (IMP-110)** — BSD `zcat` read every `.gz` shard as empty with exit 0, so the 2026-07-26 run analysed 1,286 invisible signals; **ledger write-back now mandatory (IMP-112)** | `weekly-improve-log.jsonl` |
 
 A task run that leaves no log line is indistinguishable from one that never fired (fail-loud applies to routines too).
 
@@ -298,7 +308,7 @@ units, and dispatches right-sized workers.
 forced) — kept as doors because the user types their names as keywords, not because practice runs
 through them: across 471 main transcripts, `/team-lead` was invoked **67×** (16 projects) against
 **0×** for the five Stage-forced aliases combined (measured 2026-09-23; evidence + rationale in
-`docs/adr/0002-rcode-plan-folgt-praxis.md`).
+`docs/adr/0002-rcode-plan-follows-practice.md`).
 
 | Command | Stage |
 |---------|-------|
@@ -353,7 +363,7 @@ as `P-NNN` — GitHub used to be a hard prerequisite everywhere, which those 2 c
 | /lessons | Extract reusable patterns from completed work |
 | /simple-onboard | Fast generic onboarding (any repo) + R.Code-suitability verdict; offers migration — GitHub is no longer required |
 | /rcode-migrate | Adopt an existing codebase into R.Code (reverse of /brainstorm + /decompose); missing issue tracker is no longer a hard blocker |
-| /rcode-upgrade | Upgrade a deployed project's rails to the current framework version — three-way rule diff, per-file y/n, never clobbers customized rules; commits the applied rail update after one explicit y/n (NEW 2026-07-03, IMP-085; commit behavior changed 2026-09-23 — see `docs/adr/0002-rcode-plan-folgt-praxis.md`) |
+| /rcode-upgrade | Upgrade a deployed project's rails to the current framework version — three-way rule diff, per-file y/n, never clobbers customized rules; commits the applied rail update after one explicit y/n (NEW 2026-07-03, IMP-085; commit behavior changed 2026-09-23 — see `docs/adr/0002-rcode-plan-follows-practice.md`) |
 | /rcode-review | R.Code-scoped review command — tracker-aware (GitHub PR, or a local diff against trunk in plan mode). The only review command in R.Code — `/review` never existed |
 | /continue | Resume an interrupted task — reads PROJECT-STATUS.md + agent-log + git state, determines the in-progress work unit and Step, resumes from there; non-R.Code fallback (NEW 2026-06-21, IMP-068) |
 | /autonomous-overnight | Run a bounded unattended work session — queues irreversible (ESCALATE) ops rather than auto-approving them; writes overnight-report.md + escalation-queue.md (NEW 2026-06-21, IMP-069) |
@@ -381,7 +391,7 @@ R.Code rails (rules for commits, scope, workflow) are installed per-project by `
 | prototype | "prototype", "spike", "wegwerf-prototyp", "varianten bauen" | forked |
 | resolving-merge-conflicts | merge/rebase conflicts, "merge-konflikt", "konflikt auflösen" | main |
 
-> **Adoptiert 2026-08-03 aus [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, IMP-124..126):** die 3 Skills oben, die Regel `domain-docs-convention` (CONTEXT.md + ADRs), die Fowler-Smell-Baseline im `code-reviewer-agent` (Step 4b — trägt automatisch in alle 6 `quality-review`-Spezialisten, IMP-125), und der Rollout von `disable-model-invocation: true` auf die nutzergetakteten Analyse-Skills `historical-signals`/`historical-signals-v2` (IMP-126 — damit tragen es 5 Skills; `meta-observer` und `migrate-to-skills` hatten es unbemerkt schon seit 2026-05-27, und die weekly-improve-Routine läuft nachweislich trotzdem: ok-Läufe 12./20./27.07. mit 4/6/11 Findings — die geplante Session liest die SKILL.md als Datei, nicht über den gesperrten Aufrufweg).
+> **Adopted 2026-08-03 from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, IMP-124..126):** the 3 skills above, the `domain-docs-convention` rule (CONTEXT.md + ADRs), the Fowler-smell baseline in `code-reviewer-agent` (Step 4b — automatically carries into all 6 `quality-review` specialists, IMP-125), and the rollout of `disable-model-invocation: true` to the user-scheduled analysis skills `historical-signals`/`historical-signals-v2` (IMP-126 — bringing the total to 5 skills carrying it; `meta-observer` and `migrate-to-skills` had it unnoticed since 2026-05-27 already, and the weekly-improve routine demonstrably still runs regardless: ok runs on 07-12/07-20/07-27 with 4/6/11 findings — the scheduled session reads the SKILL.md as a file, not via the gated invocation path).
 
 ### Background Skills (auto-trigger only, hidden from menu)
 

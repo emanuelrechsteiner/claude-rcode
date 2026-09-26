@@ -590,9 +590,9 @@ if [[ "$HAVE_VAULT" -eq 0 ]]; then
     echo "  before publishing." >&2
     exit 1
   fi
-  echo "  kein Tresor vorhanden — Pruefung uebersprungen (erwartet ausserhalb der"
-  echo "  privaten Maschine dieses Betreuers; oeffentliche CI laeuft normal weiter."
-  echo "  Lokal pruefen mit: scripts/scrub-check.sh --require-pseudonym-list)"
+  echo "  no vault present — check skipped (expected outside this maintainer's"
+  echo "  private machine; public CI continues normally."
+  echo "  Check locally with: scripts/scrub-check.sh --require-pseudonym-list)"
 else
   _mirror_count=$(awk -F'\t' '$4=="private-layer"{c++} END{print c+0}' "$(vault_map_file)")
   if [[ "$REQUIRE_PSEUDONYM_LIST" -eq 1 && "$_mirror_count" -eq 0 ]]; then

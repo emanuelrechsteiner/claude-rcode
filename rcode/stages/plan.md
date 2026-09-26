@@ -32,7 +32,7 @@ never copy it into this turn's context.
 
 ## Stage nuance (backward transitions)
 
-Full protocol (both jump classes, Futilitätsnachweis, circuit breaker,
+Full protocol (both jump classes, futility proof, circuit breaker,
 re-entry brief, invalidation) is defined once in
 `~/.claude/rcode/stages/backward-transitions.md` — read it, don't re-derive
 it here.

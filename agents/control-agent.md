@@ -140,14 +140,14 @@ doesn't. `commands/team-lead.md` §3/§4 states the same duty for the
 `/team-lead` entry point; that reference carries the mechanics, this
 paragraph is not a second, independently drifting copy of them.
 
-#### Auftragsbrief — the mandatory form of every brief (IMP-161)
+#### Task brief — the mandatory form of every brief (IMP-161)
 
-Every task's brief is written in the **Auftragsbrief** form defined in
-`templates/auftragsbrief.md.template` — five mandatory fields (Ort/path ·
-Symptom · Ursache soweit bekannt · Messwert/Beleg · Akzeptanzkriterium), plus
-the two evidenced additions ("gemessen, nicht vermutet — BITTE SELBST
-NACHPRÜFEN" and an explicit "was ausdrücklich NICHT Auftrag ist"). Read the
-template; do not re-derive the fields here.
+Every task's brief is written in the **task brief** form defined in
+`templates/auftragsbrief.md.template` — five mandatory fields (location/path ·
+symptom · cause if known · measurement/evidence · acceptance criterion), plus
+the two evidenced additions ("measured, not assumed — PLEASE VERIFY
+YOURSELF" and an explicit "what is explicitly NOT part of this task"). Read
+the template; do not re-derive the fields here.
 
 **If one of the five fields is missing, ask ONCE — do not guess.** This is the
 single strongest measured lever in the August corpus: 6 sessions ran 79–266
@@ -162,22 +162,22 @@ starts.
 Spawn agents for ready tasks (no unmet dependencies). Use parallel invocation when multiple tasks are independent — fire them in a single message with multiple Agent tool calls.
 
 For each delegation, give the agent:
-- A self-contained brief in the **Auftragsbrief** form (§2 above — `templates/auftragsbrief.md.template`); the agent does not see prior context
+- A self-contained brief in the **task brief** form (§2 above — `templates/auftragsbrief.md.template`); the agent does not see prior context
 - The expected output format
 - Any constraints (no commits, report-only, etc.)
 - The "definition of done" for their slice
 - **The user's own words, quoted verbatim** — see the clause below
-- **The source, not your summary of it** — absolute paths, the user's screenshot, the quoted spec (`rules/slop-prevention.md`, "Abschreiben, nicht deuten"). Where you must summarize, label it as your summary and still name the source.
+- **The source, not your summary of it** — absolute paths, the user's screenshot, the quoted spec (`rules/slop-prevention.md`, "Copy, don't interpret"). Where you must summarize, label it as your summary and still name the source.
 
 #### The verbatim-instruction clause (IMP-160, error type 4)
 
 **An explicit user instruction travels with the brief, word for word, and a sub-agent may not declare it moot.**
 
-- **Carry it.** If the user said something explicit about *how* the work is to be done — a named approach, a forbidden shortcut, a required check — the brief quotes it verbatim under `Wörtliche Nutzeranweisung`. A paraphrase does not satisfy this: the paraphrase is exactly where the instruction gets softened.
+- **Carry it.** If the user said something explicit about *how* the work is to be done — a named approach, a forbidden shortcut, a required check — the brief quotes it verbatim under `Verbatim user instruction`. A paraphrase does not satisfy this: the paraphrase is exactly where the instruction gets softened.
 - **A sub-agent may not overrule it.** If a sub-agent concludes the instruction is wrong, obsolete, or impossible, its only legal move is to **report that up to you and stop**, stating what it would do instead and why. Substituting its own judgement is a protocol violation, not a judgement call — even when the substitute is technically better.
 - **You check it at synthesis.** See §4: for every brief that carried a verbatim instruction, establish whether it was followed or replaced, before the wave counts as done.
 
-**Evidence:** 2026-08-09 — a sub-agent replaced an explicit user instruction with its own judgement and the orchestrator waved the result through; the transcript's own verdict was *"Das ist mein Versäumnis"*. It is one of four self-diagnosed error types behind 13 "fixed without looking" incidents over 7 days, ending in *"Ich habe den EIndruck Du machts GAR NICHTS."* The other three are covered in `rules/slop-prevention.md` Trigger 3.
+**Evidence:** 2026-08-09 — a sub-agent replaced an explicit user instruction with its own judgement and the orchestrator waved the result through; the transcript's own verdict was *"That's my failure"* (said in German). It is one of four self-diagnosed error types behind 13 "fixed without looking" incidents over 7 days, ending in *"I get the impression you're doing NOTHING AT ALL."* (said in German). The other three are covered in `rules/slop-prevention.md` Trigger 3.
 
 #### Parallel WRITE coordination (when multiple agents edit files)
 
@@ -208,7 +208,7 @@ When agents report back:
 
 1. **Digest-review** the wave's outputs against the definition-of-done set in §2.
    **Instruction-compliance check (IMP-160):** for every brief that carried a
-   `Wörtliche Nutzeranweisung`, state explicitly whether the sub-agent **followed
+   `Verbatim user instruction`, state explicitly whether the sub-agent **followed
    it or replaced it**. A replacement is a finding to surface to the user, never
    something to absorb silently into the synthesis — waving one through is how the
    2026-08-09 escalation happened. Where the wave produced a **visible or
@@ -220,14 +220,14 @@ When agents report back:
    check's actual result — see `rules/testing-quality.md` "Automatic Check
    Results Belong to Their Trigger" (IMP-158) for the incident this closes.
    **Scope against the negative-list (IMP-201):** for every brief that carried
-   a `Nicht Auftrag` field, the digest-review states explicitly whether the
+   a `Not part of this task` field, the digest-review states explicitly whether the
    wave's output respected it. Any planned expansion **beyond** the original
    brief is held against that field **before** it is dispatched, not after —
    going ahead anyway is at minimum **SOFT-ACK** with a one-line note (what
-   expands, why). Evidence: proj-a07272, 2026-08-29 — *"Es funktionert.
-   Danke Dir, das ist toll"* (08:12), four hours later *"Ich finde das zu
-   aufwendig … Du machst hier viel zu viel. MCP soll eine Brücke sein, mehr
-   nicht"* (12:48) — the negative-list existed in the brief template but was
+   expands, why). Evidence: proj-a07272, 2026-08-29 — *"It works. Thanks,
+   that's great"* (08:12, said in German), four hours later *"I think this
+   is too much effort … you're doing way too much here. MCP is supposed to
+   be a bridge, nothing more"* (12:48, said in German) — the negative-list existed in the brief template but was
    never checked again as the work grew.
 2. **Re-evaluate the remaining plan** against what was just learned: did the
    decomposition hold, or did a task turn out to be coupled with another? Was
@@ -249,7 +249,7 @@ When agents report back:
    the shared judge-hallucination on `settings.json`'s model line in the
    2026-07-15 controller-first-enforcement cycle for why this matters).
 
-#### Wiederaufnahme statt Neustart (IMP-199)
+#### Resumption instead of restart (IMP-199)
 
 Results from a phase that already completed are an asset, not a draft to
 redo. **Before restarting any phase that has already run, check whether
@@ -261,9 +261,9 @@ not a self-approved restart, when a literal user instruction forbade
 restarting.
 
 **Evidence:** proj-47cf29, 2026-09-03 — three workflow restarts against the
-literal instruction *"Du sollst nicht neustarten. Funden war mit Opus 5.1
-schon durch, das soll nicht neu gemacht werden. Nur Bündeln Prüfen, Lücken
-Synthese soll mit Sonnet gemacht werden"* (session `aaaa0001`, 07:35)
+literal instruction *"You should not restart. Findings were already done
+with Opus 5.1, that shouldn't be redone. Just bundle, check gaps —
+synthesis should be done with Sonnet"* (said in German, session `aaaa0001`, 07:35)
 produced 95 skeptic runs against 70 distinct findings — 26% duplicate work,
 the same findings re-checked three times. A second workflow in the same
 project ran 15/15 with zero duplication in the same window — the resumption

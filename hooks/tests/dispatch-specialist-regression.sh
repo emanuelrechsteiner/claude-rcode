@@ -129,7 +129,7 @@ assert_note "Begruendung Agentenwahl: (no umlaut), names a specialist" \
 echo "── Substance check (IMP-213): rationale WITHOUT a specialist name → ask ──"
 assert_ask_contains "boilerplate rationale, no name" \
   "$(json_cmd general-purpose $'do Z\nAGENTENWAHL: kein Spezialist deckt diese Aufgabe ab' dsr-6a)" \
-  "nennt keinen Fachagenten beim Namen"
+  "does not name a specialist agent"
 assert_note "built-in Explore counts as a nameable alternative" \
   "$(json_cmd general-purpose $'do W\nAGENTENWAHL: Explore wäre nah dran, darf aber nichts schreiben und hier wird geschrieben' dsr-6b)"
 
@@ -144,7 +144,7 @@ run_hook "$(esc_json $'c\nAGENTENWAHL: cleanup-agent passt nicht, es wird kein t
 ESC3_OUT="$OUT"; ESC3_RC=$RC
 if [ -z "$ESC1_OUT" ] && [ -z "$ESC2_OUT" ] \
    && printf '%s' "$ESC3_OUT" | grep -q '"permissionDecision": *"ask"' \
-   && printf '%s' "$ESC3_OUT" | grep -q 'Auftrag in dieser Sitzung'; then
+   && printf '%s' "$ESC3_OUT" | grep -q 'dispatch #.*in this session'; then
   PASS=$((PASS+1))
 else
   FAIL=$((FAIL+1))

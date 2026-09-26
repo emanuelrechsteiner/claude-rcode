@@ -2,14 +2,14 @@
 # routine-liveness-regression.sh — regression suite for
 # hooks/routine-liveness-check.sh (IMP-191, 2026-09-09).
 #
-# Anlass: 39 status:"error" Zeilen in den drei Routine-Logs (daily-docs 18,
-# nightly-observation 18, weekly-improve 3; 2026-08-23..09-09) hatten null
-# Leser. Diese Suite prueft den neuen SessionStart-Hook AUSSCHLIESSLICH gegen
-# ein Scratch-Verzeichnis (CLAUDE_ROUTINE_LOG_DIR) — sie liest/schreibt nie
-# unter ~/.claude/global-observation/.
+# Cause: 39 status:"error" lines across the three routine logs (daily-docs 18,
+# nightly-observation 18, weekly-improve 3; 2026-08-23..09-09) had zero
+# readers. This suite tests the new SessionStart hook EXCLUSIVELY against
+# a scratch directory (CLAUDE_ROUTINE_LOG_DIR) — it never reads/writes
+# under ~/.claude/global-observation/.
 #
 # Usage: bash hooks/tests/routine-liveness-regression.sh
-# Exit: 0 = alle Faelle bestanden, 1 = mindestens einer fehlgeschlagen.
+# Exit: 0 = all cases passed, 1 = at least one failed.
 
 set -uo pipefail
 
@@ -78,7 +78,7 @@ else
     bad "2 consecutive trailing errors: alarm fires with count=2" "no matching line in:
 $out"
 fi
-if printf '%s' "$out" | grep -q "Erster Fehlzeitpunkt der Serie"; then
+if printf '%s' "$out" | grep -q "First failure time of the streak"; then
     ok "2 consecutive trailing errors: names the first-error timestamp of the series"
 else
     bad "2 consecutive trailing errors: names the first-error timestamp" "no such phrase in:
@@ -130,7 +130,7 @@ rm -rf "$DIR5"
 DIR6=$(fresh_dir)
 printf '{"ts":%s,"status":"ok"}\n' "$(epoch_days_ago 5)" > "$DIR6/daily-docs-log.jsonl"
 out=$(run_hook "$DIR6")
-if printf '%s' "$out" | grep -q "hat seit .* Tag(en) gar nicht gefeuert" && printf '%s' "$out" | grep -q "48h"; then
+if printf '%s' "$out" | grep -q "has not fired at all in .* day(s)" && printf '%s' "$out" | grep -q "48h"; then
     ok "daily-cadence routine stale (5d, status ok): staleness warning names 48h tolerance"
 else
     bad "daily-cadence routine stale: staleness warning" "no matching line in:
@@ -148,7 +148,7 @@ rm -rf "$DIR6"
 DIR7=$(fresh_dir)
 printf '{"ts":%s,"status":"ok"}\n' "$(epoch_days_ago 10)" > "$DIR7/weekly-improve-log.jsonl"
 out=$(run_hook "$DIR7")
-if printf '%s' "$out" | grep -q "'weekly-improve' hat seit .* Tag(en) gar nicht gefeuert" && printf '%s' "$out" | grep -q "8 Tage"; then
+if printf '%s' "$out" | grep -q "'weekly-improve' has not fired at all in .* day(s)" && printf '%s' "$out" | grep -q "8 days"; then
     ok "weekly-improve stale at 10 days: staleness warning fires (8-day tolerance)"
 else
     bad "weekly-improve stale at 10 days: staleness warning fires" "no matching line in:
@@ -162,7 +162,7 @@ rm -rf "$DIR7"
 DIR8=$(fresh_dir)
 printf '{"ts":%s,"status":"ok"}\n' "$(epoch_days_ago 5)" > "$DIR8/weekly-improve-log.jsonl"
 out=$(run_hook "$DIR8")
-if printf '%s' "$out" | grep -q "gar nicht gefeuert"; then
+if printf '%s' "$out" | grep -q "has not fired at all"; then
     bad "weekly-improve at 5 days (within tolerance): stays silent" "unexpected staleness warning:
 $out"
 else

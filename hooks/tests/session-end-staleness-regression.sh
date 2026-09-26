@@ -11,7 +11,7 @@
 # names the frozen producer instead of leaving the reader to guess.
 #
 # Runs entirely inside an isolated fake $HOME + a scratch git repo — never
-# touches the real ~/.claude/global-observation. Per the Bauhof/Haus split,
+# touches the real ~/.claude/global-observation. Per the workshop/live-install split,
 # this suite always tests the WORKING COPY at hooks/session-end-check.sh in
 # this repo, not the installed ~/.claude copy (override with CLAUDE_HOOK).
 #
@@ -183,9 +183,9 @@ run_repeat_case() {  # $1 = watermark_days_ago ("" = delete watermark / resolved
     (cd "$REPO_R" && HOME="$FAKE_HOME_R" bash "$HOOK" </dev/null 2>&1)
 }
 
-# ── Run 1: 8 days stale (1st occurrence) — plain Hinweis, no ESKALATION form. ──
+# ── Run 1: 8 days stale (1st occurrence) — plain notice, no ESCALATION form. ──
 out=$(run_repeat_case 8)
-if printf '%s' "$out" | grep -q "OBSERVATION LOOP STALLED" && ! printf '%s' "$out" | grep -q "ESKALATION"; then
+if printf '%s' "$out" | grep -q "OBSERVATION LOOP STALLED" && ! printf '%s' "$out" | grep -q "ESCALATION"; then
     ok "1st occurrence: informational form, no escalation"
 else
     bad "1st occurrence: informational form, no escalation" "$out"
@@ -193,7 +193,7 @@ fi
 
 # ── Run 2: still stale (9d) — 2nd consecutive occurrence, still informational. ──
 out=$(run_repeat_case 9)
-if printf '%s' "$out" | grep -q "OBSERVATION LOOP STALLED" && ! printf '%s' "$out" | grep -q "ESKALATION"; then
+if printf '%s' "$out" | grep -q "OBSERVATION LOOP STALLED" && ! printf '%s' "$out" | grep -q "ESCALATION"; then
     ok "2nd consecutive occurrence: still informational (escalation starts at 3rd)"
 else
     bad "2nd consecutive occurrence: still informational" "$out"
@@ -201,7 +201,7 @@ fi
 
 # ── Run 3: still stale (10d) — 3rd consecutive occurrence -> ESCALATION form. ──
 out=$(run_repeat_case 10)
-if printf '%s' "$out" | grep -q "ESKALATION"; then
+if printf '%s' "$out" | grep -q "ESCALATION"; then
     ok "3rd consecutive (identical-class) occurrence: escalates form"
 else
     bad "3rd consecutive occurrence: escalates form" "$out"
@@ -209,7 +209,7 @@ fi
 
 # ── Run 4: still stale (11d) — 4th: escalation persists, no ledger hint yet. ──
 out=$(run_repeat_case 11)
-if printf '%s' "$out" | grep -q "ESKALATION" && ! printf '%s' "$out" | grep -qi "Ledger-Eintrag"; then
+if printf '%s' "$out" | grep -q "ESCALATION" && ! printf '%s' "$out" | grep -qi "ledger entry"; then
     ok "4th consecutive occurrence: escalation without ledger hint yet"
 else
     bad "4th consecutive occurrence: escalation without ledger hint yet" "$out"
@@ -217,7 +217,7 @@ fi
 
 # ── Run 5: still stale (12d) — 5th: escalation + ledger-entry-due hint. ──
 out=$(run_repeat_case 12)
-if printf '%s' "$out" | grep -q "ESKALATION" && printf '%s' "$out" | grep -qi "Ledger-Eintrag"; then
+if printf '%s' "$out" | grep -q "ESCALATION" && printf '%s' "$out" | grep -qi "ledger entry"; then
     ok "5th consecutive occurrence: escalation + ledger-entry-due hint"
 else
     bad "5th consecutive occurrence: escalation + ledger-entry-due hint" "$out"
@@ -234,7 +234,7 @@ fi
 # ── Run 7: stale again (8d) — counter must have reset: informational again,
 #    NOT escalation. This is the "changed message resets the counter" case. ──
 out=$(run_repeat_case 8)
-if printf '%s' "$out" | grep -q "OBSERVATION LOOP STALLED" && ! printf '%s' "$out" | grep -q "ESKALATION"; then
+if printf '%s' "$out" | grep -q "OBSERVATION LOOP STALLED" && ! printf '%s' "$out" | grep -q "ESCALATION"; then
     ok "re-occurrence after resolution: counter reset, informational again"
 else
     bad "re-occurrence after resolution: counter reset, informational again" "$out"
@@ -248,7 +248,7 @@ echo "── session-end-check.sh IMP-192: cause-coupling + ledger write-back �
 # Fresh FAKE_HOME/OBS_DIR for this block, independent of the repeat block
 # above (a clean alarm-repeat counter is needed to drive REPEAT_N precisely
 # from 1 to 6). Uses the REAL scripts/ledger-append-proposed.sh from THIS
-# repo (Bauhof) — redirected to a SCRATCH ledger via CLAUDE_LEDGER_FILE, so
+# repo (the workshop) — redirected to a SCRATCH ledger via CLAUDE_LEDGER_FILE, so
 # this suite never touches the real ~/.claude/global-observation/
 # improvement-ledger.json, per the "no real logs/ledger" constraint.
 FAKE_HOME_C=$(mktemp -d "${TMPDIR:-/tmp}/session-end-imp192.XXXXXX")
@@ -279,7 +279,7 @@ run_case_c() {  # $1 = watermark_days_ago, $2 = nightly-obs-log last status ("" 
 #    status:"error" -> the alarm must name that as the CAUSE, not just
 #    repeat the DAYS_STALE/BACKLOG_SHARDS symptom. ──
 out=$(run_case_c 8 "error")
-if printf '%s' "$out" | grep -q "Ursache statt nur Symptom" && printf '%s' "$out" | grep -q "nightly-observation-Lauf selbst endete mit status:\"error\""; then
+if printf '%s' "$out" | grep -q "Cause instead of just symptom" && printf '%s' "$out" | grep -q "nightly-observation run itself ended with status:\"error\""; then
     ok "IMP-192 coupling: nightly-obs-log error is named as the likely cause"
 else
     bad "IMP-192 coupling: nightly-obs-log error is named as the likely cause" "$out"
@@ -294,7 +294,7 @@ fi
 out=$(run_case_c 9 "ok")
 out=$(run_case_c 10 "ok")
 out=$(run_case_c 11 "ok")
-if printf '%s' "$out" | grep -q "Ledger-Eintrag geschrieben"; then
+if printf '%s' "$out" | grep -q "Ledger entry written"; then
     bad "IMP-192 ledger: no write before the 5th occurrence" "unexpected write at 4th occurrence:
 $out"
 else
@@ -304,7 +304,7 @@ fi
 # ── C5 (5th occurrence): the ledger write fires EXACTLY here — status
 #    "proposed" entry actually lands in the scratch ledger. ──
 out=$(run_case_c 12 "ok")
-if printf '%s' "$out" | grep -q "Ledger-Eintrag geschrieben"; then
+if printf '%s' "$out" | grep -q "Ledger entry written"; then
     ok "IMP-192 ledger: write fires at the 5th consecutive occurrence"
 else
     bad "IMP-192 ledger: write fires at the 5th consecutive occurrence" "$out"
@@ -319,7 +319,7 @@ fi
 # ── C6 (6th occurrence): must NOT write a second entry — the month-keyed
 #    marker file must suppress re-invocation entirely. ──
 out=$(run_case_c 13 "ok")
-if printf '%s' "$out" | grep -q "Ledger-Eintrag geschrieben"; then
+if printf '%s' "$out" | grep -q "Ledger entry written"; then
     bad "IMP-192 ledger: no second write at the 6th occurrence" "unexpected second write:
 $out"
 else

@@ -33,11 +33,11 @@ allowed-tools:
 > **Model×Effort per spawn** is assigned via `~/.claude/agents/control-agent.md` §2 — the single canonical dispatch spec; do not re-derive it here.
 > **Second-order checkpoints** run after every delegation wave per `~/.claude/agents/control-agent.md` §4.
 
-> **Auch Arbeitsvorschrift für von `/team-lead` dispatchte Worker (IMP-150, siehe A1):**
-> Wird diesem Protokoll ein von `/team-lead` dispatchter Worker für EINE Arbeitseinheit
-> zugewiesen, durchläuft er nur das unten definierte **Worker mode** — nicht die vollen
-> Steps 0–9. Nutzer-Eskalationen (ESCALATE-band, y/n) laufen über den Lead als Arbiter
-> (`~/.claude/rules/agency-bands.md`), nicht direkt an den Nutzer.
+> **Also the working protocol for a worker dispatched by `/team-lead` (IMP-150, see A1):**
+> if this protocol is assigned to a worker dispatched by `/team-lead` for ONE work unit,
+> it runs only the **Worker mode** defined below — not the full Steps 0–9. User
+> escalations (ESCALATE-band, y/n) go through the lead as arbiter
+> (`~/.claude/rules/agency-bands.md`), never directly to the user.
 
 # R.Code Issue — Unit Protocol (Steps 0–9)
 
@@ -95,7 +95,7 @@ Unit: <unit-id>
 Files changed: <list>
 Commits: <hash — subject>
 Check trio: PASS | FAIL (which check, if FAIL)
-Deviations from the Auftragsbrief (if any): <what, why>
+Deviations from the task brief (if any): <what, why>
 ```
 
 Standalone mode runs every Step below, in order.

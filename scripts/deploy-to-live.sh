@@ -1,60 +1,60 @@
 #!/usr/bin/env bash
-# Übergabe vom Bauhof (SSD-Arbeitskopie) ins bewohnte Haus (~/.claude).
+# Deploy from the workshop (SSD working copy) into the live install (~/.claude).
 #
-# Warum es diesen Schritt gibt: Änderungen an Regeln/Hooks/Skills wirken in
-# ~/.claude sofort — man saniert die Elektrik, während der Strom anliegt.
-# Entwickelt wird deshalb im Bauhof; dieses Skript ist die bewusste Abnahme.
+# Why this step exists: changes to rules/hooks/skills take effect in
+# ~/.claude immediately — you're rewiring the electrics while the power is on.
+# Development therefore happens in the workshop; this script is the deliberate handoff.
 #
-# Laufzeitpräferenzen (seit 2026-08-04):
-#   Claude Code schreibt einige Werte im Betrieb selbst nach ~/.claude/settings.json
-#   (etwa beim Umschalten des Modells). Das machte das Haus "schmutzig" und blockierte
-#   jede Übergabe, bis jemand die Werte von Hand in den Bauhof nachtrug.
-#   Dieses Skript zieht sie jetzt selbst zurück: Werte aus dem Haus -> Bauhof,
-#   dort ein eigener Commit, danach ist das Haus wieder ein sauberer Spiegel.
-#   Der Umweg ueber eine ~/.claude/settings.local.json funktioniert NICHT — auf
-#   Nutzerebene liest Claude Code diese Datei nicht (geprueft 2026-08-04).
+# Runtime preferences (since 2026-08-04):
+#   Claude Code itself writes some values back to ~/.claude/settings.json at
+#   runtime (e.g. when switching models). That made the live install "dirty" and blocked
+#   every deploy until someone manually copied the values back into the workshop.
+#   This script now pulls them back itself: values from the live install -> workshop,
+#   its own commit there, after which the live install is a clean mirror again.
+#   The detour via a ~/.claude/settings.local.json does NOT work — at the
+#   user level Claude Code does not read that file (verified 2026-08-04).
 #
-# Aufruf:  deploy-to-live.sh [config|cockpit|all]   (Vorgabe: all)
+# Usage:  deploy-to-live.sh [config|cockpit|all]   (default: all)
 set -euo pipefail
 
-fail() { printf '\033[31mABBRUCH: %s\033[0m\n' "$1" >&2; exit 1; }
+fail() { printf '\033[31mABORT: %s\033[0m\n' "$1" >&2; exit 1; }
 note() { printf '\033[36m▸ %s\033[0m\n' "$1"; }
 warn() { printf '\033[33m! %s\033[0m\n' "$1"; }
 
-# Durable backup of the Haus-only settings.json keys (HAUS_ONLY_KEYS_JSON,
-# z.B. autoMode) fuer das Fenster reset->pull->restore in deploy() (2026-09-25
-# ergaenzt): vorher lebte der gesicherte Wert NUR in einer Shell-Variable —
-# scheiterte restore_haus_only (z.B. unter set -e mitten in seinem eigenen
-# jq-Aufruf), brach das Skript ab UND der Wert war verloren, ohne dass
-# irgendwo ein Pfad zu ihm stand. Jetzt: der Wert landet zusaetzlich in einer
-# 0600-Datei, sobald er gelesen wird (vor dem Reset, siehe deploy());
-# haus_only_exit_guard (EXIT-Trap, unten registriert) nennt bei JEDEM
-# Abbruch, waehrend diese Datei noch existiert, ihren Pfad und den Weg zum
-# Wiedereinsetzen — auch wenn der Abbruch von einem unbeteiligten Befehl
-# kommt (z.B. `git pull`), nicht nur aus restore_haus_only selbst. Nach
-# erfolgreichem Restore loescht deploy() die Datei und leert diese Variable
-# wieder (Bestandsschutz-Pin: Erfolgsfall hinterlaesst NICHTS).
+# Durable backup of the live-install-only settings.json keys (HAUS_ONLY_KEYS_JSON,
+# e.g. autoMode) for the reset->pull->restore window in deploy() (added 2026-09-25):
+# previously the saved value lived ONLY in a shell variable — if
+# restore_haus_only failed (e.g. under set -e in the middle of its own
+# jq call), the script aborted AND the value was lost, with no path to it
+# recorded anywhere. Now the value is additionally written to a
+# 0600 file as soon as it's read (before the reset, see deploy());
+# haus_only_exit_guard (EXIT trap, registered below) names, on EVERY
+# abort while this file still exists, its path and how to restore it —
+# even if the abort comes from an unrelated command (e.g. `git pull`), not
+# only from restore_haus_only itself. After a successful restore, deploy()
+# deletes the file and clears this variable again (invariant: the success
+# path leaves NOTHING behind).
 HAUS_ONLY_BACKUP_FILE=""
 
 haus_only_exit_guard() {
   if [ -n "$HAUS_ONLY_BACKUP_FILE" ] && [ -f "$HAUS_ONLY_BACKUP_FILE" ]; then
     {
-      printf '\033[31mHAUS-ONLY-SICHERUNG NICHT VERLOREN: %s\033[0m\n' "$HAUS_ONLY_BACKUP_FILE"
-      printf 'Der zuletzt gesicherte Haus-only-Wert (z.B. autoMode) liegt unversehrt in dieser Datei.\n'
-      printf 'Von Hand zurueckspielen (ZIEL = die betroffene settings.json im Haus):\n'
-      printf '  jq --argjson entries "$(cat %s)" '"'"'reduce $entries[] as $e (.; setpath($e.path; $e.value))'"'"' ZIEL > /tmp/settings.restored.json && mv /tmp/settings.restored.json ZIEL\n' "$HAUS_ONLY_BACKUP_FILE"
+      printf '\033[31mLIVE-INSTALL-ONLY BACKUP NOT LOST: %s\033[0m\n' "$HAUS_ONLY_BACKUP_FILE"
+      printf 'The most recently saved live-install-only value (e.g. autoMode) is intact in this file.\n'
+      printf 'Restore it by hand (TARGET = the affected settings.json in the live install):\n'
+      printf '  jq --argjson entries "$(cat %s)" '"'"'reduce $entries[] as $e (.; setpath($e.path; $e.value))'"'"' TARGET > /tmp/settings.restored.json && mv /tmp/settings.restored.json TARGET\n' "$HAUS_ONLY_BACKUP_FILE"
     } >&2
   fi
 }
 trap haus_only_exit_guard EXIT
 
-command -v jq >/dev/null || fail "jq wird gebraucht, ist aber nicht installiert."
+command -v jq >/dev/null || fail "jq is required but not installed."
 
-# Maschinenpfade kommen aus der Umgebung, nie aus einem hart codierten Default
-# (IMP-219, vault-by-design — ein hart codierter Pfad in einem versionierten
-# Skript waere selbst ein Maschinenpfad im Framework). Vorrang haben bereits
-# gesetzte Variablen (Testsuiten setzen sie direkt); fehlen beide, wird
-# ~/.claude/env.local.sh gesourct (Vorlage: templates/env.local.sh.template).
+# Machine paths come from the environment, never from a hardcoded default
+# (IMP-219, vault-by-design — a hardcoded path in a versioned script
+# would itself be a machine path in the framework). Already-set variables
+# take precedence (test suites set them directly); if both are missing,
+# ~/.claude/env.local.sh is sourced (template: templates/env.local.sh.template).
 if [ -z "${CLAUDE_WORKSHOP_ROOT:-}" ] && [ -z "${CLAUDE_BAUHOF_ROOT:-}" ] \
   && [ -f "${HOME}/.claude/env.local.sh" ]; then
   # shellcheck disable=SC1091
@@ -65,93 +65,93 @@ if [ -n "${CLAUDE_WORKSHOP_ROOT:-}" ]; then
 elif [ -n "${CLAUDE_BAUHOF_ROOT:-}" ]; then
   WORKSHOP_ROOT="$(dirname "${CLAUDE_BAUHOF_ROOT}")"
 else
-  fail "Bauhof-Wurzel unbekannt: weder CLAUDE_WORKSHOP_ROOT noch CLAUDE_BAUHOF_ROOT ist gesetzt, und ${HOME}/.claude/env.local.sh existiert nicht. Vorlage anlegen: templates/env.local.sh.template"
+  fail "Workshop root unknown: neither CLAUDE_WORKSHOP_ROOT nor CLAUDE_BAUHOF_ROOT is set, and ${HOME}/.claude/env.local.sh does not exist. Create it from the template: templates/env.local.sh.template"
 fi
 LIVE_CONFIG="${CLAUDE_LIVE_CONFIG:-$HOME/.claude}"
 LIVE_COCKPIT="${CLAUDE_LIVE_COCKPIT:-$LIVE_CONFIG/cockpit}"
 TARGET="${1:-all}"
 
-# Laufzeitschluessel, die dem HAUS gehoeren: Claude Code schreibt sie im Betrieb
-# selbst nach ~/.claude/settings.json. Jeder Eintrag ist ein jq-PFAD (Array von
-# Feldnamen, getpath/setpath/delpaths-kompatibel) — ["model"] fuer einen
-# Top-Level-Schluessel, ["permissions","defaultMode"] fuer einen verschachtelten.
-# Bewusst kurz gehalten — jeder Eintrag hier schaltet eine Schutzpruefung fuer
-# GENAU diesen Pfad ab; verschachtelte Geschwister (z.B. permissions.allow/deny/ask
-# neben permissions.defaultMode) bleiben geschuetzt. Weicht das Haus in einem NICHT
-# gelisteten Pfad ab, bricht die Uebergabe weiterhin ab (fail-loud.md). Erweitern
-# nur mit Beleg, dass Claude Code den Wert selbst schreibt. Diese Liste wird
-# REGELMAESSIG in den Bauhof zurueckgezogen (sync_runtime_prefs unten) — anders
-# als HAUS_ONLY_KEYS_JSON gleich danach, deren Werte NIE in den Bauhof wandern.
+# Runtime keys that belong to the LIVE INSTALL: Claude Code itself writes them
+# back to ~/.claude/settings.json at runtime. Each entry is a jq PATH (array of
+# field names, getpath/setpath/delpaths-compatible) — ["model"] for a
+# top-level key, ["permissions","defaultMode"] for a nested one.
+# Deliberately kept short — every entry here switches off a protection check for
+# EXACTLY that path; nested siblings (e.g. permissions.allow/deny/ask
+# next to permissions.defaultMode) stay protected. If the live install diverges on a
+# path NOT listed here, the deploy still aborts (fail-loud.md). Extend
+# only with evidence that Claude Code writes the value itself. This list gets
+# pulled back into the workshop REGULARLY (sync_runtime_prefs below) — unlike
+# HAUS_ONLY_KEYS_JSON right after it, whose values NEVER move to the workshop.
 #
-#   ["model"]                      — /model-Umschalter (seit 2026-08-04, IMP-127)
-#   ["effortLevel"]                — /config-Effort-Umschalter (seit 2026-08-04, IMP-127)
-#   ["theme"]                      — der /config-Themenwahl-Umschalter schreibt die
-#                                     Theme-Wahl direkt nach settings.json (beobachtet:
+#   ["model"]                      — the /model switcher (since 2026-08-04, IMP-127)
+#   ["effortLevel"]                — the /config effort switcher (since 2026-08-04, IMP-127)
+#   ["theme"]                      — the /config theme-picker switcher writes the
+#                                     theme choice directly to settings.json (observed:
 #                                     "light-daltonized" -> "dark-daltonized")
-#   ["permissions","defaultMode"]  — der Berechtigungsmodus-Umschalter schreibt
-#                                     permissions.defaultMode (beobachtet:
-#                                     "dontAsk" -> "auto"). NUR dieser Unterschluessel
-#                                     ist Laufzeitschutt — permissions.allow/deny/ask
-#                                     bleiben geschuetzt und loesen bei Abweichung
-#                                     weiterhin ABBRUCH aus.
+#   ["permissions","defaultMode"]  — the permission-mode switcher writes
+#                                     permissions.defaultMode (observed:
+#                                     "dontAsk" -> "auto"). ONLY this sub-key
+#                                     is runtime churn — permissions.allow/deny/ask
+#                                     stay protected and still trigger an ABORT
+#                                     on divergence.
 RUNTIME_KEYS_JSON='[["model"],["effortLevel"],["theme"],["permissions","defaultMode"],["modelSettings"]]'
 
-# Haus-only-Schluessel: existieren NUR im bewohnten Haus, wandern NIE in den
-# Bauhof (kein Rueckzug, kein Bauhof-Commit) und loesen NIE einen Abbruch aus,
-# wenn das Haus hier vom Bauhof-HEAD abweicht. Ueberleben Reset+Fast-Forward in
-# deploy() ueber extract_haus_only/restore_haus_only (Sicherung vor `git
-# checkout -- .`, Wiedereinsetzen nach dem Fast-Forward) statt ueber einen
-# Rueckzug in den Bauhof.
+# Live-install-only keys: exist ONLY in the live install, NEVER move to the
+# workshop (no pull-back, no workshop commit) and NEVER trigger an abort
+# when the live install diverges from the workshop HEAD here. They survive reset+fast-forward in
+# deploy() via extract_haus_only/restore_haus_only (backed up before `git
+# checkout -- .`, restored after the fast-forward) instead of via a
+# pull-back into the workshop.
 #
-#   ["autoMode"] — die Auto-Modus-Einrichtung legt einen autoMode-Block mit
-#                  einem environment-Array an, das GENAU DAS beschreibt, was
-#                  vor IMP-219 (vault-by-design) das Problem war: private
-#                  Projekt-/Konto-/Pfadangaben. Ein Feld, das per Definition
-#                  maschinen- und sitzungsspezifisch ist, gehoert nicht in ein
-#                  versioniertes, oeffentliches Repo — auch nicht gefiltert
-#                  ueber einen Publish-Transform. Generische Vorlage fuer den
-#                  Inhalt: templates/automode-environment.template.json.
+#   ["autoMode"] — the Auto Mode setup creates an autoMode block with
+#                  an environment array that describes EXACTLY what was
+#                  the problem before IMP-219 (vault-by-design): private
+#                  project/account/path data. A field that is by definition
+#                  machine- and session-specific does not belong in a
+#                  versioned, public repo — not even filtered
+#                  through a publish transform. Generic template for the
+#                  content: templates/automode-environment.template.json.
 HAUS_ONLY_KEYS_JSON='[["autoMode"]]'
 
-# Vereinigung beider Listen — fuer die Pruefung "weicht das Haus AUSSERHALB der
-# geschuetzten Pfade ab?" duerfen BEIDE Kategorien abweichen, ohne einen
-# Abbruch auszuloesen.
+# Union of both lists — for the check "does the live install diverge OUTSIDE the
+# protected paths?", BOTH categories are allowed to diverge without triggering
+# an abort.
 PROTECTED_KEYS_JSON=$(jq -c -n --argjson a "$RUNTIME_KEYS_JSON" --argjson b "$HAUS_ONLY_KEYS_JSON" '$a + $b')
 
-# Reiner Betriebsschutt im Haus: von Claude Code staendig neu geschrieben, seit
-# 2026-08-04 nicht mehr versioniert. Wird ueber die Uebergabe hinweg gerettet.
+# Pure runtime churn in the live install: constantly rewritten by Claude Code, no longer
+# versioned since 2026-08-04. Preserved across the deploy.
 VOLATILE_FILES=(plugins/installed_plugins.json plugins/known_marketplaces.json)
 
-[ -d "$WORKSHOP_ROOT" ] || fail "Bauhof nicht erreichbar: $WORKSHOP_ROOT (SSD eingehängt?)"
+[ -d "$WORKSHOP_ROOT" ] || fail "Workshop not reachable: $WORKSHOP_ROOT (SSD mounted?)"
 
-# Entfernt eine Liste von jq-Pfaden (Arrays) aus einer settings.json — genutzt
-# fuer die "weicht das Haus AUSSERHALB der geschuetzten Pfade ab?"-Pruefung.
-strip_keys() { # strip_keys <keys-json> <datei>
+# Removes a list of jq paths (arrays) from a settings.json — used
+# for the "does the live install diverge OUTSIDE the protected paths?" check.
+strip_keys() { # strip_keys <keys-json> <file>
   jq -S --argjson k "$1" 'delpaths($k)' "$2"
 }
 
-# Liest die aktuellen Haus-only-Werte (HAUS_ONLY_KEYS_JSON) aus einer
-# settings.json — unabhaengig vom git-Status, denn der Block kann entweder
-# unversioniert im Arbeitsbaum liegen ODER schon im letzten Haus-Commit
-# stecken (Alt-Uebergaben haben ihn frueher in den Bauhof gezogen). Ausgabe:
-# kompaktes JSON-Array [{"path":[...],"value":...}, ...], leer wenn kein
-# Haus-only-Schluessel gesetzt ist.
-extract_haus_only() { # extract_haus_only <datei>
-  # $root VOR der Iteration ueber $k binden: sonst zeigt "." beim getpath-Aufruf
-  # auf das gerade durchlaufene Pfad-Array statt auf das Dokument, und getpath
-  # versucht, das Pfad-Array mit sich selbst zu indizieren.
+# Reads the current live-install-only values (HAUS_ONLY_KEYS_JSON) from a
+# settings.json — independent of git status, because the block can either
+# sit unversioned in the working tree OR already be baked into the last
+# live-install commit (older deploys used to pull it into the workshop).
+# Output: compact JSON array [{"path":[...],"value":...}, ...], empty if no
+# live-install-only key is set.
+extract_haus_only() { # extract_haus_only <file>
+  # Bind $root BEFORE iterating over $k: otherwise "." inside the getpath call
+  # points at the path array currently being iterated instead of the document, and
+  # getpath tries to index the path array with itself.
   jq -c --argjson k "$HAUS_ONLY_KEYS_JSON" \
     '. as $root | [$k[] | . as $path | ($root | getpath($path)) as $v | select($v != null) | {path: $path, value: $v}]' "$1"
 }
 
-# Setzt zuvor mit extract_haus_only gesicherte Werte in eine settings.json
-# zurueck — Gegenstueck zu extract_haus_only, aufgerufen NACH Reset+Fast-
-# Forward. Ohne dieses Paar wuerde `git checkout -- .` einen unversionierten
-# autoMode-Block ersatzlos loeschen, und der anschliessende Fast-Forward auf
-# einen Bauhof-Stand ohne autoMode wuerde ihn auch aus einem bereits
-# committeten Haus-Stand entfernen (IMP-219: autoMode wandert nie in den
-# Bauhof, siehe HAUS_ONLY_KEYS_JSON oben).
-restore_haus_only() { # restore_haus_only <datei> <extract-haus-only-json>
+# Restores values previously backed up with extract_haus_only into a
+# settings.json — counterpart to extract_haus_only, called AFTER reset+fast-
+# forward. Without this pair, `git checkout -- .` would delete an unversioned
+# autoMode block with nothing to replace it, and the subsequent fast-forward to
+# a workshop state without autoMode would also strip it from an
+# already-committed live-install state (IMP-219: autoMode never moves into the
+# workshop, see HAUS_ONLY_KEYS_JSON above).
+restore_haus_only() { # restore_haus_only <file> <extract-haus-only-json>
   local file="$1" entries="$2"
   [ "$entries" = "[]" ] && return 0
   local tmp; tmp=$(mktemp)
@@ -161,46 +161,46 @@ restore_haus_only() { # restore_haus_only <datei> <extract-haus-only-json>
   rm -f "$tmp"
 }
 
-# Zieht die im Haus verstellten Laufzeitwerte in den Bauhof zurueck.
-# Bricht ab, wenn das Haus AUSSERHALB dieser Schluessel abweicht.
+# Pulls the runtime values changed in the live install back into the workshop.
+# Aborts if the live install diverges OUTSIDE these keys.
 sync_runtime_prefs() {
   local workshop="$1" live="$2"
   local ws_settings="$workshop/settings.json" live_settings="$live/settings.json"
 
   [ -f "$live_settings" ] || return 0
-  git -C "$live" diff --quiet -- settings.json && return 0   # unveraendert, nichts zu tun
+  git -C "$live" diff --quiet -- settings.json && return 0   # unchanged, nothing to do
 
-  note "config — Laufzeitpräferenzen aus dem Haus prüfen"
+  note "config — checking runtime preferences from the live install"
 
   local head_settings; head_settings=$(mktemp)
   git -C "$live" show HEAD:settings.json > "$head_settings" 2>/dev/null \
-    || fail "config: settings.json ist im Haus nicht versioniert — bitte von Hand klären."
+    || fail "config: settings.json is not tracked in the live install — please resolve by hand."
 
   if ! diff -q <(strip_keys "$PROTECTED_KEYS_JSON" "$head_settings") <(strip_keys "$PROTECTED_KEYS_JSON" "$live_settings") >/dev/null; then
     rm -f "$head_settings"
     git -C "$live" diff -- settings.json
-    fail "config: Das Haus weicht in settings.json AUSSERHALB der Laufzeitschlüssel ab ($(jq -r '[.[] | join(".")] | join(", ")' <<<"$PROTECTED_KEYS_JSON")).
-      Das ist eine Änderung von Hand am bewohnten Haus — sie gehört in den Bauhof.
-      Entweder dort nachbauen und hier verwerfen (git -C '$live' checkout -- settings.json),
-      oder — wenn Claude Code den Wert nachweislich selbst schreibt — den Schlüssel in
-      RUNTIME_KEYS_JSON (wandert in den Bauhof) oder HAUS_ONLY_KEYS_JSON (bleibt im
-      Haus) in diesem Skript ergänzen."
+    fail "config: the live install differs in settings.json OUTSIDE the runtime keys ($(jq -r '[.[] | join(".")] | join(", ")' <<<"$PROTECTED_KEYS_JSON")).
+      This is a manual change made to the live install — it belongs in the workshop.
+      Either rebuild it there and discard it here (git -C '$live' checkout -- settings.json),
+      or — if Claude Code demonstrably writes the value itself — add the key to
+      RUNTIME_KEYS_JSON (gets pulled into the workshop) or HAUS_ONLY_KEYS_JSON (stays in
+      the live install) in this script."
   fi
   rm -f "$head_settings"
 
-  # Werte uebernehmen: Haus gewinnt fuer genau diese Schluessel.
-  # OHNE -S: die Schlüsselreihenfolge der Datei muss erhalten bleiben, sonst
-  # erzeugt die erste Übergabe statt zwei geänderter Zeilen einen Komplettumbau.
-  # "has" gibt es fuer Pfade nicht direkt — getpath()!=null steht stellvertretend
-  # dafuer (kein Laufzeitschluessel hier traegt legitim den Wert null).
+  # Adopt values: the live install wins for exactly these keys.
+  # WITHOUT -S: the file's key order must be preserved, otherwise
+  # the first deploy produces a full rewrite instead of two changed lines.
+  # There's no direct "has" for paths — getpath()!=null stands in
+  # for it (no runtime key here legitimately carries the value null).
   local merged; merged=$(mktemp)
   jq --argjson k "$RUNTIME_KEYS_JSON" --slurpfile live "$live_settings" \
      'reduce $k[] as $path (.; if (($live[0] | getpath($path)) != null) then setpath($path; $live[0] | getpath($path)) else . end)' \
-     "$ws_settings" > "$merged" || { rm -f "$merged"; fail "config: Zusammenführen der settings.json fehlgeschlagen."; }
+     "$ws_settings" > "$merged" || { rm -f "$merged"; fail "config: merging settings.json failed."; }
 
   if diff -q <(jq -S . "$ws_settings") <(jq -S . "$merged") >/dev/null; then
     rm -f "$merged"
-    note "config: Laufzeitpräferenzen im Bauhof bereits aktuell"
+    note "config: runtime preferences in the workshop are already up to date"
     return 0
   fi
 
@@ -212,60 +212,60 @@ sync_runtime_prefs() {
        | select($lv != $wv)
        | "\($path | join(".")): \($wv // "—") → \($lv // "—")"] | join(", ")')
 
-  # Erst prüfen, dann überschreiben — eine kaputte settings.json startet Claude Code
-  # still ohne Hooks und ohne Berechtigungen.
+  # Check first, then overwrite — a broken settings.json starts Claude Code
+  # silently, without hooks and without permissions.
   jq -e 'has("hooks") and has("permissions")' "$merged" >/dev/null \
-    || { rm -f "$merged"; fail "config: erzeugte settings.json ist unvollständig (hooks/permissions fehlen) — nichts geschrieben."; }
+    || { rm -f "$merged"; fail "config: generated settings.json is incomplete (hooks/permissions missing) — nothing written."; }
 
-  # Keine Sicherungskopie daneben: die Datei ist an dieser Stelle unverändert
-  # committet, also ist der Bauhof-Commit selbst die Sicherung. Sollte das
-  # Schreiben abbrechen, stellt `git -C <bauhof> checkout -- settings.json` sie her.
-  # (Eine Kopie im Arbeitsverzeichnis liesse die folgende Sauberkeitsprüfung
-  #  durchfallen — genau daran ist die erste Fassung gescheitert.)
+  # No backup copy alongside: the file is unchanged-committed at this point,
+  # so the workshop commit itself is the backup. Should the write abort,
+  # `git -C <workshop> checkout -- settings.json` restores it.
+  # (A copy in the working directory would make the following cleanliness check
+  #  fail — that is exactly what the first version got wrong.)
   cat "$merged" > "$ws_settings"
   rm -f "$merged"
 
-  note "config: Laufzeitpräferenzen in den Bauhof zurückgezogen ($changed)"
+  note "config: runtime preferences pulled back into the workshop ($changed)"
   git -C "$workshop" add settings.json
-  git -C "$workshop" commit -q -m "chore(config): Laufzeitpräferenzen aus dem Haus nachgezogen ($changed)"
-  note "config: Bauhof-Commit $(git -C "$workshop" rev-parse --short HEAD)"
+  git -C "$workshop" commit -q -m "chore(config): pulled runtime preferences back from the live install ($changed)"
+  note "config: workshop commit $(git -C "$workshop" rev-parse --short HEAD)"
 }
 
-# Schreibt die Abnahmeliste fuer die naechste Sitzung (IMP-147). Nur fuer
-# "config" aufgerufen — nur dort landen Hook-/Regel-/Skill-Aenderungen, die
-# eine Verifikation IN einer neuen Claude-Code-Sitzung brauchen; Cockpit-
-# Aenderungen prueft der Cockpit-Bauhof selbst (npm test/typecheck).
-# Ueberschreibt eine vorhandene Datei bewusst — die alte Pruefliste ist mit
-# der neuen Uebergabe obsolet (fail-loud: kein Anhaengen, keine Altlast).
+# Writes the pending-verification checklist for the next session (IMP-147). Only called
+# for "config" — only there do hook/rule/skill changes land that need
+# verification IN a new Claude Code session; cockpit
+# changes are checked by the cockpit workshop itself (npm test/typecheck).
+# Deliberately overwrites an existing file — the old checklist is obsolete
+# with the new deploy (fail-loud: no appending, no stale leftovers).
 write_pending_verification() {
   local live="$1" before="$2" after="$3"
   local out="$live/pending-verification.md"
   local subjects; subjects=$(git -C "$live" log --format='- [ ] %s' "$before..$after")
   {
-    printf '# Offene Abnahme — Übergabe %s\n\n' "$(date '+%Y-%m-%d %H:%M')"
-    printf 'Commit-Bereich: %s..%s\n\n' "$before" "$after"
-    printf '## Prüfschritte\n\n'
+    printf '# Pending verification — deploy %s\n\n' "$(date '+%Y-%m-%d %H:%M')"
+    printf 'Commit range: %s..%s\n\n' "$before" "$after"
+    printf '## Verification steps\n\n'
     printf '%s\n' "$subjects"
-    printf '\nPrüfschritte laut Abnahmeprotokoll der Sitzung.\n'
+    printf '\nVerification steps per the session acceptance protocol.\n'
   } > "$out"
-  note "config: Abnahmeliste geschrieben → $out"
+  note "config: checklist written → $out"
 }
 
 deploy() {
   local name="$1" workshop="$2" live="$3"
-  [ -d "$workshop/.git" ] || fail "$name: kein Repo im Bauhof ($workshop)"
-  [ -d "$live/.git" ]     || fail "$name: kein Repo im Haus ($live)"
+  [ -d "$workshop/.git" ] || fail "$name: no repo in the workshop ($workshop)"
+  [ -d "$live/.git" ]     || fail "$name: no repo in the live install ($live)"
 
-  # Muss VOR der Bauhof-Prüfung laufen — der Rückzug erzeugt dort einen Commit.
+  # Must run BEFORE the workshop check — the pull-back creates a commit there.
   [ "$name" = "config" ] && sync_runtime_prefs "$workshop" "$live"
 
-  note "$name — Bauhof prüfen"
+  note "$name — checking the workshop"
   if [ -n "$(git -C "$workshop" status --porcelain)" ]; then
     git -C "$workshop" status --short
-    fail "$name: Bauhof hat uneingecheckte Änderungen. Erst committen, dann übergeben."
+    fail "$name: workshop has uncommitted changes. Commit first, then deploy."
   fi
 
-  note "$name — Haus prüfen"
+  note "$name — checking the live install"
   local dirty tolerated=() remaining=()
   dirty=$(git -C "$live" diff --name-only HEAD --)
   if [ -n "$dirty" ]; then
@@ -279,23 +279,23 @@ deploy() {
   fi
   if [ ${#remaining[@]} -gt 0 ]; then
     printf '  %s\n' "${remaining[@]}"
-    fail "$name: Das Haus hat lokale Änderungen an verfolgten Dateien (oben). Diese gehören in den Bauhof — dort nachbauen, hier verwerfen."
+    fail "$name: the live install has local changes to tracked files (above). These belong in the workshop — rebuild them there, discard them here."
   fi
 
-  # Betriebsschutt über die Übergabe hinweg retten: der Fast-Forward entfernt die
-  # Dateien aus der Versionierung, Claude Code soll sie danach unverändert vorfinden.
+  # Preserve runtime churn across the deploy: the fast-forward removes the
+  # files from version control; Claude Code should find them unchanged afterward.
   local stash; stash=$(mktemp -d)
   local haus_only_backup="[]"
   if [ "$name" = "config" ]; then
     for f in "${VOLATILE_FILES[@]}"; do
       [ -f "$live/$f" ] && { mkdir -p "$stash/$(dirname "$f")"; cp "$live/$f" "$stash/$f"; }
     done
-    # Haus-only-Schluessel (autoMode) VOR dem Reset sichern — der Bauhof-Stand
-    # traegt sie nie (HAUS_ONLY_KEYS_JSON oben), ein reiner Fast-Forward wuerde
-    # sie sonst ersatzlos entfernen. Zusaetzlich in eine 0600-Datei geschrieben
-    # (haus_only_exit_guard oben) — die Shell-Variable allein ueberlebt einen
-    # set -e-Abbruch zwischen hier und dem erfolgreichen restore_haus_only
-    # weiter unten nicht.
+    # Back up live-install-only keys (autoMode) BEFORE the reset — the
+    # workshop state never carries them (HAUS_ONLY_KEYS_JSON above), a plain
+    # fast-forward would otherwise strip them with nothing to replace them.
+    # Also written to a 0600 file (haus_only_exit_guard above) — the shell
+    # variable alone does not survive a set -e abort between here and the
+    # successful restore_haus_only further below.
     if [ -f "$live/settings.json" ]; then
       haus_only_backup=$(extract_haus_only "$live/settings.json")
       if [ "$haus_only_backup" != "[]" ]; then
@@ -306,15 +306,15 @@ deploy() {
     fi
   fi
 
-  # Haus auf den Commit-Stand zurücksetzen — nur so ist ein Fast-Forward möglich.
+  # Reset the live install to the commit state — only that makes a fast-forward possible.
   if [ -n "$dirty" ]; then
-    note "$name — Haus auf den Commit-Stand zurücksetzen"
+    note "$name — resetting the live install to the commit state"
     git -C "$live" checkout -- . 2>/dev/null || true
   fi
 
   local before after
   before=$(git -C "$live" rev-parse --short HEAD)
-  note "$name — übernehme aus dem Bauhof"
+  note "$name — pulling in from the workshop"
   git -C "$live" pull --ff-only workshop main
   after=$(git -C "$live" rev-parse --short HEAD)
 
@@ -326,9 +326,9 @@ deploy() {
       fi
     done
     [ -f "$live/settings.json" ] && restore_haus_only "$live/settings.json" "$haus_only_backup"
-    # Diese Zeile wird nur erreicht, wenn restore_haus_only (falls aufgerufen)
-    # unter set -e bereits erfolgreich durchgelaufen ist — die Sicherungsdatei
-    # ist ab hier ueberfluessig.
+    # This line is only reached once restore_haus_only (if called) has
+    # already succeeded under set -e — the backup file is
+    # superfluous from here on.
     if [ -n "$HAUS_ONLY_BACKUP_FILE" ]; then
       rm -f "$HAUS_ONLY_BACKUP_FILE"
       HAUS_ONLY_BACKUP_FILE=""
@@ -337,13 +337,13 @@ deploy() {
   rm -rf "$stash"
 
   if [ "$before" = "$after" ]; then
-    note "$name: bereits aktuell ($after)"
+    note "$name: already up to date ($after)"
   else
     note "$name: $before → $after"
     git -C "$live" log --oneline "$before..$after"
-    # if/fi, NICHT `[ … ] && …`: als letzte Zeile der Funktion lieferte der
-    # falsche Test beim Cockpit Exit 1, und set -e brach vor `npm install` ab
-    # (Befund 2026-09-24, Regression "cockpit-neu" in deploy-regression.sh).
+    # if/fi, NOT `[ … ] && …`: as the function's last line, the
+    # wrong test returned exit 1 for the cockpit, and set -e aborted before
+    # `npm install` ran (found 2026-09-24, regression "cockpit-neu" in deploy-regression.sh).
     if [ "$name" = "config" ]; then
       write_pending_verification "$live" "$before" "$after"
     fi
@@ -355,12 +355,12 @@ case "$TARGET" in
   cockpit) deploy "cockpit" "$WORKSHOP_ROOT/cockpit"            "$LIVE_COCKPIT" ;;
   all)     deploy "config"  "$WORKSHOP_ROOT/claude-code-config" "$LIVE_CONFIG"
            deploy "cockpit" "$WORKSHOP_ROOT/cockpit"            "$LIVE_COCKPIT" ;;
-  *)       fail "unbekanntes Ziel: $TARGET (erlaubt: config, cockpit, all)" ;;
+  *)       fail "unknown target: $TARGET (allowed: config, cockpit, all)" ;;
 esac
 
 if [ "$TARGET" = "cockpit" ] || [ "$TARGET" = "all" ]; then
-  note "cockpit — Abhängigkeiten abgleichen"
+  note "cockpit — syncing dependencies"
   ( cd "$LIVE_COCKPIT" && npm install --no-fund --no-audit --silent )
 fi
 
-printf '\033[32m✔ Übergabe abgeschlossen.\033[0m Hook-/Regeländerungen greifen ab der NÄCHSTEN Claude-Sitzung.\n'
+printf '\033[32m✔ Deploy complete.\033[0m Hook/rule changes take effect starting with the NEXT Claude session.\n'

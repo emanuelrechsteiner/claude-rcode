@@ -117,6 +117,6 @@ if [[ "${#SUMMARY_SHORT}" -gt 80 ]]; then
     SUMMARY_SHORT="${SUMMARY_SHORT:0:80}…"
 fi
 
-echo "🔐 $N ungesichtete Sicherheitsbefunde für $PROJECT_DISPLAY (jüngster $NEWEST_DATE: $NEWEST_FILE [$NEWEST_SEV] $SUMMARY_SHORT) — sichten: security-review-findings.sh --ack $NEWEST_SID"
+echo "🔐 $N unreviewed security findings for $PROJECT_DISPLAY (newest $NEWEST_DATE: $NEWEST_FILE [$NEWEST_SEV] $SUMMARY_SHORT) — review: security-review-findings.sh --ack $NEWEST_SID"
 
 exit 0

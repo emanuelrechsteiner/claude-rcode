@@ -14,7 +14,7 @@
 # IMP-106 (2026-08-22): extracted so guard-unsafe.sh's CRITICAL-floor arms
 # can match at COMMAND POSITION instead of matching a dangerous substring
 # ANYWHERE in the raw string — which previously blocked pure prose/data:
-#   echo 'niemals rm -rf / ausführen'      -> was blocked, is data
+#   echo 'never run rm -rf /'              -> was blocked, is data
 #   grep 'rm -rf /' README.md              -> was blocked, is data
 #   git commit -F - <<EOF ... rm -rf ~ ... EOF  -> was blocked, is a message
 #

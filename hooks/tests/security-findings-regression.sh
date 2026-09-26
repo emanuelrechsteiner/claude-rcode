@@ -245,7 +245,7 @@ write_review "$ROOT/-Volumes-example-myproj/sess-recent.jsonl" "$recent_ts" \
   '[{"filePath":"hooks/risky.sh","category":"cat-g","severity":"high","confidence":0.9,"vulnerableCode":"v","explanation":"a risky pattern was found here","fix":"fix it"}]'
 run_extractor >/dev/null
 out=$(run_hook "/Volumes/example/myproj")
-if printf '%s' "$out" | grep -q "^🔐 1 ungesichtete Sicherheitsbefunde" \
+if printf '%s' "$out" | grep -q "^🔐 1 unreviewed security findings" \
    && printf '%s' "$out" | grep -q "hooks/risky.sh" \
    && printf '%s' "$out" | grep -q "\[high\]" \
    && printf '%s' "$out" | grep -q -- "--ack sess-recent"; then

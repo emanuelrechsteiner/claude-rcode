@@ -1,17 +1,17 @@
 #!/bin/bash
-# q2-probe-dispatch-dump.sh — TEMPORARY empirical probe for A6 Q2 (IMP-090 Schritt 0)
+# q2-probe-dispatch-dump.sh — TEMPORARY empirical probe for A6 Q2 (IMP-090 step 0)
 # ─────────────────────────────────────────────────────────────────────────────
 # ⚠️  TEMPORARY — expires 2026-07-22. Review/remove after this date REGARDLESS
-#     of outcome, per the meta-proposal's explicit rule for this probe: "Bis
-#     die Sonde positiv ausfällt, existiert L2 NICHT" — this file's only job is
+#     of outcome, per the meta-proposal's explicit rule for this probe: "Until
+#     the probe comes back positive, L2 DOES NOT exist" — this file's only job is
 #     to produce that verdict, not to become permanent infrastructure.
 #
 # PreToolUse hook registered with matcher "Task|Agent". Purpose: settle A6 Q2
 # empirically — is a Task/Agent dispatch PreToolUse-matchable at all, and does
 # `subagent_type` appear as a real tool_input field? The meta-proposal's first
 # analysis pass claimed yes; a second literal doc-fetch found no evidence
-# either way (contradiction logged in the proposal §1, "Regelungs-Ereignisse
-# zweiter Ordnung", item 2). Rather than trust either doc-fetch, this hook
+# either way (contradiction logged in the proposal §1, "second-order rule-making
+# events", item 2). Rather than trust either doc-fetch, this hook
 # observes the REAL stdin the harness sends — if it ever fires at all.
 #
 # Behavior: dumps the raw PreToolUse JSON, UNMODIFIED, to

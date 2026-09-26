@@ -85,6 +85,6 @@ LOG="${CLAUDE_READ_ADVISORY_LOG:-$HOME/.claude/global-observation/read-tool-advi
 mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
 printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "NOTE-SHOWN" "$COMMAND" >> "$LOG" 2>/dev/null || true
 
-echo "NOTE: dieses Framework weist im Auto-Modus an, mit cat/head/sed -n statt dem Read-Werkzeug zu lesen — rules/tool-discipline.md Rule 2 bevorzugt umgekehrt Read/Grep (kein Blocker mehr seit IMP-157: das war eine Kategorienverwechslung am CRITICAL floor). Beide Wege funktionieren; Read/Grep sind bei großen Dateien und Mehrfachzugriffen sparsamer. Dieser Hinweis erscheint höchstens einmal pro Sitzung." >&2
+echo "NOTE: this framework's Auto Mode instructs reading with cat/head/sed -n instead of the Read tool — rules/tool-discipline.md Rule 2 prefers Read/Grep the other way round (no longer a blocker since IMP-157: that was a category error at the CRITICAL floor). Both paths work; Read/Grep are cheaper on large files and repeated access. This note appears at most once per session." >&2
 
 exit 0

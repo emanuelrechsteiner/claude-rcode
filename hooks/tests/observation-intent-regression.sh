@@ -29,14 +29,14 @@
 # touches ~/.claude/global-observation/signals.jsonl — everything happens in
 # an isolated $WORK dir.
 #
-# Aufruf:  bash hooks/tests/observation-intent-regression.sh
-# Exit:    0 = alle Fälle grün · 1 = mindestens ein Fall rot
+# Usage:   bash hooks/tests/observation-intent-regression.sh
+# Exit:    0 = all cases green, 1 = at least one case red
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 
 HOOKS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="${CLAUDE_OBS_HOOK:-$HOOKS_DIR/observation-capture.sh}"
-[ -f "$HOOK" ] || { echo "FEHLER: Hook nicht gefunden: $HOOK" >&2; exit 1; }
+[ -f "$HOOK" ] || { echo "ERROR: hook not found: $HOOK" >&2; exit 1; }
 
 WORK=$(mktemp -d /tmp/obs-intent-regression.XXXXXX)
 REPO="$WORK/repo"

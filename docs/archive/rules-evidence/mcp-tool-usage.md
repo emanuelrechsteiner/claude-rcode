@@ -1,11 +1,11 @@
 <!--
 Status: ARCHIVED
 Last Updated: 2026-09-24
-Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich aus rules/mcp-tool-usage.md ausgelagert wurden — die Regel selbst bleibt dort; hier steht das „Warum" in voller Länge.
+Purpose: Evidence, incidents, and measurements moved verbatim out of rules/mcp-tool-usage.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
-# Belege zu `rules/mcp-tool-usage.md`
+# Evidence for `rules/mcp-tool-usage.md`
 
-> Ausgelagert 2026-09-24 (IMP-217). Jeder Block steht unter der Überschrift, unter der er in der Regel stand, und ist unverändert übernommen.
+> Moved out 2026-09-24 (IMP-217). Every block sits under the same heading it had in the rule, and is carried over unchanged.
 
 ## Serena: writes go through the delegating gate (IMP-130, 2026-08-05)
 

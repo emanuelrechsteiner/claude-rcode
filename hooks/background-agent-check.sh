@@ -113,7 +113,7 @@ if [ "$OPEN" -gt 0 ]; then
         if [ "$OLDEST_EPOCH" -gt 0 ] 2>/dev/null; then
             AGE_MIN=$(( (NOW_EPOCH - OLDEST_EPOCH) / 60 ))
             if [ "$AGE_MIN" -ge "$STALE_MIN" ]; then
-                LINE1="⏳ ${OPEN} Hintergrundtrupp(s) ohne Ende-Signal seit ${AGE_MIN} min (IMP-198) — TaskOutput/Monitor prüfen"
+                LINE1="⏳ ${OPEN} background troop(s) with no stop signal for ${AGE_MIN} min (IMP-198) — check TaskOutput/Monitor"
             fi
         fi
     fi
@@ -146,7 +146,7 @@ if [ -n "$LATEST_ABNORMAL" ]; then
             A_ID=$(printf '%s' "$LATEST_ABNORMAL" | jq -r '.agent_id // "unknown"' 2>/dev/null)
             A_REASON=$(printf '%s' "$LATEST_ABNORMAL" | jq -r '.stop_reason // "unknown"' 2>/dev/null)
             A_PREVIEW=$(printf '%s' "$LATEST_ABNORMAL" | jq -r '.preview // ""' 2>/dev/null)
-            LINE2="💀 Hintergrundtrupp ${A_TYPE}/${A_ID} endete abnormal (${A_REASON}) vor ${A_AGE_MIN} min: ${A_PREVIEW} (IMP-198)"
+            LINE2="💀 Background troop ${A_TYPE}/${A_ID} ended abnormally (${A_REASON}) ${A_AGE_MIN} min ago: ${A_PREVIEW} (IMP-198)"
         fi
     fi
 fi

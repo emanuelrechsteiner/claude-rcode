@@ -3,8 +3,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # PreToolUse hook, matcher "Task|Agent". Enforces tool-discipline.md Rule 3
 # ("specify subagent_type on every Agent call") with a RECOVERABLE ask, not a
-# hard block — the user's explicit decision for IMP-159 (Begründungspflicht
-# per Hook, KEIN harter Block).
+# hard block — the user's explicit decision for IMP-159 (rationale requirement
+# via hook, NOT a hard block).
 #
 # MEASURED PROBLEM (chat-corpus analysis, 296 coding transcripts, Aug 2026):
 # subagent_type == "general-purpose" in 43.5-45.9% of Task dispatches (lower
@@ -149,9 +149,11 @@ ROSTER="$ROSTER
 Explore
 Plan"
 AGENT_LIST=$(printf '%s\n' "$ROSTER" | grep -v '^$' | paste -sd, - | sed 's/,/, /g')
-[ -n "$AGENT_LIST" ] || AGENT_LIST="(keine Agentendateien unter $AGENTS_DIR gefunden)"
+[ -n "$AGENT_LIST" ] || AGENT_LIST="(no agent files found under $AGENTS_DIR)"
 
 # ── Rationale detection ──────────────────────────────────────────────────
+# German aliases kept: the owner writes German (AGENTENWAHL, BEGRUENDUNG/
+# BEGRÜNDUNG AGENTENWAHL); AGENT-RATIONALE is the English equivalent.
 MARKER_RE='^[[:space:]]*(AGENTENWAHL|AGENT-RATIONALE|BEGR(UE|Ü)NDUNG[[:space:]]+AGENTENWAHL)[[:space:]]*:.*'
 MATCH=$(printf '%s' "$PROMPT" | grep -oiE "$MARKER_RE" 2>/dev/null | head -1)
 RATIONALE_TEXT="${MATCH#*:}"
@@ -219,15 +221,15 @@ mark_granted() {
 # ── Decision ─────────────────────────────────────────────────────────────
 DENY_REASON=""
 if [ "$HAS_RATIONALE" != "true" ]; then
-  DENY_REASON="general-purpose ohne Begründung."
+  DENY_REASON="general-purpose without a rationale."
 elif [ "$NAMES_SPECIALIST" != "true" ]; then
-  DENY_REASON="Begründung nennt keinen Fachagenten beim Namen. tool-discipline.md Rule 3 erlaubt general-purpose NUR, wenn kein Spezialist passt — das ist eine Aussage ÜBER die Spezialisten und muss mindestens einen davon benennen und verwerfen."
+  DENY_REASON="The rationale does not name a specialist agent. tool-discipline.md Rule 3 permits general-purpose ONLY when no specialist fits — that is a claim ABOUT the specialists and must name and reject at least one of them."
 elif [ "$GRANTED_SO_FAR" -ge "$GP_MAX" ]; then
-  DENY_REASON="${GP_COUNT}. general-purpose-Auftrag in dieser Sitzung (Schwelle ${GP_MAX}). Ab hier ist nicht mehr der einzelne Auftrag die Frage, sondern das Muster: eine Serie von general-purpose-Trupps ist fast immer eine übersprungene Zerlegung, nicht eine Serie echter Ausnahmen."
+  DENY_REASON="general-purpose dispatch #${GP_COUNT} in this session (threshold ${GP_MAX}). Past this point the individual dispatch is no longer the question, the pattern is: a series of general-purpose troops is almost always a skipped decomposition, not a series of genuine exceptions."
 fi
 
 if [ -z "$DENY_REASON" ]; then
-  echo "NOTE: general-purpose mit belegter Begründung (${GP_COUNT}/${GP_MAX}) — $(printf '%s' "$SNIPPET" | cut -c1-80)" >&2
+  echo "NOTE: general-purpose with a supplied rationale (${GP_COUNT}/${GP_MAX}) — $(printf '%s' "$SNIPPET" | cut -c1-80)" >&2
   mark_granted
   log_line "allow-with-rationale" "$SESSION_ID" "$SUBAGENT" "$HAS_RATIONALE" "$PROMPT_LEN" "$SNIPPET" "$GP_COUNT"
   exit 0
@@ -241,7 +243,7 @@ if [ "$IS_RETRY" = "true" ]; then
   exit 0
 fi
 
-REASON="${DENY_REASON} Gemessene Lage: general-purpose lag bei 43,5-45,9% aller Task-Dispatches (Chat-Analyse Aug. 2026, 296 Transkripte; Baseline 25%), und 57 von 60 Aufträgen im Fenster 2026-08-24..09-21 kamen allein durch das Vorhandensein einer Begründungszeile durch. Verfügbare Spezialisten: ${AGENT_LIST}. Passt wirklich keiner: 'AGENTENWAHL: <welcher Spezialist am nächsten käme und warum er NICHT passt>' (mind. 15 Zeichen, muss einen Namen aus der Liste enthalten) — der zweite Versuch mit identischem Auftrag geht ohne Rückfrage durch."
+REASON="${DENY_REASON} Measured state: general-purpose stood at 43.5-45.9% of all Task dispatches (chat analysis Aug 2026, 296 transcripts; baseline 25%), and 57 of 60 dispatches in the window 2026-08-24..09-21 got through solely on the presence of a rationale line. Available specialists: ${AGENT_LIST}. If none genuinely fits: 'AGENTENWAHL: <which specialist would come closest and why it does NOT fit>' (min. 15 characters, must include a name from the list) — the second attempt with an identical dispatch goes through without a re-ask."
 
 log_line "ask" "$SESSION_ID" "$SUBAGENT" "$HAS_RATIONALE" "$PROMPT_LEN" "$SNIPPET" "$GP_COUNT"
 

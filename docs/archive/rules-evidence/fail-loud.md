@@ -1,11 +1,11 @@
 <!--
 Status: ARCHIVED
 Last Updated: 2026-09-24
-Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich aus rules/fail-loud.md ausgelagert wurden — die Regel selbst bleibt dort; hier steht das „Warum" in voller Länge.
+Purpose: Evidence, incidents, and measurements moved verbatim out of rules/fail-loud.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
-# Belege zu `rules/fail-loud.md`
+# Evidence for `rules/fail-loud.md`
 
-> Ausgelagert 2026-09-24 (IMP-217). Jeder Block steht unter der Überschrift, unter der er in der Regel stand, und ist unverändert übernommen.
+> Moved out 2026-09-24 (IMP-217). Every block sits under the same heading it had in the rule, and is carried over unchanged.
 
 ## Title blockquote (intro line)
 
@@ -27,7 +27,7 @@ Fail-loud is not satisfied by a routine that prints a warning every run if the w
 
 Three documented cases in the same August-2026 window, all traced to this exact pattern:
 
-1. **"Backfill der 7 drifteten Metrikzeilen"** — reported identically in 8 consecutive nightly routine runs, never actioned.
+1. **"Backfill the 7 drifted metric lines"** (said in German) — reported identically in 8 consecutive nightly routine runs, never actioned.
 2. **`NOTION_PARENT_PAGE_ID` missing** — reported 10× over 12 days, same wording each time.
 3. **The IMP-138 observation-loop staleness counter** — fired for 20 consecutive days (`stale=7` on 2026-08-03 climbing to `stale=26` on 2026-08-22, while `shards=6` sat frozen the whole span) and was overlooked the entire time. This one is the sharpest case: the alarm was **never silent** — it printed every session-end for three weeks — and it was still missed, because each day's printout looked like just another day's printout.
 

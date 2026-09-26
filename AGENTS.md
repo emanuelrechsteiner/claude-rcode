@@ -1,22 +1,22 @@
-# Agenten — zuerst hier lesen
+# Agents — read this first
 
-Dieses Repo ist die Konfiguration von Claude Code selbst und existiert an
-**zwei** Orten. Stelle vor jeder Änderung mit `pwd` fest, wo du bist:
+This repo is the configuration of Claude Code itself and exists in
+**two** places. Before any change, run `pwd` to find out where you are:
 
-| Pfad | Ort | Regel |
+| Path | Place | Rule |
 |---|---|---|
-| `…/claude-code-config` | **Bauhof** | Hier ändern und committen. Nichts wirkt live. |
-| `~/.claude` | **Haus** | Was Claude Code liest. **Nicht von Hand ändern** — nur `claude-deploy` schreibt hierher. |
+| `…/claude-code-config` | **Workshop** | Change and commit here. Nothing here is live. |
+| `~/.claude` | **Live install** | What Claude Code reads. **Do not edit by hand** — only `claude-deploy` writes here. |
 
-Drei Regeln:
+Three rules:
 
-1. **Änderungen ausschließlich im Bauhof.**
-2. **Du kannst deine Arbeit nicht in deiner eigenen Sitzung verifizieren** —
-   Regeln, Hooks und Skills werden beim Sitzungsstart gelesen. Melde nie
-   „funktioniert", sondern schreibe ein Abnahmeprotokoll für den Nutzer.
-3. **Prüfe, was ohne Übergabe prüfbar ist:** Hook-Skripte direkt aufrufen,
-   `jq . settings.json`, Regressionssuiten unter `hooks/tests/`.
+1. **Changes go in the workshop only.**
+2. **You cannot verify your own work in your own session** —
+   Claude Code reads rules, hooks, and skills at session start. Never
+   claim "it works" — write an acceptance protocol for the user instead.
+3. **Verify what's verifiable without a deploy:** call hook scripts directly,
+   `jq . settings.json`, run the regression suites under `hooks/tests/`.
 
-**Vollständige Baustellenordnung: [`docs/WORKING-IN-THIS-REPO.md`](docs/WORKING-IN-THIS-REPO.md)**
-— darin auch die Beispielbefehle zum Hook-Test und das Format des
-Abnahmeprotokolls.
+**Full workshop conventions: [`docs/WORKING-IN-THIS-REPO.md`](docs/WORKING-IN-THIS-REPO.md)**
+— also covers the example commands for hook testing and the format of
+the acceptance protocol.

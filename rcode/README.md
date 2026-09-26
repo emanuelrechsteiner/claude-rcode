@@ -132,7 +132,7 @@ for the unit's own work. Branch-naming forms for both trackers:
 `re-entry-archive/` (backward Stage jumps) · `escalation-queue.md`
 (automatic-approval mode). Full tree, field formats, and the two-tier ADR
 model: `~/.claude/rcode/rules/rcode-workflow.md` and
-`docs/adr/0002-rcode-plan-folgt-praxis.md`.
+`docs/adr/0002-rcode-plan-follows-practice.md`.
 
 `CONTEXT.md` (a project's own glossary) is optional and deliberately
 lightweight — a project writes it only once a term has been circumlocuted
@@ -164,16 +164,17 @@ things are true at once here — the **designed pipeline** and the
   hand-edited. See `docs/PUBLISHING.md` for the full pipeline and the
   PR-governance model for the public repo.
 - **Current operating mode.** `publish.sh` has been hard-disabled since
-  2026-08-12, by a deliberate maintainer decision (`PUBLISH_DISABLED=1`). Re-activation
+  2026-08-12 (`PUBLISH_DISABLED=1`, mirror-layer protection — the private
+  `~/.claude/rules/*.local.md` overlay must never leave this machine). Re-activation
   requires a deliberate code edit to the script itself; there is no env-var
   bypass. While it stays disabled, public-surface changes (README numbers,
   quickstart, contributing, issue templates) go through the documented
-  **hand-mirroring path** instead: made first in the Bauhof, then mirrored
+  **hand-mirroring path** instead: made first in the workshop, then mirrored
   by hand into the public repo, and checked for drift with
   `ops/bin/verify-public-mirror.sh`. Full rationale and the three
   considered alternatives: `ops/decisions/2026-08-13-publisher-stilllegung.md`.
 
 Do not edit a `claude-rcode` checkout as if it were independent either
 way — under the designed pipeline it would be overwritten by the next
-publish; under the current hand-mirroring mode it must match the Bauhof
+publish; under the current hand-mirroring mode it must match the workshop
 exactly, verified, not assumed.

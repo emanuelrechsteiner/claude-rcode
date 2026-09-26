@@ -77,7 +77,7 @@
 #
 # Consumers (per IMP-089): stop-batched-checks.sh (commands/-touch trigger),
 # /meta --verify, audit-config skill. Extended-scope consumers (2026-09-23):
-# the same three, now passing --root "$HOME/.claude" (or, for the Bauhof
+# the same three, now passing --root "$HOME/.claude" (or, for the workshop
 # self-check, --root <repo-root>).
 #
 # Note (IMP-092 dependency, out of scope here): the allowed-substrate pattern

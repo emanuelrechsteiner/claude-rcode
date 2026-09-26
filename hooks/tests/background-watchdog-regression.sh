@@ -130,11 +130,11 @@ T45=$(ts_minutes_ago 45)
 printf '{"ts":"%s","session_id":"sess-7","tool":"Task","subagent_type":"control-agent"}\n' "$T45" >> "$CLAUDE_DISPATCH_LOG"
 printf '{"ts":"%s","session_id":"sess-7","tool":"Task","subagent_type":"backend-agent"}\n' "$T45" >> "$CLAUDE_DISPATCH_LOG"
 OUT=$(printf '{"hook_event_name":"Stop","session_id":"sess-7"}' | bash "$CHECKER" 2>/dev/null)
-EXPECT_SUB="2 Hintergrundtrupp(s) ohne Ende-Signal seit"
-if printf '%s' "$OUT" | grep -qF "$EXPECT_SUB" && printf '%s' "$OUT" | grep -qE "seit (4[4-6]) min \(IMP-198\)"; then
+EXPECT_SUB="2 background troop(s) with no stop signal for"
+if printf '%s' "$OUT" | grep -qF "$EXPECT_SUB" && printf '%s' "$OUT" | grep -qE "for (4[4-6]) min \(IMP-198\)"; then
     ok "open+stale fires with correct N=2 and M≈45 min"
 else
-    bad "open+stale fires with correct N/M" "'⏳ 2 Hintergrundtrupp(s) ... seit ~45 min (IMP-198) ...'" "$OUT"
+    bad "open+stale fires with correct N/M" "'⏳ 2 background troop(s) ... for ~45 min (IMP-198) ...'" "$OUT"
 fi
 
 # 8. Recent (within 60 min) abnormal stop → its own line with the preview,
@@ -192,7 +192,7 @@ T45=$(ts_minutes_ago 45)
 printf '{"ts":"%s","session_id":"sess-12","tool":"Task","subagent_type":"x"}\n' "$T45" >> "$CLAUDE_DISPATCH_LOG"
 OUT=$(printf '{"hook_event_name":"UserPromptSubmit","session_id":"sess-12","prompt":"weiter"}' | bash "$CHECKER" 2>/dev/null)
 CTX=$(printf '%s' "$OUT" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null)
-if printf '%s' "$OUT" | jq -e . >/dev/null 2>&1 && printf '%s' "$CTX" | grep -qF "Hintergrundtrupp(s) ohne Ende-Signal"; then
+if printf '%s' "$OUT" | jq -e . >/dev/null 2>&1 && printf '%s' "$CTX" | grep -qF "background troop(s) with no stop signal"; then
     ok "UserPromptSubmit emits valid JSON with the finding in additionalContext"
 else
     bad "UserPromptSubmit emits valid JSON additionalContext" "valid JSON, context contains finding" "$OUT"

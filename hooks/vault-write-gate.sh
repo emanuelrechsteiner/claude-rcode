@@ -4,7 +4,7 @@
 # WHY: the user's own instruction (2026-09-25,
 # plans/vault-by-design-2026-09-25.md §0/§1): a real project/account name, a
 # machine-specific path, or a personal ID must NEVER land in a versioned file
-# of a Framework-repo clone (Bauhof, Haus, or a public clone) — such values
+# of a Framework-repo clone (the workshop, the live install, or a public clone) — such values
 # are "P2 data" and belong ONLY in the per-machine vault
 # (scripts/vault/, ${CLAUDE_VAULT_DIR:-~/.claude/vault}, gitignored). The
 # writer here is a language model, so this is enforced mechanically, not by
@@ -100,7 +100,7 @@ note_allow() {
     local n
     n=$(infra_repeat_count 1)
     if [ "$n" -ge 3 ]; then
-        echo "vault-write-gate: ESKALATION: Schreib-Tor seit $n Aufrufen ohne Prüfung — bash ~/.claude/scripts/vault/vault.sh doctor ausführen. Grund: $1." >&2
+        echo "vault-write-gate: ESCALATION: write gate unchecked for $n calls — run bash ~/.claude/scripts/vault/vault.sh doctor. Reason: $1." >&2
     else
         echo "vault-write-gate: NOTE — $1. Allowing (fail-open, hygiene gate)." >&2
     fi

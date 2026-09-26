@@ -542,6 +542,10 @@ section:first-child {
   color: var(--ink);
 }
 
+.benefit-tile--wide {
+  grid-column: 1 / -1;
+}
+
 /* ---- Proof points -------------------------------------------------------- */
 
 /* Four facts as four modules: a 2x2 grid, each item headed by a small

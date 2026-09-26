@@ -1,11 +1,11 @@
 <!--
 Status: ARCHIVED
 Last Updated: 2026-09-24
-Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich aus rules/testing-quality.md ausgelagert wurden — die Regel selbst bleibt dort; hier steht das „Warum" in voller Länge.
+Purpose: Evidence, incidents, and measurements moved verbatim out of rules/testing-quality.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
-# Belege zu `rules/testing-quality.md`
+# Evidence for `rules/testing-quality.md`
 
-> Ausgelagert 2026-09-24 (IMP-217). Jeder Block steht unter der Überschrift, unter der er in der Regel stand, und ist unverändert übernommen.
+> Moved out 2026-09-24 (IMP-217). Every block sits under the same heading it had in the rule, and is carried over unchanged.
 
 ## Verify at the Sink, Not the Suite (Data-Exfiltration Fixes) (IMP-158)
 
@@ -13,7 +13,7 @@ Purpose: Belege, Vorfälle und Messungen, die am 2026-09-24 (IMP-217) wörtlich 
 
 ## Verify Via the Same Code Path, Not a Reimplementation (IMP-158)
 
-**Evidence (same incident as above, the countermeasure that held):** "Ich habe dafür bewusst denselben Zähl-Code verwendet wie die Zielauflösung selbst, keine Nachbau-Logik — eine zweite, eigene Zählung, die anders rechnet als der Versand, war genau der Konstruktionsfehler hinter dem Vorfall."
+**Evidence (same incident as above, the countermeasure that held):** "I deliberately used the same counting code for this as the target resolution itself, no reimplemented logic — a second, separate count that computes differently from the send was exactly the design flaw behind the incident." (said in German)
 
 ## Automatic Check Results Belong to Their Trigger (IMP-158)
 

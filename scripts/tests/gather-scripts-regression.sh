@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# Regressionssuite fuer die vier tracker-agnostischen GATHER-Skripte des
-# R.Code-Umbaus "Plan folgt Praxis" (rcode-umbau-spec.md §9 A2/A3):
-#   rcode-units.sh — der EINE Parser (github via `gh issue list`, plan via
-#     A2-Grammatik ueber BRAINSTORM.md)
-#   status-metrics.sh, phase-gate-check.sh, resume-state.sh — rufen
-#     rcode-units.sh fuer Unit-Daten auf, statt selbst zu parsen
+# Regression suite for the four tracker-agnostic GATHER scripts of the
+# R.Code rebuild "Plan follows practice" (rcode-umbau-spec.md §9 A2/A3):
+#   rcode-units.sh — the ONE parser (github via `gh issue list`, plan via
+#     A2 grammar over BRAINSTORM.md)
+#   status-metrics.sh, phase-gate-check.sh, resume-state.sh — call
+#     rcode-units.sh for unit data instead of parsing themselves
 #     (rules/testing-quality.md "Verify via the same code path").
 #
-# Warum es diese Suite gibt: vor M14 war GitHub eine harte Voraussetzung in
-# allen drei Verbrauchsskripten, obwohl 2 von 5 realen R.Code-Projekten
-# keinen Issue-Tracker haben (eines davon gemessen bei 0/28 Commits, die
-# irgendetwas referenzieren, kein Remote). Die Fixtures unten decken BEIDE Tabellenformen
-# aus A2 ab (Checkbox- und Tabellenform, mit UND ohne Status-Spalte), den
-# Nie-fabrizieren-Fall (keine IDs gefunden), die p-NNN-Branch-Konvention und
-# den github-Pfad ueber eine Stub-`gh`-Binary — alles ohne Netzwerk.
+# Why this suite exists: before M14, GitHub was a hard prerequisite in
+# all three consumer scripts, even though 2 of 5 real R.Code projects
+# have no issue tracker (one of them measured at 0/28 commits referencing
+# anything, no remote). The fixtures below cover BOTH table shapes from
+# A2 (checkbox and table form, WITH and WITHOUT a status column), the
+# never-fabricate case (no IDs found), the p-NNN branch convention, and
+# the github path via a stub `gh` binary — all without network.
 #
-# Aufruf:  bash scripts/tests/gather-scripts-regression.sh
+# Usage:  bash scripts/tests/gather-scripts-regression.sh
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,23 +26,23 @@ PGC="$SCRIPTS_DIR/phase-gate-check.sh"
 RS="$SCRIPTS_DIR/resume-state.sh"
 
 for f in "$RCU" "$SM" "$PGC" "$RS"; do
-  [ -f "$f" ] || { echo "fehlt: $f" >&2; exit 1; }
+  [ -f "$f" ] || { echo "missing: $f" >&2; exit 1; }
 done
 
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); }
 bad()  { FAIL=$((FAIL+1)); printf '  [%s] %s\n' "$1" "$2"; }
-check(){ # check <name> <erwartet> <bekommen>
-  if [ "$2" = "$3" ]; then ok; else bad "$1" "erwartet='$2' bekommen='$3'"; fi
+check(){ # check <name> <expected> <got>
+  if [ "$2" = "$3" ]; then ok; else bad "$1" "expected='$2' got='$3'"; fi
 }
-check_gt(){ # check_gt <name> <bekommen> <schwelle> -- bekommen > schwelle
-  if [ "${2:-0}" -gt "${3:-0}" ] 2>/dev/null; then ok; else bad "$1" "erwartet '>${3}' bekommen='${2:-}'"; fi
+check_gt(){ # check_gt <name> <got> <threshold> -- got > threshold
+  if [ "${2:-0}" -gt "${3:-0}" ] 2>/dev/null; then ok; else bad "$1" "expected '>${3}' got='${2:-}'"; fi
 }
 
 G() { git -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false "$@"; }
 
-# ── Syntaxvorpruefung — bricht sofort mit einer klaren Meldung ab, statt
-#    kryptisch mitten in einer Fixture zu scheitern. ─────────────────────
+# ── Syntax pre-check — aborts immediately with a clear message instead of
+#    failing cryptically mid-fixture. ─────────────────────────────────────
 for f in "$RCU" "$SM" "$PGC" "$RS"; do
   if bash -n "$f" 2>/tmp/gsr-syntax-err.$$; then ok; else
     bad "syntax/$(basename "$f")" "$(cat /tmp/gsr-syntax-err.$$)"
@@ -50,10 +50,10 @@ for f in "$RCU" "$SM" "$PGC" "$RS"; do
   rm -f /tmp/gsr-syntax-err.$$
 done
 
-# ── Stub-gh: liest die erwartete Antwort aus einer Datei, deren Pfad ueber
-#    GH_STUB_MAP_FILE uebergeben wird (Zeilen "ARGV<TAB>ANTWORTDATEI"),
-#    exit 1 mit einer Meldung auf stderr bei unbekannten Argumenten — nie
-#    stillschweigend leer, damit ein Fixture-Tippfehler laut scheitert. ──
+# ── Stub gh: reads the expected reply from a file whose path is passed via
+#    GH_STUB_MAP_FILE (lines "ARGV<TAB>REPLYFILE"), exit 1 with a message on
+#    stderr for unknown arguments — never a silent empty reply, so a fixture
+#    typo fails loudly. ──────────────────────────────────────────────────
 make_stub_gh() { # make_stub_gh <bindir>
   local bindir="$1"
   mkdir -p "$bindir"
@@ -79,9 +79,9 @@ STUBBIN="$STUBROOT/bin"
 make_stub_gh "$STUBBIN"
 
 # ─────────────────────────────────────────────────────────────────────────
-# A) Plan-Tracker, Checkbox-Grammatik (A2a): gemischt offen/geschlossen,
-#    zwei Phasen ueber Ueberschriften, kein Status/State-Vergleich noetig
-#    (Checkboxen sind immer bestimmt — nie "unknown").
+# A) Plan tracker, checkbox grammar (A2a): mixed open/closed, two phases
+#    via headings, no status/state comparison needed (checkboxes are
+#    always determined — never "unknown").
 # ─────────────────────────────────────────────────────────────────────────
 REPO_A=$(mktemp -d)
 G -C "$REPO_A" init -q -b main
@@ -132,8 +132,8 @@ check "checkbox/pgc-verdict-block" "BLOCK" "$(jq -r .verdict <<<"$OUT")"
 rm -rf "$REPO_A"
 
 # ─────────────────────────────────────────────────────────────────────────
-# B) Plan-Tracker, Tabellenform MIT Status-Spalte (A2b) — Vollstaendigkeit
-#    ist bestimmt, niemals "unknown".
+# B) Plan tracker, table form WITH a status column (A2b) — completion is
+#    determined, never "unknown".
 # ─────────────────────────────────────────────────────────────────────────
 REPO_B=$(mktemp -d)
 G -C "$REPO_B" init -q -b main
@@ -166,9 +166,9 @@ check "table-status/pgc-verdict-block" "BLOCK" "$(jq -r .verdict <<<"$OUT")"
 rm -rf "$REPO_B"
 
 # ─────────────────────────────────────────────────────────────────────────
-# C) Plan-Tracker, Tabellenform OHNE Status-Spalte — "unknown", niemals
-#    ein erfundenes offen/geschlossen (fail-loud.md). Genau die Form, die
-#    eine echte BRAINSTORM.md real verwendet (dort gemessen: 312 Einheiten).
+# C) Plan tracker, table form WITHOUT a status column — "unknown", never
+#    a fabricated open/closed (fail-loud.md). Exactly the shape a real
+#    BRAINSTORM.md actually uses (measured there: 312 units).
 # ─────────────────────────────────────────────────────────────────────────
 REPO_C=$(mktemp -d)
 G -C "$REPO_C" init -q -b main
@@ -210,8 +210,8 @@ check "table-nostatus/pgc-issues-unknown" 2 "$(jq -r '.counts.issues_unknown' <<
 rm -rf "$REPO_C"
 
 # ─────────────────────────────────────────────────────────────────────────
-# D) Plan-Tracker, KEINE P-NNN-IDs ueberhaupt (real beobachteter Fall) —
-#    total:0 + Fund, niemals eine still-leere Antwort.
+# D) Plan tracker, NO P-NNN IDs at all (a real observed case) —
+#    total:0 + a finding, never a silently empty reply.
 # ─────────────────────────────────────────────────────────────────────────
 REPO_D=$(mktemp -d)
 G -C "$REPO_D" init -q -b main
@@ -239,11 +239,11 @@ check "no-id/pgc-ok-false" "false" "$(jq -r .ok <<<"$OUT")"
 rm -rf "$REPO_D"
 
 # ─────────────────────────────────────────────────────────────────────────
-# E) resume-state.sh: p-NNN-Branch-Konvention (case-insensitive), Konflikt
-#    mit einer anderen agent-log-Erwaehnung, "**Last step:** 6", und ein
-#    Commit mit Bereichs-/Komma-Refs ("refs P-051..P-105", "refs P-085,
-#    P-100") — reine Szenenechtheit, aber auch ein Beweis, dass
-#    last_commit.subject solche Botschaften unverfaelscht durchreicht.
+# E) resume-state.sh: p-NNN branch convention (case-insensitive), conflict
+#    with a different agent-log mention, "**Last step:** 6", and a commit
+#    with range/comma refs ("refs P-051..P-105", "refs P-085, P-100") —
+#    purely for scene realism, but also proof that last_commit.subject
+#    passes such messages through unaltered.
 # ─────────────────────────────────────────────────────────────────────────
 REPO_E=$(mktemp -d)
 G -C "$REPO_E" init -q -b main
@@ -286,8 +286,8 @@ check "resume/last-entry-agent-null" "null" "$(jq -c .last_entry_agent <<<"$OUT"
 rm -rf "$REPO_E"
 
 # ─────────────────────────────────────────────────────────────────────────
-# F) resume-state.sh: p-NNN-Branch widerspricht der agent-log-Erwaehnung ->
-#    ambiguous:true, Branch gewinnt (gleiche Regel wie in_progress_issue).
+# F) resume-state.sh: p-NNN branch contradicts the agent-log mention ->
+#    ambiguous:true, branch wins (same rule as in_progress_issue).
 # ─────────────────────────────────────────────────────────────────────────
 REPO_F=$(mktemp -d)
 G -C "$REPO_F" init -q -b main
@@ -311,9 +311,9 @@ check "resume-conflict/finding" 1 "$(jq '[.findings[] | select(test("conflicting
 rm -rf "$REPO_F"
 
 # ─────────────────────────────────────────────────────────────────────────
-# G) github-Modus ueber eine Stub-gh-Binaerdatei zuerst im PATH — Tracker-
-#    Inferenz (Remote + gh auth + >=1 issue) UND explizit gesetzter
-#    Tracker, quer durch alle vier Skripte. Keine Netzwerkverbindung.
+# G) github mode via a stub gh binary first on PATH — tracker inference
+#    (remote + gh auth + >=1 issue) AND an explicitly set tracker, across
+#    all four scripts. No network connection.
 # ─────────────────────────────────────────────────────────────────────────
 REPO_G=$(mktemp -d)
 G -C "$REPO_G" init -q -b main
@@ -335,9 +335,9 @@ echo '[{"number":7,"title":"Add thing","state":"OPEN","milestone":{"title":"Phas
 echo '[{"title":"Phase 5: Something"}]' > "$REPLY_MILESTONES"
 echo '[{"number":7,"state":"OPEN"},{"number":8,"state":"CLOSED"}]' > "$REPLY_UNITS_MS"
 
-# Nur `gh`-Aufrufe laufen ueber diese Karte — die Remote-Erkennung selbst
-# ruft das echte `git remote` (REPO_G hat via `git remote add origin ...`
-# oben ein echtes Remote), nicht `gh`.
+# Only `gh` calls go through this map — remote detection itself calls the
+# real `git remote` (REPO_G has a real remote via `git remote add origin
+# ...` above), not `gh`.
 cat > "$GH_MAP" <<EOF
 auth status	/dev/null
 issue list --limit 1 --json number	${REPLY_PROBE}
@@ -381,9 +381,9 @@ check "github/explicit-tracker-still-github" "github" "$(jq -r .tracker <<<"$OUT
 rm -rf "$REPO_G"
 
 # ─────────────────────────────────────────────────────────────────────────
-# H) github-Modus, aber `gh` fehlt auf dem PATH -> ok:false, kein
-#    Freikarten-Ruecksturz auf plan (fail-loud.md: fehlende Voraussetzung
-#    bleibt ein Fehler, niemals ein stiller Modus-Wechsel).
+# H) github mode, but `gh` is missing from PATH -> ok:false, no free-pass
+#    fallback to plan (fail-loud.md: a missing prerequisite stays an
+#    error, never a silent mode switch).
 # ─────────────────────────────────────────────────────────────────────────
 REPO_H=$(mktemp -d)
 G -C "$REPO_H" init -q -b main
@@ -402,9 +402,9 @@ check "no-gh/rcu-error" 1 "$(jq '[.errors[] | select(test("gh CLI not found"))] 
 rm -rf "$REPO_H" "$EMPTYBIN"
 
 # ─────────────────────────────────────────────────────────────────────────
-# I) status-metrics.sh / phase-gate-check.sh ohne rcode-units.sh daneben ->
-#    ok:false statt eines stillen Absturzes (die Verbrauchsskripte pruefen
-#    das Vorhandensein vor dem Aufruf).
+# I) status-metrics.sh / phase-gate-check.sh without rcode-units.sh next to
+#    them -> ok:false instead of a silent crash (the consumer scripts check
+#    for its presence before calling it).
 # ─────────────────────────────────────────────────────────────────────────
 ISOLATED=$(mktemp -d)
 cp "$SM" "$ISOLATED/status-metrics.sh"
@@ -624,7 +624,7 @@ EOF
 
   rm -rf "$REPO_O"
 else
-  echo "  [monorepo] uebersprungen: npm nicht auf PATH" >&2
+  echo "  [monorepo] skipped: npm not on PATH" >&2
 fi
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -814,7 +814,7 @@ check "partial-unknown/pgc-verdict-block" "BLOCK" "$(jq -r .verdict <<<"$OUT")"
 rm -rf "$REPO_S"
 
 # ─────────────────────────────────────────────────────────────────────────
-# J) --help auf allen vieren: exit 0, kein Absturz.
+# J) --help on all four: exit 0, no crash.
 # ─────────────────────────────────────────────────────────────────────────
 for s in "$RCU" "$SM" "$PGC" "$RS"; do
   bash "$s" --help >/dev/null 2>&1
@@ -823,5 +823,5 @@ done
 
 rm -rf "$STUBROOT"
 
-printf '── gather-scripts-regression: %d bestanden, %d fehlgeschlagen ──\n' "$PASS" "$FAIL"
+printf '── gather-scripts-regression: %d passed, %d failed ──\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

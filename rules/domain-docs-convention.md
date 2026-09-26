@@ -30,9 +30,9 @@ Agents dropped into a project without a shared language use 20 words where 1 wou
   ```
 - **Immutability:** an accepted ADR is never edited in substance. Changed your mind? Write a new ADR and mark the old one `superseded-by`. The history of reversals is itself the value.
 - **When to write one:** any decision someone might later ask "why?" about — architecture choices, rejected alternatives after a `grilling` session or `prototype` verdict, deliberate rule exceptions.
-- **R.Code exception:** project-level ADRs written from R.Code's own template may use the `ADR-` prefix (`ADR-NNNN-slug.md`) and a two-tier model — an inline `### ADR-NNN` entry in `ARCHITECTURE.md` at design time, filed to `docs/adr/` only once implemented/final — both remain valid alongside the bare-`NNNN` immutable form above (adopted 2026-09-23, `docs/adr/0002-rcode-plan-folgt-praxis.md`).
+- **R.Code exception:** project-level ADRs written from R.Code's own template may use the `ADR-` prefix (`ADR-NNNN-slug.md`) and a two-tier model — an inline `### ADR-NNN` entry in `ARCHITECTURE.md` at design time, filed to `docs/adr/` only once implemented/final — both remain valid alongside the bare-`NNNN` immutable form above (adopted 2026-09-23, `docs/adr/0002-rcode-plan-follows-practice.md`).
 
-## Enforcement — Korrektur wird sofort Gesetz
+## Enforcement — a correction becomes law immediately
 
 **On the FIRST "NIE X" / "IMMER X" (or "NEVER X" / "ALWAYS X") correction from the user, write the CONTEXT.md invariant — or a mini-ADR, and where checkable a test case — IN THE SAME TURN.** This is the default action, not an offer and not a question back to the user ("should I persist this?" is itself the violation). A correction that only lives in the chat transcript has not been enforced; it has to land in an artifact the next session actually reads.
 

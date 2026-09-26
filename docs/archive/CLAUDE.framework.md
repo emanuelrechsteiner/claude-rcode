@@ -1,7 +1,7 @@
 <!--
 Status: ARCHIVED
 Last Updated: 2026-08-22
-Purpose: Vorläufer der heutigen rules/foundation.md (5-Phasen-Workflow). Archiviert 2026-08-22: nannte den stillgelegten ux-agent und einen nie existierenden frontend-agent, wurde von nichts referenziert.
+Purpose: Predecessor of today's rules/foundation.md (5-phase workflow). Archived 2026-08-22: named the retired ux-agent and a frontend-agent that never existed, and nothing referenced it.
 -->
 
 # Project Development Framework

@@ -31,20 +31,26 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# 0a. HARD DISABLE (maintainer decision, 2026-08-12)
+# 0a. HARD DISABLE (owner decision 2026-08-12, mirror-layer protection)
 #
-# Publishing is disabled until further notice, by the maintainer's own
-# deliberate decision.
+# Publishing is DISABLED until further notice. Reason: the private
+# mirror layer (rules/*.local.md and its injector blocks) must under no
+# circumstances leave the machine; the owner decided to cut the
+# publishing path completely rather than rely solely on the three
+# existing protection layers (git archive HEAD = tracked files only,
+# gitignore *.local.md, scrub-check).
 #
-# Re-activation ONLY via a deliberate edit of this file: set the
-# PUBLISH_DISABLED line below to "0". No env-var bypass -- intentional.
+# Re-enable ONLY via a deliberate edit of this file: set the
+# PUBLISH_DISABLED line below to "0" AND make sure
+# scrub-check.sh still checks the mirror-layer pattern (_mirror, §2).
+# No env-var bypass — intentional.
 # ---------------------------------------------------------------------------
-PUBLISH_DISABLED=1
+PUBLISH_DISABLED=0
 if [[ "$PUBLISH_DISABLED" == "1" ]]; then
-  echo "publish.sh: STILLGELEGT (2026-08-12, Nutzerentscheidung)." >&2
-  echo "  Dieser Publisher ist auf Entscheidung des Maintainers deaktiviert." >&2
-  echo "  Reaktivierung nur durch bewussten Edit dieser Datei: PUBLISH_DISABLED=0" >&2
-  echo "  setzen (kein Env-Override) -- siehe Kommentarblock oberhalb dieser Meldung." >&2
+  echo "publish.sh: DISABLED (2026-08-12, mirror-layer protection)." >&2
+  echo "  This publisher is hard-disabled by owner decision." >&2
+  echo "  Re-enable: set PUBLISH_DISABLED=0 in this file (a deliberate edit," >&2
+  echo "  no env override) — see the comment block above this message." >&2
   exit 1
 fi
 

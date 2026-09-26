@@ -3,7 +3,7 @@
 > Canonical backward-jump protocol for the five Stages a `/team-lead`
 > directive can be loaded into (Plan → Design → Develop → Test → Launch,
 > reachable directly or via the `/plan-team`…`/launch-team` aliases): the
-> two jump classes, the **Futilitätsnachweis** requirement, the circuit
+> two jump classes, the **futility proof** requirement, the circuit
 > breaker, the re-entry-brief artifact, target-Stage entry behavior, and the
 > invalidation rule for skipped artifacts. Derived from
 > `~/.claude/plans/team-phase-restructure-2026-07-26.md` §5, converted to
@@ -42,16 +42,16 @@ The normal working loop; Test→Develop (4→3) is the everyday case.
 
 Colloquially "back to the drawing board." Valid **only** once it's
 established that Iteration in Stage N−1 cannot fix the problem. Requires a
-**Futilitätsnachweis**:
+**futility proof**:
 
 > The blocking constraint was not set in Stage N−1, but in Stage X. No
 > solution exists within Stage N−1's degrees of freedom.
 
 A gut feeling ("the design is probably at fault") is explicitly not enough.
-The Futilitätsnachweis has four required elements:
+The futility proof has four required elements:
 
 1. **Finding in Stage N** — what concretely fails, with evidence
-2. **Futilitätsnachweis for Stage N−1** — which constraint blocks, and which
+2. **Futility proof for Stage N−1** — which constraint blocks, and which
    Stage set it
 3. **Target Stage X + change mandate** — what must change there
 4. **Invalidation list** — which artifacts from the skipped Stages become
@@ -62,9 +62,9 @@ The Futilitätsnachweis has four required elements:
 | Jump | Class | Why |
 |---|---|---|
 | 4→3 (Test→Develop) | Iteration | Test finds a bug; Develop can fix it |
-| 4→2 (Test→Design) | Drawing Board — Futilitätsnachweis required | The required state must cross a component boundary that **Design** drew — no implementation path inside that design satisfies it |
-| 4→1 (Test→Plan) | Drawing Board — Futilitätsnachweis required | The feature demonstrably solves the wrong user problem — no design of it helps |
-| 5→3 (Launch→Develop) | Drawing Board — Futilitätsnachweis required | Prod incident whose root cause is an implementation decision Test could not structurally have caught |
+| 4→2 (Test→Design) | Drawing Board — futility proof required | The required state must cross a component boundary that **Design** drew — no implementation path inside that design satisfies it |
+| 4→1 (Test→Plan) | Drawing Board — futility proof required | The feature demonstrably solves the wrong user problem — no design of it helps |
+| 5→3 (Launch→Develop) | Drawing Board — futility proof required | Prod incident whose root cause is an implementation decision Test could not structurally have caught |
 
 ## Re-Entry Brief (Artifact)
 
@@ -79,7 +79,7 @@ blind, and the jump becomes unauditable after the fact.
 - date: YYYY-MM-DD · authorized_by: lead | user-y/n
 
 ## Finding (Stage N)
-## Futilitätsnachweis for Stage N−1   (drawing-board class only)
+## Futility Proof for Stage N−1   (drawing-board class only)
 ## Change Mandate to Target Stage
 ## Invalidation List                  (see Invalidation below)
 ```

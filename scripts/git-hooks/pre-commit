@@ -17,8 +17,8 @@
 # writes made THROUGH Claude Code's own Write/Edit/MultiEdit tools. Anything
 # that lands in the git INDEX another way — sed -i, a heredoc, jq --in-place,
 # a human's own editor, an unrelated script — never passes through it. This
-# hook is the second, independent layer the plan calls for (§3: "drei
-# Schichten, weil der Schreiber ein Sprachmodell ist" — and a human or an
+# hook is the second, independent layer the plan calls for (§3: "three
+# layers, because the writer is a language model", translated from German — and a human or an
 # unrelated tool is exactly the case the PreToolUse layer cannot cover).
 #
 # STAGED, not working-tree: reads `git show ":$f"` (the INDEX blob) for each

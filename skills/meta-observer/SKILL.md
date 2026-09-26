@@ -15,77 +15,77 @@ Replace the archived `improvement-agent.md` Meta Layer (archived 2026-01-17) wit
 
 **Design Principle:** The skill never writes framework changes directly. It produces a **proposal** markdown file for human review. Only after approval do proposals become rule files, skills, or agent changes.
 
-## Quellen-Doktrin (Nutzer-Direktive 2026-08-23)
+## Source Doctrine (user directive, 2026-08-23)
 
-> **Wörtliche Direktive (2026-08-23):** „NIE IMP aus Commits herleiten. Das bildet nicht den
-> Prozess ab, sondern das Ergebnis. Die Chats liegen auf der Festplatte vollständig vor —
-> analysiere sie, daraus sollen die Verbesserungen abgeleitet werden."
+> **Verbatim directive (2026-08-23):** "NEVER derive an IMP from commits. That doesn't
+> capture the process, only the outcome. The chats are sitting on disk in full — analyze
+> those, and derive the improvements from them."
 
-**Primärquelle** jeder IMP-Ableitung sind die Session-**Transkripte**:
-- `~/.claude/projects/<projekt>/*.jsonl` — die Hauptgespräche
-- `~/.claude/global-observation/chat-archives/` — das Archiv
+The **primary source** for every IMP derivation is the session **transcripts**:
+- `~/.claude/projects/<project>/*.jsonl` — the main conversations
+- `~/.claude/global-observation/chat-archives/` — the archive
 
-Dort stehen die Prozess-Ereignisse, aus denen sich ein Verbesserungsbedarf tatsächlich
-ergibt: Nutzer-Korrekturen und Meta-Feedback, mehrfache Anläufe an derselben Aufgabe,
-Gate-/Permission-Reibung, verworfene Ansätze, Entscheidungen mit ihrer Begründung. Ein
-Commit zeigt nur, was am Ende herauskam — nicht den Weg dorthin.
+That's where the process events live that an actual need for improvement is derived
+from: user corrections and meta-feedback, multiple attempts at the same task,
+gate/permission friction, discarded approaches, decisions along with their rationale. A
+commit shows only what came out at the end — never the path that got there.
 
-**Fenster-Selektion (Pflicht, IMP-195):** Ein Sitzungsfenster wird IMMER über den
-`timestamp` der einzelnen JSONL-Einträge gebildet, NIE über die Datei-Änderungszeit
-(mtime) der Transkriptdatei. Datei-mtime unter `~/.claude/projects/` ist nachweislich
-KEIN Aktivitätssignal — ein nicht identifizierter Prozess (keiner der drei
-`claude-routine`-launchd-Jobs, die 02:05/07:10/22:06 laufen) fasst Transkripte an, ohne
-sie inhaltlich zu ändern: im Lauf vom 2026-09-09 trugen 99 von 603 Dateien exakt `10:30`
-als mtime, während ihr letzter Eintrag Wochen zurücklag (Beispiel: proj-1df43a `aaaa0002`,
-mtime 2026-08-31 10:30:45, letzter Eintrag 2026-07-13T20:51Z). Eine mtime-Fensterung
-zählte in diesem Lauf 11 statt real 5 aktive Coding-Projekte.
+**Window selection (mandatory, IMP-195):** a session window is ALWAYS built from the
+`timestamp` of the individual JSONL entries, NEVER from the transcript file's
+modification time (mtime). File mtime under `~/.claude/projects/` is demonstrably NOT
+an activity signal — an unidentified process (none of the three `claude-routine`
+launchd jobs, which run at 02:05/07:10/22:06) touches transcripts without changing
+their content: in the 2026-09-09 run, 99 of 603 files carried exactly `10:30` as their
+mtime, while their last entry was weeks old (example: proj-1df43a `aaaa0002`, mtime
+2026-08-31 10:30:45, last entry 2026-07-13T20:51Z). An mtime-based windowing counted 11
+active coding projects in that run instead of the real 5.
 
-NIE `find -newermt`/`find -mtime`/`ls -t`/`ls -lt` zur Fenster-Eingrenzung von
-Session-Transkripten verwenden. Stattdessen:
+NEVER use `find -newermt`/`find -mtime`/`ls -t`/`ls -lt` to narrow the window of
+session transcripts. Instead:
 ```bash
-# 1. Alle jsonl-Dateien einsammeln — KEIN Zeitfilter beim find selbst:
+# 1. Collect all jsonl files — NO time filter on find itself:
 find ~/.claude/projects/ -name '*.jsonl' -type f 2>/dev/null > /tmp/all_jsonl.txt
 
-# 2. Kandidaten: Dateien mit MINDESTENS einem Eintrag im Fenster — Inhalts-Grep auf den
-#    "timestamp"-Wert der Einträge, nicht die Datei-Zeit:
+# 2. Candidates: files with AT LEAST one entry in the window — content-grep on the
+#    entries' "timestamp" value, not the file time:
 grep -l "\"timestamp\":\"${WINDOW_START_DATE}" $(cat /tmp/all_jsonl.txt) 2>/dev/null
 
-# 3. Innerhalb einer Kandidatendatei nur die Einträge selektieren, deren EIGENER
-#    timestamp im Fenster liegt (jq, nicht die Dateizeit):
+# 3. Within a candidate file, select only the entries whose OWN timestamp
+#    falls in the window (jq, not the file time):
 jq -c --arg from "$WINDOW_START" --arg to "$WINDOW_END" \
    'select(.timestamp >= $from and .timestamp <= $to)' "$candidate"
 ```
-Datei-mtime darf höchstens als billiger VORFILTER dienen, der eine Datei nur dann
-AUSSCHLIESST, wenn ihre mtime ÄLTER als der Fensterbeginn ist (eine Datei kann nicht
-älter aussehen als ihr eigener letzter Eintrag — das ist sicher). mtime darf eine
-Datei NIE ins Fenster EINSCHLIESSEN — genau das war der 2026-09-09-Fehler.
+File mtime may serve at most as a cheap PRE-FILTER that EXCLUDES a file only when its
+mtime is OLDER than the window start (a file cannot look older than its own last
+entry — that direction is safe). mtime must NEVER be used to INCLUDE a file in the
+window — that was exactly the 2026-09-09 bug.
 
-**Sekundärquelle** ist Telemetrie (`signals.jsonl`, `session-metrics.jsonl`,
-`dispatch-capture`-Daten, Gate-Logs) — sie taugt für Häufigkeiten und Aggregation, nicht
-als Herleitungsgrundlage für einen Kandidaten.
+The **secondary source** is telemetry (`signals.jsonl`, `session-metrics.jsonl`,
+`dispatch-capture` data, gate logs) — good for frequencies and aggregation, not as the
+derivation basis for a candidate.
 
-**`git log`/Commits sind NUR Korroboration des Ergebnisses — niemals die
-Herleitungsbasis** eines Kandidaten. Ein Commit darf einen aus dem Transkript
-abgeleiteten Befund untermauern ("und das Ergebnis landete in Commit X"), aber nie selbst
-der Ausgangspunkt der Ableitung sein.
+**`git log`/commits are ONLY corroboration of the outcome — never the derivation
+basis** for a candidate. A commit may support a finding derived from the transcript
+("and the outcome landed in commit X"), but it may never itself be the starting point
+of the derivation.
 
-**Belegpflicht:** Jeder Kandidat im Proposal (Step 5) muss künftig mindestens einen
-Transkript-Beleg tragen — Pfad + Zitat oder konkretes Ereignis — ODER die explizite
-Angabe, warum keiner existiert (z. B. ein reiner Telemetrie-Befund ohne zurechenbare
-Session).
+**Evidence requirement:** going forward, every candidate in the proposal (Step 5) must
+carry at least one transcript citation — path + quote or concrete event — OR an
+explicit statement of why none exists (e.g. a pure telemetry finding with no
+attributable session).
 
-**Extraktionsmethode (Hinweis, keine Pflichtreihenfolge):** Transkripte nie vollständig
-in den Kontext laden — arbeite mit `jq` über `type=="user"`-Turns, sortiere
-`tool_result`-Blöcke aus, suche gezielt nach Markern (Korrektur-Formulierungen,
-Wiederholungen, Ablehnungen, explizites Lob/Tadel), und lade nur für die Top-Funde den
-engen Kontext um die Fundstelle.
+**Extraction method (guidance, not a mandatory order):** never load transcripts fully
+into context — work with `jq` over `type=="user"` turns, filter out `tool_result`
+blocks, search specifically for markers (correction phrasing, repetitions, rejections,
+explicit praise/criticism), and load the narrow context around a hit only for the top
+findings.
 
-**Projekt-Scope (Nachtrag, Nutzer-Direktive 2026-08-23):** „Alles mit proj-f5739a kannst Du
-ignorieren. Es zählen nur Coding-Projekte." Die IMP-Ableitung liest ausschliesslich
-Transkripte aus Coding-Projekten. Nicht-Coding-Arbeit (Prosa-Manuskripte wie proj-f5739a,
-reine Schreibprojekte ohne Code-Artefakte) ist als Quelle ausgenommen — unabhängig von
-ihrem Signalvolumen. Diese Ausnahme gilt nur für die Verbesserungs-Ableitung, nicht für
-andere Auswertungen (z. B. `daily-docs` dokumentiert weiterhin alle Projekte).
+**Project scope (addendum, user directive 2026-08-23):** "You can ignore anything with
+proj-f5739a. Only coding projects count." IMP derivation reads exclusively transcripts
+from coding projects. Non-coding work (prose manuscripts like proj-f5739a, pure writing
+projects with no code artifacts) is excluded as a source — regardless of its signal
+volume. This exception applies only to improvement derivation, not to other evaluations
+(e.g. `daily-docs` still documents all projects).
 
 ## When to Use
 
@@ -97,11 +97,11 @@ andere Auswertungen (z. B. `daily-docs` dokumentiert weiterhin alle Projekte).
 
 ## Inputs (Evidence Sources)
 
-**Primär (Herleitungsbasis — Quellen-Doktrin oben; nur Coding-Projekte):**
-0. Session-Transkripte — `~/.claude/projects/<projekt>/*.jsonl` (Hauptgespräche) +
-   `~/.claude/global-observation/chat-archives/` (Archiv) für das Fenster
+**Primary (derivation basis — Source Doctrine above; coding projects only):**
+0. Session transcripts — `~/.claude/projects/<project>/*.jsonl` (main conversations) +
+   `~/.claude/global-observation/chat-archives/` (archive) for the window
 
-**Sekundär (Häufigkeiten/Aggregation — nie allein herleitend):**
+**Secondary (frequencies/aggregation — never derivation on its own):**
 1. `~/.claude/global-observation/signals.jsonl` — PostToolUse events (Edit/Write + intent; `intent:"error"` events since IMP-075) + `archives/signals-*.jsonl.gz` for the window
 2. `~/.claude/global-observation/session-metrics.jsonl` — Per-session aggregates
 3. `~/.claude/global-observation/self-critique.jsonl` — Session-end states (branch, uncommitted count, per-session edit count) — wired in per IMP-082; was write-only (920 records, 0 readers) before 2026-07-03
@@ -110,7 +110,7 @@ andere Auswertungen (z. B. `daily-docs` dokumentiert weiterhin alle Projekte).
 6. MCP Memory Graph — `mcp__memory__search_nodes` for existing Patterns/Lessons
 
 **Korroboration ausschliesslich (NIEMALS Herleitungsbasis — Quellen-Doktrin oben):**
-7. `git log --since="30 days ago"` across active projects (cross-project view) — zeigt nur das Ergebnis, nie den Prozess
+7. `git log --since="30 days ago"` across active projects (cross-project view) — shows only the outcome, never the process
 
 ## Synthesis Workflow
 
@@ -127,10 +127,10 @@ Compute:
 - **Project hot zones** (cwd with most signals)
 - **R.Code vs. non-R.Code split** (workflow adoption)
 
-Diese Aggregation liefert Kandidaten-HINWEISE (Sekundärquelle) — kein daraus
-entstandener Kandidat geht ungeprüft ins Proposal. Vor Aufnahme in Step 5 gegen die
-Transkripte des betroffenen Zeitraums verproben (Quellen-Doktrin oben); ohne
-Transkript-Beleg bleibt der Hinweis ein reiner Häufigkeits-Befund, keine Herleitung.
+This aggregation produces candidate HINTS (secondary source) — no candidate that
+emerges from it goes into the proposal unverified. Before inclusion in Step 5, test it
+against the transcripts of the affected time window (Source Doctrine above); without a
+transcript citation, the hint remains a pure frequency finding, not a derivation.
 
 ### Step 3 — Cross-reference with Memory Graph
 ```
@@ -159,7 +159,7 @@ Write to `~/.claude/plans/meta-proposal-YYYY-MM-DD.md` with sections:
 ### IMP-XXX: <Title>
 - **Source evidence**: <N signals from files X, Y>
 - **Transkript-Beleg** (Pflichtfeld, Quellen-Doktrin): <Pfad + Zitat/Ereignis, ODER
-  explizite Begründung, warum keins existiert>
+  an explicit justification for why none exists>
 - **Proposed category**: orchestration | compliance | integrity | efficiency | safety | automation | context
 - **Proposed risk level**: low | medium | high
 - **Proposed action**: rule file / skill / agent update / hook / config
@@ -175,12 +175,12 @@ Write to `~/.claude/plans/meta-proposal-YYYY-MM-DD.md` with sections:
 ### Step 6 — Append ledger entry (optional, status: proposed)
 If the user explicitly requests immediate ledger entry (rare), append a `proposed` IMP-XXX to `improvement-ledger.json` with a `sourceProposal` field pointing to the proposal file.
 
-**Pseudonymisierung (IMP-219):** Was in versionierte Dateien geht, trägt Tokens statt
-echter Namen/Pfade — pipe findings through `ledger-append-proposed.sh`, das jedes
-Textfeld als Netz tokenisiert (`scripts/vault/vault.sh`) und bei einem verbleibenden
-strukturellen Fund das Schreiben verweigert. Lokale Arbeitsdateien unter
-`~/.claude/plans/` (gitignoriert, incl. this skill's own proposal `.md` files)
-dürfen echte Namen tragen — nur der Ledger-Schreibpfad ist betroffen.
+**Pseudonymization (IMP-219):** whatever goes into a versioned file carries tokens
+instead of real names/paths — pipe findings through `ledger-append-proposed.sh`, which
+tokenizes every text field as a safety net (`scripts/vault/vault.sh`) and refuses to
+write on any remaining structural hit. Local working files under `~/.claude/plans/`
+(gitignored, incl. this skill's own proposal `.md` files) may carry real names — only
+the ledger write path is affected.
 
 **HARD RULE for whoever IMPLEMENTS a proposal (IMP-074, 2026-07-03):** An IMP counts as *implemented* ONLY once its ledger entry exists (with `implementedAt` + `filesCreated`/`filesModified`). Recording in the ledger is the TERMINAL step of every implementation batch — never a deferrable one. A proposal file's Implementation Log marking something ✅ without a matching ledger id is a process failure (this exact deferral silently lost IMP-047..069 for 13 days; backfilled 2026-07-03). Also recompute the header counters (`totalImprovements` etc.) from the entries via jq/script — never hand-edit them.
 
@@ -200,10 +200,10 @@ alarming): `date -u +%Y-%m-%dT%H:%M:%SZ > ~/.claude/global-observation/.last-run
 - ❌ Create IMP entries with status `implemented` (always starts as `proposed`)
 - ❌ Override user judgment — proposals are suggestions, not decisions
 - ❌ Extract secrets, credentials, or user data from signal stream
-- ❌ Einen IMP-Kandidaten allein aus `git log`/Commit-Historie herleiten — Commits sind
-  Korroboration, nie Herleitungsbasis (Quellen-Doktrin)
-- ❌ Nicht-Coding-Projekte (Prosa-/Schreibprojekte wie proj-f5739a) als Quelle für die
-  IMP-Ableitung heranziehen, unabhängig vom Signalvolumen (Quellen-Doktrin, Projekt-Scope)
+- ❌ Derive an IMP candidate solely from `git log`/commit history — commits are
+  corroboration, never the derivation basis (Source Doctrine)
+- ❌ Use non-coding projects (prose/writing projects like proj-f5739a) as a source for
+  IMP derivation, regardless of signal volume (Source Doctrine, Project Scope)
 
 ## Integration with Other Framework Components
 

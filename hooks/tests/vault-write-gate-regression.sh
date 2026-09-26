@@ -113,7 +113,7 @@ t "File outside any git repo → allow (not a framework repo)" 0 \
 t "File in a git repo WITHOUT the §7.6 marker → allow (not a framework repo)" 0 \
     "$(payload_write "$OTHERGIT/src/x.ts" "path is /Users/synthfaketester/x")"
 
-# ── M6 (Gegenprüfer finding): an embedded/nested git repo with NO marker of
+# ── M6 (adversarial-review finding): an embedded/nested git repo with NO marker of
 #    its own, living inside a framework repo that DOES have one at its own
 #    root, must still be recognized as framework-repo scope — the ancestor
 #    walk in find_marked_git_root must reach past the inner (unmarked) root. ──
@@ -128,7 +128,7 @@ CLAUDE_VAULT_DIR="$VDIR" t \
 t "Gitignored target inside a framework repo → allow" 0 \
     "$(payload_write "$FWREPO/ignored.txt" "path is /Users/synthfaketester/x")"
 
-# ── M1 (Gegenprüfer finding): a file already TRACKED in git must still be
+# ── M1 (adversarial-review finding): a file already TRACKED in git must still be
 #    checked even after a NEW .gitignore pattern starts matching it — a
 #    later ignore line does not stop git from continuing to commit an
 #    already-tracked file, so the exemption must require "ignored AND
@@ -194,7 +194,7 @@ else
     FAIL=$((FAIL + 1)); printf 'FAIL %2d — garbage stdin: code=%s err=%s\n' "$N" "$CODE" "$ERR"
 fi
 
-# ── M4 (Gegenprüfer finding): infra-NOTE escalation counter (rules/
+# ── M4 (adversarial-review finding): infra-NOTE escalation counter (rules/
 #    fail-loud.md, "Repetition Without Escalation Is Also Silence", IMP-164).
 #    A DEDICATED counter file, isolated from the rest of this suite, so this
 #    sequence is deterministic regardless of what ran earlier or later. Three
@@ -211,7 +211,7 @@ N=$((N + 1))
 printf '%s' "$(payload_write "$FWREPO/src/a.ts" "$SYNTH_TERM")" |
     CLAUDE_VAULT_GATE_INFRA_COUNTER="$INFRA_CTR" "$INFRA_ISOL/vault-write-gate.sh" >/dev/null 2>"$T/stderr"
 CODE=$?; ERR=$(cat "$T/stderr" 2>/dev/null || true); CTR=$(cat "$INFRA_CTR" 2>/dev/null || echo "?")
-if [ "$CODE" -eq 0 ] && printf '%s' "$ERR" | grep -q "NOTE" && ! printf '%s' "$ERR" | grep -q "ESKALATION" && [ "$CTR" = "1" ]; then
+if [ "$CODE" -eq 0 ] && printf '%s' "$ERR" | grep -q "NOTE" && ! printf '%s' "$ERR" | grep -q "ESCALATION" && [ "$CTR" = "1" ]; then
     PASS=$((PASS + 1)); printf '  ok %2d — infra-NOTE 1/3: NOTE form, counter=%s\n' "$N" "$CTR"
 else
     FAIL=$((FAIL + 1)); printf 'FAIL %2d — infra-NOTE 1/3: code=%s counter=%s err=%s\n' "$N" "$CODE" "$CTR" "$ERR"
@@ -221,7 +221,7 @@ N=$((N + 1))
 printf '%s' "$(payload_write "$FWREPO/src/a.ts" "$SYNTH_TERM")" |
     CLAUDE_VAULT_GATE_INFRA_COUNTER="$INFRA_CTR" "$INFRA_ISOL/vault-write-gate.sh" >/dev/null 2>"$T/stderr"
 CODE=$?; ERR=$(cat "$T/stderr" 2>/dev/null || true); CTR=$(cat "$INFRA_CTR" 2>/dev/null || echo "?")
-if [ "$CODE" -eq 0 ] && printf '%s' "$ERR" | grep -q "NOTE" && ! printf '%s' "$ERR" | grep -q "ESKALATION" && [ "$CTR" = "2" ]; then
+if [ "$CODE" -eq 0 ] && printf '%s' "$ERR" | grep -q "NOTE" && ! printf '%s' "$ERR" | grep -q "ESCALATION" && [ "$CTR" = "2" ]; then
     PASS=$((PASS + 1)); printf '  ok %2d — infra-NOTE 2/3: NOTE form, counter=%s\n' "$N" "$CTR"
 else
     FAIL=$((FAIL + 1)); printf 'FAIL %2d — infra-NOTE 2/3: code=%s counter=%s err=%s\n' "$N" "$CODE" "$CTR" "$ERR"
@@ -231,8 +231,8 @@ N=$((N + 1))
 printf '%s' "$(payload_write "$FWREPO/src/a.ts" "$SYNTH_TERM")" |
     CLAUDE_VAULT_GATE_INFRA_COUNTER="$INFRA_CTR" "$INFRA_ISOL/vault-write-gate.sh" >/dev/null 2>"$T/stderr"
 CODE=$?; ERR=$(cat "$T/stderr" 2>/dev/null || true); CTR=$(cat "$INFRA_CTR" 2>/dev/null || echo "?")
-if [ "$CODE" -eq 0 ] && printf '%s' "$ERR" | grep -q "ESKALATION" && [ "$CTR" = "3" ]; then
-    PASS=$((PASS + 1)); printf '  ok %2d — infra-NOTE 3/3: form switches to ESKALATION, counter=%s\n' "$N" "$CTR"
+if [ "$CODE" -eq 0 ] && printf '%s' "$ERR" | grep -q "ESCALATION" && [ "$CTR" = "3" ]; then
+    PASS=$((PASS + 1)); printf '  ok %2d — infra-NOTE 3/3: form switches to ESCALATION, counter=%s\n' "$N" "$CTR"
 else
     FAIL=$((FAIL + 1)); printf 'FAIL %2d — infra-NOTE 3/3: code=%s counter=%s err=%s\n' "$N" "$CODE" "$CTR" "$ERR"
 fi

@@ -307,9 +307,9 @@ HEREDOC_RM_MSG="git commit -F - <<EOF
 doc: rm -rf ~ is dangerous
 EOF"
 assert $GUARD ALLOW "$HEREDOC_RM_MSG"                                 # rm -rf inside a heredoc commit message
-assert $GUARD ALLOW "git commit -m 'doc: rm -rf /etc ist tödlich'"    # rm -rf inside a quoted commit message
+assert $GUARD ALLOW "git commit -m 'doc: rm -rf /etc is deadly'"      # rm -rf inside a quoted commit message
 assert $GUARD ALLOW 'echo "rm -rf /"'                                 # rm -rf as an echoed string
-assert $GUARD ALLOW "echo 'niemals rm -rf \$HOME'"                    # rm -rf as an echoed string (single-quoted)
+assert $GUARD ALLOW "echo 'never run rm -rf \$HOME'"                  # rm -rf as an echoed string (single-quoted)
 assert $GUARD ALLOW "grep 'rm -rf /' README.md"                       # rm -rf inside a grep pattern
 PYCMD="python3 -c \"print('rm -rf ~ x')\""
 assert $GUARD ALLOW "$PYCMD"                                          # rm -rf inside a python string literal

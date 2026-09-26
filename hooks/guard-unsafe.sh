@@ -138,9 +138,9 @@ soft_ack() {
     mkdir -p "$(dirname "$GUARD_LOG")" 2>/dev/null
     local _host
     _host=$(printf '%s' "$COMMAND" | grep -oE '(https?://)[^[:space:]"'"'"']+' | head -1 | sed -E 's#^https?://##' | cut -d/ -f1)
-    [[ -z "$_host" ]] && _host="(kein Ziel extrahierbar)"
+    [[ -z "$_host" ]] && _host="(no target extractable)"
     printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "SOFT-ACK" "$COMMAND" >> "$GUARD_LOG" 2>/dev/null
-    echo "NOTE: ${op_label} erkannt (SOFT-ACK seit IMP-146) — Ziel prüfen: ${_host}" >&2
+    echo "NOTE: ${op_label} detected (SOFT-ACK since IMP-146) — check target: ${_host}" >&2
     exit 0
 }
 
@@ -486,7 +486,7 @@ fi
 if [[ "$CURL_LOCAL" != 1 ]] && [[ "$CURL_ALLOWED_API" != 1 ]] \
    && [[ "$COMMAND_NORM" =~ $CMDPOS(python3?|node|deno|ruby|perl).*(urlopen|requests\.(post|put|patch|delete)|http\.client|fetch\(|axios\.) ]] \
    && [[ "$COMMAND_NORM" =~ (data=|json=|body:|-d[[:space:]]|POST|PUT|PATCH|DELETE) ]]; then
-    soft_ack "scripted HTTP request mit Daten (python/node-Äquivalent zu curl-Upload)"
+    soft_ack "scripted HTTP request with data (python/node equivalent of curl upload)"
 fi
 
 # Reverse shells and netcat.

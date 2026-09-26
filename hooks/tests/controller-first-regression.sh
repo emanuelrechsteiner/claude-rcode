@@ -179,53 +179,53 @@ run_subagent_flag "$S21" "backend-agent" >/dev/null 2>&1
 assert_eq "subagent-flag/other-agent-no-flag" 0 "$([ -f "/tmp/controller-first-$S21/controller-ran" ] && echo 1 || echo 0)"
 
 # ═══════════════════════════════════════════════════════════════════════════
-# F) dispatch-capture.sh — der Delegations-Zähler: immer exit 0, eine Zeile
-#    pro Dispatch, und KEIN Prompt im Protokoll.
+# F) dispatch-capture.sh — the delegation counter: always exit 0, one line
+#    per dispatch, and NO prompt in the log.
 #
-#    Ersetzt seit 2026-08-04 die drei Fälle gegen q2-probe-dispatch-dump.sh.
-#    Jenes Skript wurde unter IMP-115 stillgelegt (heute unter hooks/archived/),
-#    seine Aufgabe hat dispatch-capture.sh übernommen — die Prüfvorschrift wurde
-#    beim Rückbau nicht mitgeführt, weshalb diese Suite seither dauerhaft rot
-#    lief (Exit 127, "Befehl nicht gefunden") und niemand mehr hinsah.
+#    Replaces, since 2026-08-04, the three cases against q2-probe-dispatch-dump.sh.
+#    That script was retired under IMP-115 (now under hooks/archived/),
+#    dispatch-capture.sh took over its job — the check was not carried along
+#    during the removal, so this suite ran permanently red ever since
+#    (exit 127, "command not found") and nobody looked anymore.
 # ═══════════════════════════════════════════════════════════════════════════
 DC_LOG="$TESTHOME/.claude/global-observation/dispatch-capture.jsonl"
-run_dispatch() {  # json -> exit code; schreibt nach $DC_LOG
+run_dispatch() {  # json -> exit code; writes to $DC_LOG
   printf '%s' "$1" | HOME="$TESTHOME" CLAUDE_DISPATCH_LOG="$DC_LOG" \
     bash "$HOOKS_DIR/dispatch-capture.sh" >/dev/null 2>&1
   echo $?
 }
 dc_lines() { [ -f "$DC_LOG" ] && wc -l < "$DC_LOG" | tr -d ' ' || echo 0; }
 
-# Der Prompt ist untrusted content und hat im Protokoll nichts verloren
-# (agents-as-users.md) — genau dafuer wurde der Vorgaenger ersetzt.
+# The prompt is untrusted content and has no business in the log
+# (agents-as-users.md) — that is exactly why the predecessor was replaced.
 DC_BEFORE=$(dc_lines)
-RC_DC=$(run_dispatch '{"tool_name":"Task","tool_input":{"subagent_type":"backend-agent","model":"sonnet","prompt":"STROHHALM-GEHEIMNIS"},"session_id":"probe-1"}')
+RC_DC=$(run_dispatch '{"tool_name":"Task","tool_input":{"subagent_type":"backend-agent","model":"sonnet","prompt":"STRAW-SECRET"},"session_id":"probe-1"}')
 DC_AFTER=$(dc_lines)
 assert_eq "dispatch-capture/exit0"             0 "$RC_DC"
-assert_eq "dispatch-capture/eine-zeile-mehr"   1 "$([ "$DC_AFTER" -eq $((DC_BEFORE + 1)) ] && echo 1 || echo 0)"
-assert_eq "dispatch-capture/subagent-erfasst"  "backend-agent" "$(tail -1 "$DC_LOG" | jq -r '.subagent_type')"
-assert_eq "dispatch-capture/modell-erfasst"    "sonnet"        "$(tail -1 "$DC_LOG" | jq -r '.model')"
-assert_eq "dispatch-capture/KEIN-prompt"       0 "$(grep -c 'STROHHALM-GEHEIMNIS' "$DC_LOG" || true)"
+assert_eq "dispatch-capture/one-more-line"     1 "$([ "$DC_AFTER" -eq $((DC_BEFORE + 1)) ] && echo 1 || echo 0)"
+assert_eq "dispatch-capture/subagent-captured" "backend-agent" "$(tail -1 "$DC_LOG" | jq -r '.subagent_type')"
+assert_eq "dispatch-capture/model-captured"    "sonnet"        "$(tail -1 "$DC_LOG" | jq -r '.model')"
+assert_eq "dispatch-capture/NO-prompt"         0 "$(grep -c 'STRAW-SECRET' "$DC_LOG" || true)"
 
-# IMP-204 (2026-09-09): ein Dispatch OHNE model-Parameter erbt das Elternmodell zur
-# Laufzeit — das ist "ambient", nicht "kein Wert". Das rohe JSON-null machte 51 von 153
-# Fensterzeilen nach Modell unauswertbar; der Fix loggt den literalen String "inherit".
+# IMP-204 (2026-09-09): a dispatch WITHOUT a model parameter inherits the parent
+# model at runtime — that is "ambient", not "no value". The raw JSON null made 51
+# of 153 window rows unevaluable by model; the fix logs the literal string "inherit".
 RC_DC=$(run_dispatch '{"tool_name":"Task","tool_input":{"subagent_type":"general-purpose"},"session_id":"probe-2"}')
 assert_eq "dispatch-capture/imp204-exit0"        0 "$RC_DC"
-assert_eq "dispatch-capture/imp204-modell-inherit" "inherit" "$(tail -1 "$DC_LOG" | jq -r '.model')"
-assert_eq "dispatch-capture/imp204-kein-null"    0 "$(tail -1 "$DC_LOG" | jq -e '.model == null' >/dev/null 2>&1 && echo 1 || echo 0)"
+assert_eq "dispatch-capture/imp204-model-inherit" "inherit" "$(tail -1 "$DC_LOG" | jq -r '.model')"
+assert_eq "dispatch-capture/imp204-no-null"    0 "$(tail -1 "$DC_LOG" | jq -e '.model == null' >/dev/null 2>&1 && echo 1 || echo 0)"
 
-# Unlesbare Eingabe: der Haken darf den Dispatch nie stoeren (exit 0), muss den
-# Vorfall aber protokollieren — eine fehlende und eine kaputte Zeile muessen
-# unterscheidbar bleiben (fail-loud.md).
+# Unreadable input: the hook must never disrupt the dispatch (exit 0), but must
+# still log the incident — a missing line and a broken line must
+# stay distinguishable (fail-loud.md).
 DC_BEFORE=$(dc_lines)
 RC_DC=$(run_dispatch 'not-json-at-all{{{')
-assert_eq "dispatch-capture/muell-exit0"       0 "$RC_DC"
-assert_eq "dispatch-capture/muell-vermerkt"    1 "$(tail -1 "$DC_LOG" | grep -c 'unparseable_input' || true)"
-assert_eq "dispatch-capture/muell-eine-zeile"  1 "$([ "$(dc_lines)" -eq $((DC_BEFORE + 1)) ] && echo 1 || echo 0)"
+assert_eq "dispatch-capture/garbage-exit0"     0 "$RC_DC"
+assert_eq "dispatch-capture/garbage-noted"     1 "$(tail -1 "$DC_LOG" | grep -c 'unparseable_input' || true)"
+assert_eq "dispatch-capture/garbage-one-line"  1 "$([ "$(dc_lines)" -eq $((DC_BEFORE + 1)) ] && echo 1 || echo 0)"
 
-# Leere Eingabe darf ebenfalls nicht stoeren
-assert_eq "dispatch-capture/leer-exit0"        0 "$(printf '' | HOME="$TESTHOME" CLAUDE_DISPATCH_LOG="$DC_LOG" bash "$HOOKS_DIR/dispatch-capture.sh" >/dev/null 2>&1; echo $?)"
+# Empty input must also not disrupt the hook
+assert_eq "dispatch-capture/empty-exit0"       0 "$(printf '' | HOME="$TESTHOME" CLAUDE_DISPATCH_LOG="$DC_LOG" bash "$HOOKS_DIR/dispatch-capture.sh" >/dev/null 2>&1; echo $?)"
 
 echo "── controller-first-regression: $PASS passed, $FAIL failed ──"
 if [ "$FAIL" -gt 0 ]; then

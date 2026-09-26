@@ -65,7 +65,7 @@ LVG_BLOCKED=0
 LVG_WARNED=0
 
 # lvg_init <script_dir> — locates vault.sh RELATIVE TO THE CALLER's own
-# location (never a hardcoded absolute path — Bauhof/Haus portability, same
+# location (never a hardcoded absolute path — workshop/live-install portability, same
 # convention vault.sh itself uses for lib.sh).
 lvg_init() {
   LVG_VAULT_SH="$1/vault/vault.sh"

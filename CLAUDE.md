@@ -1,38 +1,38 @@
 # Claude Code — Development Framework
 
-> ## ⚠️ ZUERST LESEN — dieses Repo existiert an ZWEI Orten
+> ## ⚠️ READ THIS FIRST — this repo exists in TWO places
 >
-> **Bevor du irgendetwas änderst, stelle mit `pwd` fest, wo du bist.**
+> **Before you change anything, run `pwd` to find out where you are.**
 >
-> | `pwd` endet auf … | Du bist im … | Was hier gilt |
+> | `pwd` ends in … | You are in the … | What applies here |
 > |---|---|---|
-> | `…/claude-code-config` | **BAUHOF** (Arbeitskopie) | Hier wird entwickelt und committet. Nichts wirkt live. **Das ist der richtige Ort für Änderungen.** |
-> | `~/.claude` | **HAUS** (Installation) | Was Claude Code tatsächlich liest. **Hier NICHT von Hand ändern** — nur `claude-deploy` schreibt hierher. |
+> | `…/claude-code-config` | **WORKSHOP** (working copy) | Development and commits happen here. Nothing here is live. **This is the right place for changes.** |
+> | `~/.claude` | **LIVE INSTALL** (installation) | What Claude Code actually reads. **Do NOT edit by hand here** — only `claude-deploy` writes here. |
 >
-> **Die drei Regeln für Agenten:**
-> 1. **Änderungen ausschließlich im Bauhof.** Editierst du `~/.claude/...` direkt, geht die Änderung bei der nächsten Übergabe verloren (Fast-Forward-Konflikt) — und sie wird sofort scharf, mitten in der laufenden Sitzung.
-> 2. **Du kannst deine Arbeit NICHT in deiner eigenen Sitzung verifizieren.** Regeln, Hooks und Skills liest Claude Code beim **Sitzungsstart**. Was du änderst, wirkt erst in einer **neuen** Sitzung nach `claude-deploy`. Behaupte niemals „funktioniert" — schreibe, was der Nutzer prüfen muss.
-> 3. **Was du trotzdem selbst prüfen kannst:** Hook-Skripte und Shell-Werkzeuge direkt aufrufen (JSON per stdin hineinschieben, Exit-Code und Ausgabe prüfen), `jq . settings.json` zur Syntaxprüfung, vorhandene Regressionssuiten unter `hooks/tests/` laufen lassen. Tu das immer, bevor du fertig meldest.
+> **The three rules for agents:**
+> 1. **Changes go in the workshop only.** Edit `~/.claude/...` directly, and the change is lost at the next deploy (fast-forward conflict) — and it goes live immediately, mid-session.
+> 2. **You cannot verify your own work in your own session.** Claude Code reads rules, hooks, and skills at **session start**. What you change only takes effect in a **new** session after `claude-deploy`. Never claim "it works" — write down what the user needs to verify.
+> 3. **What you CAN verify yourself:** call hook scripts and shell tools directly (pipe JSON via stdin, check exit code and output), `jq . settings.json` for syntax checking, run existing regression suites under `hooks/tests/`. Always do this before reporting done.
 >
-> Vollständige Baustellenordnung inkl. Abnahmeprotokoll: **`docs/WORKING-IN-THIS-REPO.md`**.
-> Übergabe ins Haus: `claude-deploy [config|cockpit|all]`.
+> Full workshop conventions incl. acceptance protocol: **`docs/WORKING-IN-THIS-REPO.md`**.
+> Deploy to the live install: `claude-deploy [config|cockpit|all]`.
 
 > You orchestrate, agents execute. Use specialized agents for heavy implementation and forked skills for diagnostics/utilities.
 
 ## System Architecture
 
-Rules, commands, skills, agents, hooks, scheduled tasks. **Counts are GENERATED, never hand-maintained:** `scripts/framework-inventory.sh`. **Rules is the one count that differs by location — state both, never one:** Bauhof 21 tracked, Haus 24 after `claude-deploy` (+3 git-ignored `*.local.md`). Inventory/history: `docs/FRAMEWORK-REFERENCE.md`; architecture: `HARNESS.md`; changes: `global-observation/improvement-ledger.json`.
+Rules, commands, skills, agents, hooks, scheduled tasks. **Counts are GENERATED, never hand-maintained:** `scripts/framework-inventory.sh`. **Rules is the one count that differs by location — state both, never one:** workshop 21 tracked, live install 24 after `claude-deploy` (+3 git-ignored `*.local.md`). Inventory/history: `docs/FRAMEWORK-REFERENCE.md`; architecture: `HARNESS.md`; changes: `global-observation/improvement-ledger.json`.
 
-### Zwei Orte: Bauhof und bewohntes Haus
+### Two places: the workshop and the inhabited live install
 
-`<BAUHOF>` = Arbeitskopie dieses Repos außerhalb von `~/.claude` (realer Pfad lokal in `~/.claude/env.local.sh`).
+`<WORKSHOP>` = working copy of this repo outside `~/.claude` (real path stored locally in `~/.claude/env.local.sh`).
 
-| Ort | Rolle | Pfad |
+| Place | Role | Path |
 |---|---|---|
-| **Bauhof** (Arbeitskopie) | Hier wird entwickelt, geprüft, committet. Nichts wirkt live. | `<BAUHOF>` |
-| **Haus** (Installation) | Was Claude Code tatsächlich liest. Empfängt nur fertige Übergaben. | `~/.claude` |
+| **Workshop** (working copy) | Development, review, and commits happen here. Nothing here is live. | `<WORKSHOP>` |
+| **Live install** (installation) | What Claude Code actually reads. Receives only finished deploys. | `~/.claude` |
 
-Remotes: Bauhof `origin` + `live` (Haus); Haus `origin` + `workshop` (Bauhof). `claude-deploy [config|cockpit|all]`: nur mit sauberem Bauhof, nur Fast-Forward, wirkt ab nächster Sitzung; zieht Laufzeitschlüssel (`model`, `effortLevel`, `modelSettings`; IMP-127/194) in den Bauhof zurück. Laufzeitdaten nur im Haus. Umgebungswerte in die Shell (`~/.zshrc`); Werte, die auch ohne Shell-Profil ankommen müssen, in den `env`-Block von `settings.json` — **niemals Geheimnisse**, diese Datei ist öffentlich. Das Haus bleibt vollständig (kein Symlink auf die SSD), ebenso die Cockpit-Kopie `~/.claude/cockpit` (7 Hook-Einträge + Statuszeile zeigen dorthin) — sie muss lokal und vollständig sein. Mehr: `docs/WORKING-IN-THIS-REPO.md`, `docs/FRAMEWORK-REFERENCE.md`.
+Remotes: workshop `origin` + `live` (the live install); live install `origin` + `workshop` (the workshop). `claude-deploy [config|cockpit|all]`: only with a clean workshop, fast-forward only, takes effect from the next session; pulls runtime keys (`model`, `effortLevel`, `modelSettings`; IMP-127/194) back into the workshop. Runtime data lives only in the live install. Put environment values in the shell (`~/.zshrc`); values that must arrive even without a shell profile go in `settings.json`'s `env` block — **never secrets**, this file is public. The live install stays complete (no symlink onto the SSD), and so does the Cockpit copy `~/.claude/cockpit` (7 hook entries + the status line point there) — it must be local and complete. More: `docs/WORKING-IN-THIS-REPO.md`, `docs/FRAMEWORK-REFERENCE.md`.
 
 ### Auto-Loaded Rules (always in context)
 

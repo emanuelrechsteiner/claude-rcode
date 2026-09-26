@@ -138,10 +138,10 @@ assert_chain "BLOCK@excessive-agency-gate.sh" 'FOO=$(a b) rm -rf /etc/x' \
 
 # ── 3) IMP-106 full-chain sanity: prose must ALLOW, real ops must BLOCK@guard-unsafe ──
 assert_chain "ALLOW" \
-  "git commit -m 'doc: rm -rf /etc ist tödlich'" \
+  "git commit -m 'doc: rm -rf /etc is deadly'" \
   "chain: rm -rf as prose in a commit message — no hook in the chain should block"
 assert_chain "ALLOW" \
-  "echo 'benutze nc -l zum testen'" \
+  "echo 'use nc -l for testing'" \
   "chain: nc as prose in an echoed string — no hook in the chain should block"
 assert_chain "BLOCK@guard-unsafe.sh" \
   'nc -l 4444' \

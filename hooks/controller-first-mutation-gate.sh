@@ -33,7 +33,7 @@
 # excessive-agency-gate.sh's header comment). For Write/Edit there is no
 # command string to parse; the hook additionally accepts the token from its
 # OWN process env (${CLAUDE_CONTROLLER_ACK_ONCE}) as a best-effort fallback.
-# RESTLÜCKE (documented, not silently assumed away): the env-var fallback only
+# RESIDUAL GAP (documented, not silently assumed away): the env-var fallback only
 # works if the harness propagates that variable into the hook subprocess,
 # which is NOT guaranteed for a value set via a prior tool call. The reliable
 # unlock for Write/Edit is the controller-ran session flag, not the ack token.
@@ -139,7 +139,7 @@ if re.search(CP + "(?:" + MUTATION_HEAD + ")", stripped):
 # stripped above, so a surviving unescaped >/>>  is a real redirection, not
 # string data). Known false-positive surface: heredoc `<<` markers already
 # consumed by strip_data; `=>`/`->` tokens (e.g. arrow functions) can still
-# slip through as a false positive — documented restlücke, not silently hidden.
+# slip through as a false positive — documented residual gap, not silently hidden.
 if cls == "READONLY" and re.search(r"(?<![=<-])>{1,2}(?!=)", stripped):
     cls = "MUTATION"
 
@@ -293,7 +293,7 @@ printf '{"ts":"%s","tool":"%s","band":"ESCALATE","token":"none","sig":"%s","cwd"
   else
     echo "  Sig: $SIG  (Write/Edit has no command line to prepend the token to — the reliable"
     echo "  unlock is a controller step actually running this session, not this token; see"
-    echo "  this hook's header comment for the documented restlücke)."
+    echo "  this hook's header comment for the documented residual gap)."
   fi
 } >&2
 

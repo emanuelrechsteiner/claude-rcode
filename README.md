@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>R.Code for Claude Code. Build smarter. Build better.</strong><br>
-  A complete, portable Claude Code setup: guardrails that hold, a team of specialist agents, a live Cockpit for your terminal — and a framework that never learns your real names.
+  A complete, portable Claude Code setup that gets better from its own work — every change reviewed by you. Guardrails that hold, a team of specialist agents, a live Cockpit for your terminal, and a framework that never learns your real names.
 </p>
 
 <p align="center">
@@ -27,6 +27,12 @@
 ## Why R.Code for Claude Code
 
 <table>
+<tr>
+<td colspan="2">
+<strong>It gets better on its own — with you as the gate.</strong><br>
+Every session leaves signals: friction, corrections, repeated fixes. A routine turns them into concrete proposals for new or changed rules. You review every one — nothing changes the framework without your approval. In the maintainer's own setup, 172 improvements have been implemented this way so far.
+</td>
+</tr>
 <tr>
 <td width="50%">
 <strong>Guardrails that don't negotiate.</strong><br>
@@ -53,7 +59,7 @@ Every write, every commit and every publish is checked: 0 real values in any tra
 </tr>
 </table>
 
-**It learns from the work.** Friction in a session becomes a signal; signals become reviewed proposals; you decide which become rules. Nothing changes the framework without a human.
+**It learns from the work.** Friction in a session becomes a signal; signals become reviewed proposals; you decide which become rules. Nothing changes the framework without a human. See [the self-improvement loop](https://rcode-for-claude-code.vercel.app/how-it-works.html#self-improvement-loop).
 
 ## See it
 
@@ -85,7 +91,7 @@ It installs Ghostty, tmux, Node and `jq` if missing, clones the Cockpit into `~/
 </tr>
 </table>
 
-| ![Cockpit column close-up, Subagents card focused](docs/assets/cockpit/cockpit-closeup.png) | ![Cockpit dashboard, focused on Subagents](docs/assets/cockpit-fokus.png) |
+| ![Cockpit column close-up, Subagents card focused](docs/assets/cockpit/cockpit-closeup.png) | ![Cockpit dashboard, focused on Subagents](docs/assets/cockpit-focus.png) |
 |---|---|
 
 <sub><em>The Cockpit column up close — the selected card carries the focus border. Demo data.</em></sub>

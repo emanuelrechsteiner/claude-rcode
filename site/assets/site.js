@@ -137,7 +137,7 @@
           window.RCode.ProgressBar({
             value: 0.42,
             tone: "brand",
-            label: "Context window · demo-projekt"
+            label: "Context window · demo-project"
           })
         ]
       })

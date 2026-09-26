@@ -1,5 +1,5 @@
 {
-  "_comment": "Generische Vorlage fuer settings.json:autoMode.environment (IMP-219, vault-by-design). Dieser Block ist ein HAUS-ONLY-Schluessel — er lebt nur in ~/.claude/settings.json und wandert nie in den Bauhof (siehe HAUS_ONLY_KEYS_JSON in scripts/deploy-to-live.sh). Ersetze die Platzhalter in [eckigen Klammern] durch deine eigenen Angaben, entferne diesen Kommentar-Schluessel und uebernimm nur das 'environment'-Array in dein eigenes autoMode-Objekt.",
+  "_comment": "Generic template for settings.json:autoMode.environment (IMP-219, vault-by-design). This block is a LIVE-INSTALL-ONLY key — it lives only in ~/.claude/settings.json and never migrates into the workshop (see HAUS_ONLY_KEYS_JSON in scripts/deploy-to-live.sh). Replace the placeholders in [square brackets] with your own details, remove this comment key, and carry over only the 'environment' array into your own autoMode object.",
   "environment": [
     "### Org-wide",
     "**Organization**: None configured",
@@ -24,6 +24,6 @@
     "**Primary use of Claude Code**: [describe your primary use case here — e.g. software development, framework maintenance, writing, research]",
     "**Trusted repo**: `~/.claude` (the Claude Code installation), `$CLAUDE_BAUHOF_ROOT` (this framework's working copy), and the local clone of the public framework mirror — replace with YOUR OWN trusted repo(s)/remote(s) if this entry describes a different project",
     "**Org-specific CLIs**: None configured",
-    "routine under `~/.claude/` prefix: this machine's Claude Code configuration follows the Bauhof/Haus split described in `~/.claude/CLAUDE.md` — `$CLAUDE_BAUHOF_ROOT` is the working copy, `~/.claude` is the installation that actually gets read"
+    "routine under `~/.claude/` prefix: this machine's Claude Code configuration follows the workshop/live-install split described in `~/.claude/CLAUDE.md` — `$CLAUDE_BAUHOF_ROOT` is the working copy, `~/.claude` is the installation that actually gets read"
   ]
 }

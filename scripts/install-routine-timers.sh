@@ -21,7 +21,7 @@
 # This script is NOT run as part of building the timer package — it is meant
 # to be run by hand, ONCE, AFTER `claude-deploy config` has copied
 # scripts/routine-run.sh (and this installer, and the templates) from the
-# Bauhof into ~/.claude. Running it before that deploy installs plists whose
+# workshop into ~/.claude. Running it before that deploy installs plists whose
 # ProgramArguments point at a script that does not exist yet in ~/.claude.
 #
 # Usage:

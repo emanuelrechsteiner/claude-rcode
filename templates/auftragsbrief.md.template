@@ -1,99 +1,103 @@
 <!--
 Status: ACTIVE
 Last Updated: 2026-08-24
-Purpose: Pflichtform für Aufträge an Subagenten und für Handoffs — fünf
-Pflichtfelder plus zwei belegte Zusätze. Referenziert von
+Purpose: Mandatory form for briefs to subagents and for handoffs — five
+mandatory fields plus two evidenced additions. Referenced by
 agents/control-agent.md §2/§3, commands/handoff.md, rules/foundation.md.
-Herkunft: IMP-161, plans/meta-proposal-2026-08-24-august-vollanalyse.md §3.5.
+Origin: IMP-161, plans/meta-proposal-2026-08-24-august-vollanalyse.md §3.5.
+Note: the filename stays "auftragsbrief.md.template" (German for "task
+brief") — the English term "task brief" is used throughout the content.
 -->
 
-# Auftragsbrief — Vorlage (v1)
+# Task Brief — Template (v1)
 
-Ein Auftragsbrief ist der **eine** Eingangs-Turn, mit dem ein Subagent oder der
-nächste Agent losläuft. Er ersetzt das Nachsteuern: wo er vollständig war, liefen
-im August-Korpus **6 Sitzungen mit 79–266 Agenten-Schritten ohne eine einzige
-Korrektur**; die Gegenprobe mit halbfertigen Zahlen brauchte **24 Korrektur-Turns**.
+A task brief is the **one** incoming turn that gets a subagent or the next agent
+moving. It replaces mid-course correction: where it was complete, the August
+corpus ran **6 sessions with 79–266 agent steps and not a single correction**;
+the control run with half-finished figures needed **24 correction turns**.
 
-**Fehlt eines der fünf Pflichtfelder: einmal nachfragen, nicht raten.** Genau das
-Raten ist der belegte Kostentreiber — und ein Zahlendreher im Auftrag (5 statt 50
-Cent) lief 1 h 41 min und 97 Edits über 8 Dateien unwidersprochen durch.
+**If one of the five mandatory fields is missing: ask once, don't guess.**
+Guessing is exactly the evidenced cost driver — and one transposed digit in a
+brief (5 instead of 50 cents) ran unchallenged for 1h 41min and 97 edits across
+8 files.
 
-## Die fünf Pflichtfelder
+## The five mandatory fields
 
-| Feld | Was hineingehört |
+| Field | What goes in it |
 |---|---|
-| **Pfad / Ort** | Absoluter Pfad, Datei plus Abschnitt/Symbol. Kein „irgendwo im Modul". |
-| **Symptom** | Was beobachtbar falsch ist — was man sieht, nicht was man vermutet. |
-| **Ursache, soweit bekannt** | Der Root Cause, wenn er bekannt ist; sonst ausdrücklich „unbekannt", nie eine als Tatsache getarnte Vermutung. |
-| **Messwert / Beleg** | Die Zahl oder das Artefakt, an dem das Symptom hängt — mit der Messtiefe. |
-| **Akzeptanzkriterium** | Woran der Auftrag als erledigt erkennbar ist — prüfbar am Artefakt, nicht am Mechanismus (siehe `rules/slop-prevention.md` Trigger 3). |
+| **Path / location** | Absolute path, file plus section/symbol. No "somewhere in the module". |
+| **Symptom** | What is observably wrong — what you see, not what you suspect. |
+| **Cause, if known** | The root cause, if known; otherwise explicitly "unknown", never a guess dressed up as a fact. |
+| **Measurement / evidence** | The number or artifact the symptom hangs on — with its measurement depth. |
+| **Acceptance criterion** | How the brief is recognized as done — checkable against the artifact, not the mechanism (see `rules/slop-prevention.md` Trigger 3). |
 
-## Die zwei Zusätze
+## The two additions
 
-- **„gemessen, nicht vermutet — BITTE SELBST NACHPRÜFEN."** Nennt die Messtiefe
-  und gibt die Prüfungslast ausdrücklich zurück, statt Sicherheit zu suggerieren.
-  Zehn Worktree-Aufträge in diesem Format liefen **alle einturnig durch**, und
-  zwei davon verweigerten begründet eine Aufweichung bzw. einen unbeauftragten
-  Refactor — die Verweigerung wurde akzeptiert.
-- **„Was ausdrücklich NICHT Auftrag ist."** Die Negativliste ist die billigste
-  Scope-Bremse, die es gibt: sie kostet eine Zeile und macht Scope-Creep zu einer
-  sichtbaren Abweichung statt zu einer Ermessensfrage. Sie wird nicht nur beim
-  Schreiben gegengelesen, sondern bei **jeder** späteren Ausweitung erneut — das
-  ist Teil des Wave-Reviews in `agents/control-agent.md` §4, „Scope against the
+- **"Measured, not assumed — PLEASE VERIFY YOURSELF."** States the measurement
+  depth and explicitly hands the verification burden back, instead of implying
+  certainty. Ten worktree briefs in this format all ran through in **one
+  turn each**, and two of them refused — with reasons — a weakening or an
+  unrequested refactor; the refusal was accepted.
+- **"What is explicitly NOT part of this brief."** The negative list is the
+  cheapest scope brake there is: it costs one line and turns scope creep into
+  a visible deviation instead of a judgment call. It gets checked not only
+  when writing, but again at **every** later expansion — that's part of the
+  wave review in `agents/control-agent.md` §4, "Scope against the
   negative-list" (IMP-201).
 
-## Rohform (kopieren)
+## Raw form (copy this)
 
 ```markdown
-## Auftrag: <ein Satz, was erreicht werden soll>
+## Task: <one sentence, what is to be achieved>
 
-- **Ort:** <absoluter Pfad + Abschnitt/Symbol>
-- **Symptom:** <was beobachtbar falsch ist>
-- **Ursache, soweit bekannt:** <Root Cause — oder ausdrücklich „unbekannt">
-- **Messwert / Beleg:** <Zahl/Artefakt + Messtiefe> — gemessen, nicht vermutet;
-  BITTE SELBST NACHPRÜFEN.
-- **Akzeptanzkriterium:** <prüfbar am Artefakt>
-- **Nicht Auftrag:** <was ausdrücklich draußen bleibt>
-- **Wörtliche Nutzeranweisung:** „<Zitat, falls eine vorliegt>"
+- **Location:** <absolute path + section/symbol>
+- **Symptom:** <what is observably wrong>
+- **Cause, if known:** <root cause — or explicitly "unknown">
+- **Measurement / evidence:** <number/artifact + measurement depth> —
+  measured, not assumed; PLEASE VERIFY YOURSELF.
+- **Acceptance criterion:** <checkable against the artifact>
+- **Not part of this task:** <what explicitly stays out>
+- **Verbatim user instruction:** "<quote, if one exists>"
 ```
 
-Das letzte Feld entfällt, wenn keine wörtliche Anweisung vorliegt. Liegt eine vor,
-wird sie **zitiert weitergereicht, nie paraphrasiert** — und der Subagent darf sie
-nicht durch eigenes Urteil ersetzen, sondern nur nach oben eskalieren
+The last field is omitted if there is no verbatim instruction. If one exists,
+it is **passed on as a quote, never paraphrased** — and the subagent may not
+replace it with its own judgment, only escalate it upward
 (`agents/control-agent.md` §3).
 
-## Ausgefülltes Beispiel
+## Filled-in example
 
 ```markdown
-## Auftrag: Der Wochenlauf wertet die komprimierten Signal-Scherben tatsächlich aus.
+## Task: The weekly run actually evaluates the compressed signal shards.
 
-- **Ort:** `~/.claude/scheduled-tasks/weekly-improve/SKILL.md`, Schritt 3
-  (Signal-Auswertung)
-- **Symptom:** Der Lauf meldet „ok" und liefert Findings, aber keines stammt aus
-  einer `.gz`-Scherbe.
-- **Ursache, soweit bekannt:** BSD-`zcat` liest eine `.gz`-Datei als leer und
-  beendet mit Exit 0 — kein Fehler, keine Ausgabe, kein Hinweis im Protokoll.
-- **Messwert / Beleg:** Der Lauf vom 2026-07-26 hat 1.286 Signale nicht gesehen;
-  `gunzip -c` auf derselben Datei gibt sie aus. Gemessen, nicht vermutet —
-  BITTE SELBST NACHPRÜFEN.
-- **Akzeptanzkriterium:** Derselbe Schritt über dieselbe Scherbe gibt >0 Zeilen
-  aus; Zeilenzahl vorher/nachher im Bericht.
-- **Nicht Auftrag:** keine Änderung an der Findings-Logik, kein Umbau des
-  Rotationsschemas, keine neuen Datenquellen.
+- **Location:** `~/.claude/scheduled-tasks/weekly-improve/SKILL.md`, Step 3
+  (signal evaluation)
+- **Symptom:** The run reports "ok" and produces findings, but none of them
+  come from a `.gz` shard.
+- **Cause, if known:** BSD `zcat` reads a `.gz` file as empty and exits 0 —
+  no error, no output, no note in the log.
+- **Measurement / evidence:** The 2026-07-26 run missed 1,286 signals;
+  `gunzip -c` on the same file outputs them. Measured, not assumed —
+  PLEASE VERIFY YOURSELF.
+- **Acceptance criterion:** The same step, run over the same shard, outputs
+  >0 lines; line count before/after in the report.
+- **Not part of this task:** no change to the findings logic, no rework of
+  the rotation scheme, no new data sources.
 ```
 
-## Verwendung
+## Where it's used
 
-| Wo | Wie |
+| Where | How |
 |---|---|
-| Subagenten-Dispatch | Pflichtform für jeden Auftragstext — `agents/control-agent.md` §2/§3 |
-| Handoff zwischen Sitzungen | Pflichtform für „Next recommended action" — `commands/handoff.md` Schritt 4 |
-| Eigene Diagnosen an den Nutzer | BEFUND-Format: dieselben Felder, plus „BITTE SELBST NACHPRÜFEN" |
+| Subagent dispatch | Mandatory form for every task text — `agents/control-agent.md` §2/§3 |
+| Handoff between sessions | Mandatory form for "Next recommended action" — `commands/handoff.md` Step 4 |
+| Own diagnoses to the user | FINDING format: the same fields, plus "PLEASE VERIFY YOURSELF" |
 
-## Belege
+## Evidence
 
-- IMP-161 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §3.5 (BEFUND-Format,
-  10/10 einturnig) und §5 (6 Sessions 79–266 Turns ohne Korrektur vs. 24 Korrektur-Turns)
-- IMP-176 (ebd.) — Zahlendreher im Auftrag, 1 h 41 min / 97 Edits / 8 Dateien
-- Verwandt: `rules/recommend-on-ask.md` (Rückfragen mit Empfehlung),
-  `rules/slop-prevention.md` (Abnahme am Artefakt)
+- IMP-161 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §3.5
+  (FINDING format, 10/10 in one turn) and §5 (6 sessions, 79–266 turns with
+  no correction, vs. 24 correction turns)
+- IMP-176 (same doc) — transposed digit in a brief, 1h 41min / 97 edits / 8 files
+- Related: `rules/recommend-on-ask.md` (questions with a recommendation),
+  `rules/slop-prevention.md` (sign-off against the artifact)

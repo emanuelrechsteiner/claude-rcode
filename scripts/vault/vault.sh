@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # vault.sh — CLI for the pseudonymization vault. Real names/paths/accounts
 # live ONLY here (${CLAUDE_VAULT_DIR:-~/.claude/vault}, gitignored, runtime
-# data in the Haus); the framework's own tracked files hold tokens instead.
+# data in the live install); the framework's own tracked files hold tokens instead.
 # See plans/vault-by-design-2026-09-25.md for the design this implements.
 #
 # `doctor` (2026-09-25 hardening round) is a read-only diagnostic: checks

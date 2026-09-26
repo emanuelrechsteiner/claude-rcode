@@ -1,283 +1,299 @@
 <!--
 Status: ACTIVE
 Last Updated: 2026-08-22
-Purpose: Baustellenordnung für Agenten und Menschen, die an diesem Repo arbeiten — Zwei-Orte-Modell, was selbst prüfbar ist, Abnahmeprotokoll
+Purpose: Working rules for agents and humans working on this repo — the two-location model, what you can verify yourself, the acceptance checklist
 -->
 
-# Baustellenordnung — Arbeiten an diesem Repo
+# Working Rules — Working in This Repo
 
-Dieses Dokument gilt für **jeden**, der an `claude-code-config` arbeitet:
-Menschen wie Agenten. Es beantwortet drei Fragen: Wo ändere ich? Was kann ich
-selbst prüfen? Was muss der Nutzer prüfen?
+This document applies to **everyone** working on `claude-code-config`:
+humans and agents alike. It answers three questions: Where do I make
+changes? What can I verify myself? What does the user have to verify?
 
-## 1. Wo bin ich? (immer zuerst)
+## 1. Where am I? (always first)
 
 ```bash
 pwd
 ```
 
-| Pfad | Ort | Regel |
+| Path | Location | Rule |
 |---|---|---|
-| `…/claude-code-config` | **Bauhof** | Hier ändern, testen, committen. |
-| `~/.claude` | **Haus** | Nicht von Hand ändern. Empfängt nur `claude-deploy`. |
+| `…/claude-code-config` | **workshop** | Change, test, and commit here. |
+| `~/.claude` | **live install** | Never edit by hand. Receives only `claude-deploy`. |
 
-Dasselbe Muster gilt für das Cockpit: Bauhof `…/cockpit` (Geschwisterordner),
-Haus `~/.claude/cockpit`.
+The same pattern applies to the Cockpit: workshop `…/cockpit` (sibling
+directory), live install `~/.claude/cockpit`.
 
-**Doppelladung im Bauhof (behoben 2026-09-24, IMP-217):** Eine Sitzung im Bauhof
-lädt `CLAUDE.md` zweimal — einmal als Nutzeranweisung aus dem Haus
-(`~/.claude/CLAUDE.md`), einmal als Projektanweisung aus dem Bauhof — Claude Code
-vergleicht Inhalte nicht, nur Pfade. Der dokumentierte Schalter `claudeMdExcludes`
-(`code.claude.com/docs/en/memory`, Pfadmuster gegen absolute Pfade) schließt die
-**Bauhof-Kopie** aus, damit die Sitzung weiterhin den eingezogenen Stand liest:
+**Double-loading in the workshop (fixed 2026-09-24, IMP-217):** A session
+run from the workshop loads `CLAUDE.md` twice — once as the user
+instruction from the live install (`~/.claude/CLAUDE.md`), once as the
+project instruction from the workshop — Claude Code compares only paths,
+never content. The documented `claudeMdExcludes` switch
+(`code.claude.com/docs/en/memory`, path patterns matched against absolute
+paths) excludes the **workshop copy**, so the session keeps reading the
+deployed state:
 
 ```json
-// .claude/settings.local.json im Bauhof (maschinenlokal, git-ignoriert)
+// .claude/settings.local.json in the workshop (machine-local, git-ignored)
 { "claudeMdExcludes": ["<BAUHOF>/CLAUDE.md"] }
 ```
 
-Sichtbar beim nächsten Sitzungsstart: die Zeile „N instruction files add up to …"
-zählt eine `CLAUDE.md` weniger. Die Gesamtgrenze von 150.000 Zeichen dahinter ist
-übrigens **nur eine Warnung** — nichts wird gekappt (offiziell undokumentiert; Beleg:
-Claude-Code-Issue #96506).
+Visible at the next session start: the "N instruction files add up to …"
+line counts one fewer `CLAUDE.md`. The overall 150,000-character limit
+behind that line is, incidentally, **only a warning** — nothing gets
+truncated (officially undocumented; evidence: Claude Code issue #96506).
 
-**Was passiert, wenn du es doch im Haus änderst:** Deine Änderung ist sofort
-scharf (der nächste Werkzeugaufruf derselben Sitzung nutzt schon den neuen
-Hook), und bei der nächsten Übergabe bricht `claude-deploy` ab, weil das Haus
-uneingecheckte Änderungen an verfolgten Dateien hat. Du hast dann eine
-Aufräumarbeit erzeugt, keine Verbesserung.
+**What happens if you edit the live install anyway:** your change goes
+live immediately (the very next tool call in the same session already uses
+the new hook), and the next deploy aborts, because the live install has
+uncommitted changes to tracked files. You've then created cleanup work,
+not an improvement.
 
-## 2. Die Selbstreferenz — warum du deine eigene Arbeit nicht abnehmen kannst
+## 2. The self-reference problem — why you cannot sign off on your own work
 
-Claude Code liest Regeln, Hooks, Skills, Agents und `settings.json` **beim
-Sitzungsstart** in den Speicher. Deine laufende Sitzung arbeitet also mit dem
-Stand von vorhin — nicht mit dem, was du gerade geschrieben hast.
+Claude Code reads rules, hooks, skills, agents, and `settings.json` into
+memory **at session start**. Your running session therefore works with the
+state from before — not with what you just wrote.
 
-Daraus folgt hart:
+This has hard consequences:
 
-- **Eine geänderte Regel wirkt NICHT in deiner Sitzung.** Du kannst nicht
-  beobachten, ob sie greift.
-- **Ein geänderter Hook, der im Haus liegt, wirkt dagegen SOFORT** — beim
-  nächsten Werkzeugaufruf. Das ist kein Vorteil, sondern die Gefahr: Ein Fehler
-  darin kann die laufende Sitzung lahmlegen (ein PreToolUse-Hook mit Exit-Code 2
-  blockiert Werkzeugaufrufe). Genau deshalb wird im Bauhof gearbeitet.
-- **Ein neuer Skill/Command taucht erst in einer neuen Sitzung im Menü auf.**
+- **A changed rule does NOT take effect in your session.** You cannot
+  observe whether it works.
+- **A changed hook that lives in the live install, by contrast, takes
+  effect IMMEDIATELY** — on the very next tool call. This is not an
+  advantage but a danger: a bug in it can cripple the running session (a
+  PreToolUse hook with exit code 2 blocks tool calls). This is exactly why
+  work happens in the workshop.
+- **A new skill/command only shows up in the menu in a new session.**
 
-> **Formuliere Ergebnisse entsprechend.** Nicht: „Der Hook funktioniert jetzt."
-> Sondern: „Der Hook besteht die direkten Aufrufe (siehe unten); ob er im
-> Zusammenspiel greift, zeigt sich nach `claude-deploy` in einer neuen Sitzung —
-> Prüfschritte siehe Abnahmeprotokoll."
+> **Phrase results accordingly.** Not: "The hook works now." Instead: "The
+> hook passes the direct invocations (see below); whether it works in
+> practice shows up after `claude-deploy`, in a new session — see the
+> acceptance checklist for verification steps."
 
-## 3. Was du SELBST prüfen kannst und musst
+## 3. What you CAN and MUST verify YOURSELF
 
-Diese Prüfungen laufen ohne Übergabe, direkt im Bauhof. Führe sie aus, bevor du
-fertig meldest — „ungeprüft" ist ein zulässiges Ergebnis, „vermutlich in Ordnung"
-nicht.
+These checks run without a deploy, directly in the workshop. Run them
+before reporting done — "unverified" is an acceptable result, "probably
+fine" is not.
 
-### Hook-Skripte direkt aufrufen
+### Call hook scripts directly
 
-Ein Hook ist ein gewöhnliches Shell-Skript, das JSON auf `stdin` bekommt und
-über Exit-Code und Ausgabe antwortet. Das lässt sich vollständig ohne Claude
-Code prüfen:
+A hook is an ordinary shell script that receives JSON on `stdin` and
+answers via exit code and output. This can be checked completely without
+Claude Code:
 
 ```bash
-# Ein Gate mit einem harmlosen UND einem gefährlichen Befehl prüfen
-# (verifiziert 2026-08-04: liefert 0 bzw. 2)
+# Check a gate with one harmless and one dangerous command
+# (verified 2026-08-04: returns 0 and 2 respectively)
 echo '{"tool_name":"Bash","tool_input":{"command":"ls -la"}}' \
-  | CLAUDE_GATE_TESTMODE=1 bash hooks/excessive-agency-gate.sh; echo "harmlos → $?"
+  | CLAUDE_GATE_TESTMODE=1 bash hooks/excessive-agency-gate.sh; echo "harmless -> $?"
 echo '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 1"}}' \
-  | bash hooks/excessive-agency-gate.sh; echo "gefährlich → $?"
+  | bash hooks/excessive-agency-gate.sh; echo "dangerous -> $?"
 ```
 
-Exit-Code 0 = durchgelassen, 2 = blockiert (Rückfrage an den Nutzer).
-`CLAUDE_GATE_TESTMODE=1` verhindert, dass sich das Gate beim Selbsttest
-selbst blockiert.
+Exit code 0 = allowed through, 2 = blocked (asks the user).
+`CLAUDE_GATE_TESTMODE=1` keeps the gate from blocking itself during the
+self-test.
 
-Prüfe dabei **immer beide Richtungen**: Der Fall, der durchgehen soll, und der
-Fall, der blockieren soll. Ein Gate, das alles blockiert, besteht einen
-einseitigen Test genauso wie ein korrektes.
+Always check **both directions**: the case that should pass, and the case
+that should block. A gate that blocks everything passes a one-sided test
+just as well as a correct one.
 
-### Vorhandene Regressionssuiten laufen lassen
+### Run the existing regression suites
 
-Acht Suiten liegen unter `hooks/tests/`, eine unter `scripts/tests/` —
-die vier größten:
+Eight suites live under `hooks/tests/`, one under `scripts/tests/` — the
+four biggest:
 
 ```bash
-bash hooks/tests/gate-regression.sh              # 73 Fälle
-bash hooks/tests/web-fetch-gate-regression.sh    # 97 Fälle
-bash scripts/tests/deploy-regression.sh          # 20 Fälle (Übergabe)
-bash hooks/tests/parallel-lock-regression.sh     # 12 Fälle
-ls hooks/tests/ scripts/tests/                   # vollständige Liste
+bash hooks/tests/gate-regression.sh              # 73 cases
+bash hooks/tests/web-fetch-gate-regression.sh    # 97 cases
+bash scripts/tests/deploy-regression.sh          # 20 cases (deploy)
+bash hooks/tests/parallel-lock-regression.sh     # 12 cases
+ls hooks/tests/ scripts/tests/                   # full list
 ```
 
-Änderst du ein Gate, **erweitere die zugehörige Suite um den neuen Fall** —
-sonst ist die Änderung dauerhaft ungeprüft.
+If you change a gate, **extend its suite with the new case** — otherwise
+the change stays permanently unverified.
 
-> **Behoben (2026-08-22):** Der hier früher dokumentierte Dauerausfall von `hooks/tests/controller-first-regression.sh` (26/3 wegen des unter IMP-115 stillgelegten `q2-probe-dispatch-dump.sh`) ist repariert — die Suite läuft 35/35 grün. Der Warnhinweis stand 18 Tage länger hier als der Defekt existierte; wer eine Suite repariert, nimmt den Aushang im selben Commit mit.
+> **Fixed (2026-08-22):** The long-standing failure of
+> `hooks/tests/controller-first-regression.sh` documented here earlier
+> (26/3, due to `q2-probe-dispatch-dump.sh` being retired under IMP-115)
+> is repaired — the suite now runs 35/35 green. The warning sat here 18
+> days longer than the defect existed — whoever fixes a suite takes the
+> notice down in the same commit.
 
-### settings.json-Syntax
+### `settings.json` syntax
 
 ```bash
 jq . settings.json > /dev/null && echo "JSON OK"
 ```
 
-Ein Syntaxfehler hier ist besonders tückisch: Claude Code startet dann mit
-Standardwerten — ohne Hooks, ohne Berechtigungen — und meldet das nur beiläufig.
-**Nie ohne diese Prüfung committen.**
+A syntax error here is especially treacherous: Claude Code then starts
+with default values — no hooks, no permissions — and only mentions it in
+passing. **Never commit without this check.**
 
-### Bestandsaufnahme statt Handzählung
+### Inventory instead of hand-counting
 
 ```bash
-./scripts/framework-inventory.sh          # Zahlen von der Platte
+./scripts/framework-inventory.sh          # numbers straight from disk
 ./scripts/framework-inventory.sh --json
 ```
 
-Zahlen in Dokumenten **niemals von Hand** pflegen — sie sind dreimal gleichzeitig
-auseinandergelaufen (IMP-083).
+**Never** maintain counts in documents by hand — they drifted apart three
+times simultaneously in the past (IMP-083).
 
-### Tresor-Prüfung
+### Vault check
 
-Tresor (`~/.claude/vault/`, gitignoriert) hält echte Namen/Pfade/Kennungen —
-das Framework selbst darf keinen einzigen enthalten (`docs/adr/0003-tresor-und-tor.md`).
+The vault (`~/.claude/vault/`, gitignored) holds real names/paths/
+identifiers — the framework itself may not contain a single one
+(`docs/adr/0003-vault-and-gate.md`).
 
 ```bash
-bash scripts/vault/vault.sh check <datei>                      # Exit 0 sauber, 2 Fund
-CLAUDE_VAULT_DIR=/nonexistent bash scripts/vault/vault.sh check --structural-only <datei>  # CI-Simulation ohne Tresor
+bash scripts/vault/vault.sh check <file>                      # exit 0 clean, 2 hit
+CLAUDE_VAULT_DIR=/nonexistent bash scripts/vault/vault.sh check --structural-only <file>  # CI simulation without a vault
 ```
 
-Jeder Schreibzugriff läuft zusätzlich durch `hooks/vault-write-gate.sh`
-(PreToolUse Write|Edit|MultiEdit); Umgehung nur bewusst mit
-`CLAUDE_VAULT_GATE_OFF=1` (geloggt, nie der Wert). Im Bauhof gehört nur der
-pre-commit-Hook hin (`bash scripts/install-git-hooks.sh --only pre-commit`
-— der pre-push bleibt dem öffentlichen Beitragsweg vorbehalten).
+Every write additionally passes through `hooks/vault-write-gate.sh`
+(PreToolUse Write|Edit|MultiEdit); bypass only deliberately, via
+`CLAUDE_VAULT_GATE_OFF=1` (logged, never the value). In the workshop, only
+the pre-commit hook belongs here (`bash scripts/install-git-hooks.sh
+--only pre-commit` — pre-push stays reserved for the public contribution
+path).
 
-**Ersteinrichtung** (einmal je Rechner): `templates/env.local.sh.template`
-nach `~/.claude/env.local.sh` kopieren/ausfüllen, dann `vault.sh init`.
+**One-time setup** (once per machine): copy/fill in
+`templates/env.local.sh.template` to `~/.claude/env.local.sh`, then run
+`vault.sh init`.
 
-**Grundregel:** Prosa → Token, Code → Env + fail-loud (nie ein Token als
-Rückfallwert), Tests → synthetische Werte.
+**Ground rule:** prose → token, code → env var + fail-loud (never a token
+as a fallback value), tests → synthetic values.
 
-### Cockpit (eigenes Repo, eigener Bauhof)
+### Cockpit (its own repo, its own workshop)
 
 ```bash
-cd "${CLAUDE_WORKSHOP_ROOT}/cockpit"   # aus ~/.claude/env.local.sh
-npm test          # 25 Prüfungen
+cd "${CLAUDE_WORKSHOP_ROOT}/cockpit"   # from ~/.claude/env.local.sh
+npm test          # 25 checks
 npm run typecheck
 
-# Ereignis-Hook direkt prüfen (schreibt nach $COCKPIT_DIR)
+# Check the event hook directly (writes to $COCKPIT_DIR)
 echo '{"session_id":"probe","cwd":"/tmp"}' \
   | COCKPIT_DIR=/tmp bash hooks/cockpit-event.sh SessionStart; echo "exit=$?"
 ```
 
-## 4. Übergabe und Abnahme
+## 4. Deploy and sign-off
 
-### Übergabe (nach dem Commit im Bauhof)
+### Deploy (after the commit in the workshop)
 
 ```bash
-claude-deploy config     # oder: cockpit | all
+claude-deploy config     # or: cockpit | all
 ```
 
-Das Werkzeug macht ausschließlich Fast-Forward und bricht ab, wenn der Bauhof
-uneingecheckte Änderungen hat.
+The tool only ever fast-forwards and aborts if the workshop has
+uncommitted changes.
 
-**Laufzeitpräferenzen (seit IMP-127, 2026-08-04).** Zwei Dinge im Haus schreibt
-Claude Code im Betrieb selbst und ließen deshalb früher jede Übergabe scheitern:
+**Runtime preferences (since IMP-127, 2026-08-04).** Two things in the
+live install are written by Claude Code itself at runtime, and used to
+make every deploy fail because of it:
 
-| Was | Wer schreibt es | Behandlung |
+| What | Who writes it | Handling |
 |---|---|---|
-| `settings.json` → `model`, `effortLevel` | `/model`, `/config` | Wird ins Bauhof **zurückgezogen** und dort als eigener Commit verbucht. Das Haus behält den Wert. |
-| `plugins/installed_plugins.json`, `plugins/known_marketplaces.json` | jedes Plugin-Update | Nicht mehr versioniert; wird über die Übergabe hinweg gerettet. |
+| `settings.json` → `model`, `effortLevel` | `/model`, `/config` | Pulled **back** into the workshop and recorded there as its own commit. The live install keeps the value. |
+| `plugins/installed_plugins.json`, `plugins/known_marketplaces.json` | every plugin update | No longer versioned; carried across the deploy. |
 
-Die Liste der zurückgezogenen Schlüssel steht als `RUNTIME_KEYS_JSON` oben im
-Skript. **Sie ist bewusst kurz** — jeder Eintrag schaltet eine Schutzprüfung ab.
-Weicht das Haus in einem *nicht* gelisteten Schlüssel oder in einer anderen
-verfolgten Datei ab, bricht die Übergabe weiterhin ab und nennt die Stelle. Das
-ist der Normalfall für „jemand hat am bewohnten Haus von Hand gearbeitet" — und
-genau der soll auffallen.
+The list of pulled-back keys sits as `RUNTIME_KEYS_JSON` near the top of
+the script. **It is deliberately short** — every entry disables one
+protective check. If the live install diverges in a key that is *not*
+listed, or in any other tracked file, the deploy still aborts and names
+the spot. That is the expected outcome for "someone edited the live
+install by hand" — and that is exactly what should stand out.
 
-> **Sackgasse, nicht noch einmal einbauen:** Eine `~/.claude/settings.local.json`
-> löst das *nicht*. Auf **Nutzerebene** liest Claude Code diese Datei nicht — die
-> lokale Ebene existiert laut `code.claude.com/docs/en/settings` nur pro Projekt
-> (`.claude/settings.local.json` im Repo-Wurzelverzeichnis). Nachgemessen am
-> 2026-08-04: Die dort eingetragene `NOTION_PARENT_PAGE_ID` ist in der
-> Sitzungsumgebung nicht gesetzt. Per-Maschine-Umgebungswerte gehören auf diesem
-> Rechner in `~/.zshrc` — von dort kommen sie nachweislich an.
+> **Dead end, don't rebuild it:** a `~/.claude/settings.local.json` does
+> *not* solve this. At the **user level**, Claude Code does not read this
+> file — per `code.claude.com/docs/en/settings`, the local level only
+> exists per-project (`.claude/settings.local.json` at the repo root).
+> Verified on 2026-08-04: the `NOTION_PARENT_PAGE_ID` entered there is not
+> set in the session environment. On this machine, per-machine environment
+> values belong in `~/.zshrc` — that is demonstrably where they actually
+> arrive from.
 
-### Abnahmeprotokoll — was der NUTZER prüft
+### Acceptance checklist — what the USER verifies
 
-Ein Agent schreibt am Ende seiner Arbeit eine Abnahmeliste in genau dieser Form,
-damit die Prüfung nicht erraten werden muss:
+At the end of its work, an agent writes an acceptance checklist in exactly
+this form, so the verification never has to be guessed:
 
 ```markdown
-## Abnahme am laufenden Claude Code
+## Acceptance on the running Claude Code
 
-Voraussetzung: `claude-deploy config`, danach eine NEUE Sitzung starten
-(`/clear` genügt NICHT — Hooks und Regeln werden nur beim Prozessstart gelesen).
+Prerequisite: `claude-deploy config`, then start a NEW session
+(`/clear` is NOT enough — hooks and rules are only read at process start).
 
-1. <Konkreter Handgriff> → erwartet: <konkret beobachtbares Ergebnis>
+1. <Concrete action> -> expected: <concretely observable result>
 2. …
 
-Falls Schritt N fehlschlägt: <was das bedeutet, wo der Fehler stünde>
-Rücknahme: `cd ~/.claude && git reset --hard <commit-vor-der-Änderung>`
+If step N fails: <what that means, where the error would show up>
+Rollback: `cd ~/.claude && git reset --hard <commit-before-the-change>`
 ```
 
-Jeder Schritt muss ein **beobachtbares** Ergebnis nennen — eine Ausgabe, eine
-Datei, eine Zeile im Protokoll. „Sollte jetzt besser laufen" ist kein Prüfschritt.
+Every step must name an **observable** result — an output, a file, a line
+in a log. "Should run better now" is not a verification step.
 
-Führt die Übergabe einen neuen Tresor-Begriff ein (ein neues `kind`, eine
-neue Gruppe mit spürbarer Zahl), nennt die Abnahmeliste zusätzlich
-`bash scripts/vault/vault.sh status` (reine Zahlen, nie ein Wert) als
-Prüfschritt.
+If the deploy introduces a new vault term (a new `kind`, a new group with a
+noticeable count), the acceptance checklist additionally names `bash
+scripts/vault/vault.sh status` (plain numbers, never a value) as a
+verification step.
 
-### Wichtige Feinheit: `/clear` reicht nicht
+### An important subtlety: `/clear` is not enough
 
-`/clear` leert den Gesprächsverlauf, startet aber **keinen neuen Prozess**.
-Hooks, Regeln, Skills und `settings.json` bleiben auf dem Stand vom Prozessstart.
-Für eine echte Abnahme braucht es ein neues Terminal bzw. einen neuen
-`claude`-Aufruf.
+`/clear` empties the conversation history, but **starts no new process**.
+Hooks, rules, skills, and `settings.json` stay at the state from process
+start. A genuine sign-off needs a new terminal, or a new `claude`
+invocation.
 
-## 5. Rücknahme
+## 5. Rollback
 
-Beide Seiten sind versioniert, jede Übergabe ist umkehrbar:
+Both sides are versioned; every deploy is reversible:
 
 ```bash
-cd ~/.claude && git log --oneline | head -5      # Stand vor der Übergabe finden
-cd ~/.claude && git reset --hard <commit>        # zurücksetzen
+cd ~/.claude && git log --oneline | head -5      # find the state before the deploy
+cd ~/.claude && git reset --hard <commit>        # roll back
 ```
 
-Sicherungskopien der `settings.json` liegen ohnehin als
-`settings.json.bak-*` im Haus.
+Backup copies of `settings.json` already live as `settings.json.bak-*` in
+the live install anyway.
 
-## 6. Häufige Fehlgriffe
+## 6. Common mistakes
 
-| Fehlgriff | Warum er schadet |
+| Mistake | Why it hurts |
 |---|---|
-| Direkt in `~/.claude` editieren | Sofort scharf; blockiert die nächste Übergabe |
-| „Getestet" melden, ohne einen Befehl ausgeführt zu haben | Die Selbstreferenz macht Beobachtung in der eigenen Sitzung unmöglich — die Behauptung ist dann frei erfunden |
-| Gate ändern, ohne die Regressionssuite zu erweitern | Die Änderung bleibt dauerhaft ungeprüft |
-| Zahlen in CLAUDE.md von Hand aktualisieren | Drift; `framework-inventory.sh` ist die einzige Wahrheit |
-| `settings.json` ohne `jq`-Prüfung committen | Claude Code startet still ohne Hooks und Berechtigungen |
-| Nur den Positivfall eines Gates testen | Ein Gate, das alles blockiert, besteht diesen Test ebenfalls |
-| Nebenfunde während der Arbeit gleich mitbauen | Scope Drift — die Sitzung endet dann mit einer offenen Baustelle statt mit Commit + Übergabe |
+| Editing `~/.claude` directly | Goes live immediately; blocks the next deploy |
+| Reporting "tested" without having run a command | The self-reference problem makes observation in your own session impossible — the claim is then pure invention |
+| Changing a gate without extending the regression suite | The change stays permanently unverified |
+| Updating counts in `CLAUDE.md` by hand | Drift; `framework-inventory.sh` is the only source of truth |
+| Committing `settings.json` without the `jq` check | Claude Code silently starts with no hooks and no permissions |
+| Testing only a gate's positive case | A gate that blocks everything passes this test too |
+| Building a side-finding into the same session | Scope drift — the session then ends with an open construction site instead of a commit + deploy |
 
-## Nebenfunde: notieren statt mitbauen (IMP-148)
+## Side-findings: note them, don't build them (IMP-148)
 
-Eine Bau-Session endet mit Commit + Übergabe, nicht mit einem offenen
-Baustellenrest. Fällt während der eigentlichen Aufgabe ein zusätzliches
-Problem auf (ein weiterer verbesserungswürdiger Hook, eine drittel-fertige
-Doku-Lücke, ein Refactoring-Wunsch) — das wird als `status: proposed` im
-Ledger notiert, nicht in derselben Sitzung mitgebaut. Der Auftrag wächst
-sonst unbemerkt über seinen Rahmen hinaus, und am Ende ist weder die
-Kernaufgabe fertig übergeben noch der Nebenfund sauber verifiziert.
+A work session ends with a commit + deploy, not with an open construction
+site. If an extra problem surfaces during the actual task (another hook
+worth improving, a third-done documentation gap, a refactoring wish) — it
+gets noted as `status: proposed` in the ledger, not built in the same
+session. Otherwise the task quietly grows past its own scope, and in the
+end neither the core task ships cleanly nor is the side-finding verified
+properly.
 
-> **Belegt am eigenen Verhalten:** 2026-08-04 „Was Du gerade machst ist Scope
-> Drift … Mehr nicht", 2026-08-05 „Keinen Scope Drift. Abschließen und
-> deployen" — beide Male musste der Nutzer eine laufende Sitzung zurück auf
-> die eigentliche Aufgabe holen.
+> **Backed by the agent's own past behavior:** 2026-08-04 "What you're
+> doing right now is scope drift … nothing more", 2026-08-05 "No scope
+> drift. Wrap up and deploy" — both times the user had to pull a running
+> session back onto the actual task.
 
-## Verweise
+## References
 
-- Zwei-Orte-Modell kompakt: Abschnitt „Zwei Orte: Bauhof und bewohntes Haus" in `CLAUDE.md`
-- Übergabe-Werkzeug: `scripts/deploy-to-live.sh` (verlinkt als `claude-deploy`)
-- Architektur des Frameworks: `HARNESS.md`
-- Vollständiges Bestandsverzeichnis mit Chronik (Hook-Tabelle, Routinen-Status, IMP-Belege — seit 2026-09-24 nicht mehr in `CLAUDE.md`): `docs/FRAMEWORK-REFERENCE.md`; ausgelagerte Regel-Belege: `docs/archive/rules-evidence/`
+- Two-location model, compact: section "Two Locations: Workshop and Live
+  Install" in `CLAUDE.md`
+- Deploy tool: `scripts/deploy-to-live.sh` (aliased as `claude-deploy`)
+- Framework architecture: `HARNESS.md`
+- Full inventory with history (hook table, routine status, IMP evidence —
+  moved out of `CLAUDE.md` since 2026-09-24): `docs/FRAMEWORK-REFERENCE.md`;
+  archived rule evidence: `docs/archive/rules-evidence/`

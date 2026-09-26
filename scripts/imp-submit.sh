@@ -24,7 +24,7 @@
 #     the real value may appear in any of its own output streams. A clean
 #     file prints ready-to-paste text to stdout, headed by a
 #     "checked with vault.sh <date>, 0 findings" line, with the internal
-#     "Was NICHT hineingehört" instructions section stripped.
+#     "What does NOT belong in here" instructions section stripped.
 #
 #   imp-submit.sh --from-ledger <IMP-ID> [--ledger <path>]
 #     Reads ONE entry from a LOCAL ledger (default:
@@ -60,20 +60,27 @@ VAULT_SH="$SCRIPT_DIR/vault/vault.sh"
 VAULT_LIB="$SCRIPT_DIR/vault/lib.sh"
 
 # The six required "## " headings, in template order — the SINGLE source of
-# truth for which sections are load-bearing. Keep byte-identical to the
-# headings in templates/imp-submission.template.md: a mismatch here makes
-# validation see an "empty" section for that heading (fails safe — reported
-# as missing, never silently accepted).
+# truth for which sections are load-bearing. Each entry is "canonical|alias":
+# the canonical (English) heading is what templates/imp-submission.template.md
+# now ships and what this script writes when pre-filling from a ledger entry;
+# the alias is the older German heading. Both are recognized when reading a
+# submitted form, so a form filled in against an older, German-headed copy of
+# the template still validates. German aliases kept: the owner writes German.
+# Keep the canonical form byte-identical to the headings in
+# templates/imp-submission.template.md: a mismatch here makes validation see
+# an "empty" section for that heading (fails safe — reported as missing,
+# never silently accepted).
 REQUIRED_FIELDS=(
-  "Problemklasse"
-  "Symptom"
-  "Messwert / Beleg"
-  "Vorgeschlagene Änderung"
-  "Risiko / Band"
-  "Rücknahme"
+  "Problem Class|Problemklasse"
+  "Symptom|Symptom"
+  "Measurement / Evidence|Messwert / Beleg"
+  "Proposed Change|Vorgeschlagene Änderung"
+  "Risk / Band|Risiko / Band"
+  "Rollback|Rücknahme"
 )
-OPTIONAL_ID_FIELD="Lokale IMP-ID (optional — nur Referenz des Einreichers)"
-FORBIDDEN_SECTION="Was NICHT hineingehört"
+OPTIONAL_ID_FIELD="Local IMP ID (optional — submitter's own reference only)"
+FORBIDDEN_SECTION_EN="What does NOT belong in here"
+FORBIDDEN_SECTION_DE="Was NICHT hineingehört"
 
 # Comma-joined string, not an array — bash 3.2 has no safe way to expand a
 # possibly-EMPTY array under `set -u` without a guard at every call site;
@@ -134,6 +141,23 @@ _extract_section() {  # _extract_section <file> <heading> -> raw section body on
   ' "$file"
 }
 
+_heading_present() {  # _heading_present <file> <heading> -> exit 0 if the exact "## <heading>" line exists
+  grep -qFx "## $2" "$1"
+}
+
+_extract_section_multi() {  # _extract_section_multi <file> <heading> [alias...] -> first matching heading's section
+  local file="$1"; shift
+  local h
+  for h in "$@"; do
+    if _heading_present "$file" "$h"; then
+      _extract_section "$file" "$h"
+      return 0
+    fi
+  done
+  # None of the accepted headings are present -> empty section, treated the
+  # same as an unfilled field (fails safe, reported as missing).
+}
+
 _trim_block() {  # stdin -> stdout, strips leading/trailing whitespace/blank lines only
   perl -0777 -pe 's/\A\s+//; s/\s+\z//'
 }
@@ -167,16 +191,17 @@ _replace_section() {  # _replace_section <infile> <heading> <valuefile> <outfile
 }
 
 _strip_forbidden_section() {  # _strip_forbidden_section <file> -> stdout
-  # Drops the leading HTML-comment frontmatter and the
-  # "Was NICHT hineingehört" section — both are instructions for the
-  # FILLER, not content for readers of the eventual issue/PR.
+  # Drops the leading HTML-comment frontmatter and the "What does NOT belong
+  # in here" section (English canonical heading, or its German alias "Was
+  # NICHT hineingehört" from an older template copy) — both are instructions
+  # for the FILLER, not content for readers of the eventual issue/PR.
   local file="$1"
-  awk -v forbidden="## ${FORBIDDEN_SECTION}" '
+  awk -v forbidden_en="## ${FORBIDDEN_SECTION_EN}" -v forbidden_de="## ${FORBIDDEN_SECTION_DE}" '
     BEGIN { in_comment = 0; in_forbidden = 0 }
     /^<!--/ { in_comment = 1; next }
     in_comment && /-->/ { in_comment = 0; next }
     in_comment { next }
-    $0 == forbidden { in_forbidden = 1; next }
+    $0 == forbidden_en || $0 == forbidden_de { in_forbidden = 1; next }
     in_forbidden && /^## / { in_forbidden = 0 }
     in_forbidden { next }
     { print }
@@ -214,7 +239,7 @@ _report_findings() {  # _report_findings <tsv findings> -- line/kind/token ONLY,
     if [[ -n "$token" ]]; then
       echo "  line ${line}: [$kind] -> $token" >&2
     else
-      echo "  line ${line}: [$kind] -> Platzhalter verwenden" >&2
+      echo "  line ${line}: [$kind] -> use a placeholder" >&2
     fi
   done
 }
@@ -243,13 +268,14 @@ cmd_check_form() {
   [[ -f "$TEMPLATE" ]] || die "template not found: $TEMPLATE (internal error — repo layout changed?)"
   [[ -x "$VAULT_SH" ]] || die "scripts/vault/vault.sh not found/executable at $VAULT_SH (internal error)"
 
-  local heading tpl_sec sub_sec
+  local pair canon alias tpl_sec sub_sec
   local missing=()
-  for heading in "${REQUIRED_FIELDS[@]}"; do
-    tpl_sec="$(_extract_section "$TEMPLATE" "$heading" | _trim_block)"
-    sub_sec="$(_extract_section "$file" "$heading" | _trim_block)"
+  for pair in "${REQUIRED_FIELDS[@]}"; do
+    canon="${pair%%|*}"; alias="${pair#*|}"
+    tpl_sec="$(_extract_section_multi "$TEMPLATE" "$canon" "$alias" | _trim_block)"
+    sub_sec="$(_extract_section_multi "$file" "$canon" "$alias" | _trim_block)"
     if [[ -z "$sub_sec" || "$sub_sec" == "$tpl_sec" ]]; then
-      missing+=("$heading")
+      missing+=("$canon")
     fi
   done
   if [[ ${#missing[@]} -gt 0 ]]; then
@@ -296,7 +322,7 @@ cmd_check_form() {
 
   local body
   body="$(_strip_forbidden_section "$file")"
-  printf 'geprüft mit vault.sh %s, 0 Funde\n\n%s\n' "$(date -u +%Y-%m-%d)" "$body"
+  printf 'checked with vault.sh %s, 0 findings\n\n%s\n' "$(date -u +%Y-%m-%d)" "$body"
 }
 
 # ---------------------------------------------------------------------------
@@ -376,7 +402,7 @@ cmd_from_ledger() {
     raw_change="$(printf '%s' "$entry" | jq -r '.notes // ""')"
     raw_risklevel="$(printf '%s' "$entry" | jq -r '.riskLevel // ""')"
     if [[ -n "$raw_risklevel" && "$raw_risklevel" != "unknown" ]]; then
-      raw_risk="Ledger riskLevel '${raw_risklevel}' -- bitte in AUTO|SOFT-ACK|ESCALATE nach rules/agency-bands.md uebersetzen."
+      raw_risk="Ledger riskLevel '${raw_risklevel}' -- please translate into AUTO|SOFT-ACK|ESCALATE per rules/agency-bands.md."
     else
       raw_risk=""
     fi
@@ -393,21 +419,21 @@ cmd_from_ledger() {
   cur="$(mktemp "${TMPDIR:-/tmp}/imp-submit-doc.XXXXXX")"
   cp "$TEMPLATE" "$cur"
 
-  cur="$(_maybe_fill "$cur" "Problemklasse" "$tok_problemklasse")"
+  cur="$(_maybe_fill "$cur" "Problem Class" "$tok_problemklasse")"
   cur="$(_maybe_fill "$cur" "Symptom" "$tok_symptom")"
-  cur="$(_maybe_fill "$cur" "Messwert / Beleg" "$tok_messwert")"
-  cur="$(_maybe_fill "$cur" "Vorgeschlagene Änderung" "$tok_change")"
-  cur="$(_maybe_fill "$cur" "Risiko / Band" "$tok_risk")"
-  [[ -n "$tok_risk" ]] && _note_still_needed "Risiko / Band (Ledger-Wert übernommen, bitte in AUTO|SOFT-ACK|ESCALATE übersetzen/prüfen)"
-  _note_still_needed "Rücknahme"  # never derivable from a ledger entry
+  cur="$(_maybe_fill "$cur" "Measurement / Evidence" "$tok_messwert")"
+  cur="$(_maybe_fill "$cur" "Proposed Change" "$tok_change")"
+  cur="$(_maybe_fill "$cur" "Risk / Band" "$tok_risk")"
+  [[ -n "$tok_risk" ]] && _note_still_needed "Risk / Band (ledger value carried over, please translate/check into AUTO|SOFT-ACK|ESCALATE)"
+  _note_still_needed "Rollback"  # never derivable from a ledger entry
   cur="$(_maybe_fill "$cur" "$OPTIONAL_ID_FIELD" "$id")"
 
   local hint
-  hint="Vorausgefüllt aus ${id} am $(date -u +%Y-%m-%d) (Tresor: ja — jeder aus dem Ledger übernommene Wert wurde mit vault.sh tokenize ersetzt)."
+  hint="Pre-filled from ${id} on $(date -u +%Y-%m-%d) (vault: yes — every value taken from the ledger was replaced with vault.sh tokenize)."
   if [[ -n "$STILL_NEEDED" ]]; then
-    hint="${hint} Bitte noch ausfüllen bzw. prüfen: ${STILL_NEEDED}."
+    hint="${hint} Please still fill in or check: ${STILL_NEEDED}."
   else
-    hint="${hint} Alle Pflichtfelder wurden vorausgefüllt — bitte trotzdem inhaltlich prüfen, dann mit 'imp-submit.sh <datei>' checken."
+    hint="${hint} All required fields were pre-filled — please still review the content, then check it with 'imp-submit.sh <file>'."
   fi
 
   printf '%s\n\n' "$hint"

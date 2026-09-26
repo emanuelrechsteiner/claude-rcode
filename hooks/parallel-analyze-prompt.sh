@@ -23,6 +23,7 @@ PROMPT=$(printf '%s' "$INPUT" | jq -r '.prompt // empty')
 PROMPT_LC=$(printf '%s' "$PROMPT" | tr '[:upper:]' '[:lower:]')
 
 # ── Task-shape detection (EN + DE) ──
+# German aliases kept: the owner writes German (und/alle/jede/keine parallel).
 STRONG_TASK_RE='\b(build|baue?|create|erstelle?|implement|implementiere|refactor|refactore|migrate|migriere|port|portiere|convert|konvertiere|add|fuege|füge|extend|erweitere|develop|entwickle?)\b'
 MEDIUM_TASK_RE='\b(fix|fixe|repariere|change|aendere|ändere|update|aktualisiere|write|schreibe?|rewrite|modify|modifiziere)\b'
 MULTI_HINT_RE='\b([2-9]|[1-9][0-9]+|both|alle?|all|jede?|every|each|multiple|mehrere|several)\b|,.*,|\band\b|\bund\b'
@@ -50,23 +51,23 @@ echo "$PROMPT_LC" | grep -qE "$LIB_RE" && CTX7=1
 echo "$PROMPT_LC" | grep -qE "$INTEG_RE" && CTX7=1
 
 # ── Build compact reminder ──
-# IMP-077 (2026-07-03): Punkt 2 an IMP-055 angeglichen. Der alte Text ("und auf
-# Bestätigung warten") injizierte die prä-IMP-055-Policy in JEDEN Task-Prompt und
-# hob damit die Auto-Dispatch-Entscheidung vom 2026-06-21 per Recency-Bias wieder
-# auf. Jetzt: auto-dispatchen bei reversibel+disjunkt; y/n NUR bei ESCALATE-Ops
-# oder nicht beweisbar disjunktem Scope (rules/parallel-by-default.md).
-REMINDER='[Pre-Flight — vor dem Start dieser Aufgabe]
-1. SUBAGENT WÄHLEN: Delegiere an einen spezialisierten Agenten statt alles selbst zu tun — control-agent bei 3+ Domänen, sonst backend-/testing-/ui-/research-/code-reviewer-agent o.ä. Selbst nur, wenn keiner passt.
-2. SCHWARM PRÜFEN: Bei 2+ unabhängigen Einheiten (disjunkte Dateien, keine A→B-Kette) → parallel AUTO-DISPATCHEN mit Einzeiler-Notiz (Workflow-Tool für komplexe Orchestrierung, sonst /parallel-dispatch). Bestätigung (y/n) NUR wenn ESCALATE-Band-Ops enthalten sind oder die Datei-Disjunktheit nicht beweisbar ist — siehe rules/parallel-by-default.md. Sonst sequenziell.'
+# IMP-077 (2026-07-03): point 2 aligned with IMP-055. The old text ("and wait
+# for confirmation") injected the pre-IMP-055 policy into EVERY task prompt,
+# undoing the 2026-06-21 auto-dispatch decision via recency bias. Now:
+# auto-dispatch when reversible+disjoint; y/n ONLY for ESCALATE-band ops
+# or scope that cannot be proven disjoint (rules/parallel-by-default.md).
+REMINDER='[Pre-Flight — before starting this task]
+1. PICK A SUBAGENT: Delegate to a specialized agent instead of doing everything yourself — control-agent for 3+ domains, otherwise backend-/testing-/ui-/research-/code-reviewer-agent or similar. Do it yourself only if none fits.
+2. CHECK FOR A SWARM: For 2+ independent units (disjoint files, no A→B chain) → AUTO-DISPATCH in parallel with a one-line note (Workflow tool for complex orchestration, otherwise /parallel-dispatch). Confirmation (y/n) ONLY when ESCALATE-band ops are involved or file-disjointness cannot be proven — see rules/parallel-by-default.md. Otherwise sequential.'
 
 if [ "$CTX7" = "1" ]; then
     REMINDER="$REMINDER
-3. DOCS ZUERST: Prompt nennt eine Library/Integration → hole VOR dem Code-Schreiben aktuelle Docs via Context7 (mcp__context7-keyed__resolve-library-id → query-docs) bzw. /find-docs. Nicht aus dem Gedächtnis integrieren."
+3. DOCS FIRST: The prompt names a library/integration → fetch current docs via Context7 (mcp__context7-keyed__resolve-library-id → query-docs) or /find-docs BEFORE writing code. Do not integrate from memory."
 fi
 
 REMINDER="$REMINDER
 
-Opt-out für diese Session: export CLAUDE_PARALLEL_AUTO_SUGGEST=0"
+Opt-out for this session: export CLAUDE_PARALLEL_AUTO_SUGGEST=0"
 
 # Log for observability
 LOG="$HOME/.claude/global-observation/parallel-prompts.jsonl"

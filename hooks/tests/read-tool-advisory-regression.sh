@@ -91,7 +91,7 @@ fi
 
 echo "── Note text names the conflict (Auto-Mode vs. Rule 2), not just one side ──"
 run_hook "$(json_cmd "cat conflict-check.txt" "rta-10")"
-if printf '%s' "$ERR" | grep -qi "auto-modus" && printf '%s' "$ERR" | grep -qi "Rule 2"; then
+if printf '%s' "$ERR" | grep -qi "auto mode" && printf '%s' "$ERR" | grep -qi "Rule 2"; then
   PASS=$((PASS+1))
 else
   FAIL=$((FAIL+1))

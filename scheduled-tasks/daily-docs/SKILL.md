@@ -1,9 +1,9 @@
 ---
 name: daily-docs
-description: Daily logbook entry — Item-Zählung läuft ausschliesslich über ein Referenzskript (nie manuell/aus dem Gefühl), aggregiert Signals/Git/Memory für die Prosa, schreibt Markdown + synced zu Notion.
+description: Daily logbook entry — item counting runs exclusively through a reference script (never manually/by feel), aggregates signals/git/memory for the prose, writes markdown + syncs to Notion.
 ---
 
-<!-- Erwartetes cwd: ~/.claude · Zeitgeber: launchd com.claude-code.routine-daily-docs (seit 2026-08-22, IMP-135; Label generisch seit IMP-219, 2026-09-25; davor unversionierte Cloud-Bindung an ein 2026-08-02 umbenanntes Verzeichnis — 20 Tage stiller Ausfall). -->
+<!-- Expected cwd: ~/.claude · Timer: launchd com.claude-code.routine-daily-docs (since 2026-08-22, IMP-135; label made generic since IMP-219, 2026-09-25; before that an unversioned cloud binding to a directory renamed on 2026-08-02 — 20 days of silent failure). -->
 
 Run the documentation-agent in Mode B (Daily-Docs Routine).
 
@@ -11,165 +11,165 @@ Run the documentation-agent in Mode B (Daily-Docs Routine).
 Process activity from yesterday (00:00 to 23:59 local).
 `yesterday=$(date -v-1d +%Y-%m-%d)`
 
-## Lauf-Reihenfolge — DER BELEG KOMMT ZUERST
+## Run order — THE RECEIPT COMES FIRST
 
-**Allererste dauerhafte Aktion jedes Laufs — vor der Zählung, vor dem Logbuch,
-vor Notion:**
+**The very first durable action of every run — before counting, before the logbook,
+before Notion:**
 
 ```bash
 bash ~/.claude/scheduled-tasks/daily-docs/bin/run-log.sh start "$yesterday"
 ```
 
-Verbindliche Reihenfolge: **C-start → Zählung → A → B → C-finish**.
-Nicht mehr A → B → C. Der Beleg wird ANGELEGT bevor es Artefakte gibt und am
-Ende nur noch ANGEHOBEN (`finish`), nie erstmalig geschrieben.
+Mandatory order: **C-start → count → A → B → C-finish**.
+No longer A → B → C. The receipt is CREATED before any artifact exists, and at the
+end only ever RAISED (`finish`), never written for the first time.
 
-### Warum umgedreht (gemessen 2026-07-31, Lauf für den 2026-07-30)
+### Why reversed (measured 2026-07-31, run for 2026-07-30)
 
-Der Lauf feuerte pünktlich um 07:10, schrieb §A (`logbook/2026-07-30.md`),
-aktualisierte §B (Notion-Sub-Page `<notion-subpage-id>`) — und
-starb 11 Sekunden nach Beginn von §C an `[Request interrupted by user]`
-(letzte Aktion: `grep -rn 'daily-docs-log'`, Transkript
-`<session-id>`). Ergebnis: beide Artefakte vorhanden,
-Datumsreihe sprang 2026-07-29 → 2026-07-31, jede Abdeckungsprüfung meldete
-**FALSCH-NEGATIV „nie gelaufen"**. Backfill der Zeile: 2026-08-01.
+The run fired on schedule at 07:10, wrote §A (`logbook/2026-07-30.md`),
+updated §B (Notion sub-page `<notion-subpage-id>`) — and
+died 11 seconds after §C began with `[Request interrupted by user]`
+(last action: `grep -rn 'daily-docs-log'`, transcript
+`<session-id>`). Result: both artifacts present,
+the date series jumped 2026-07-29 → 2026-07-31, every coverage check reported a
+**FALSE NEGATIVE "never ran"**. Backfilled the line: 2026-08-01.
 
-Das ist die Umkehrung des IMP-075-Falls und strukturell garantiert, solange §C
-zuletzt steht: **§A und §B hinterlassen je ein Artefakt, §C IST das Artefakt.**
-Jeder Abbruch dazwischen — Interrupt, Absturz, Kontextende, Token-Budget,
-Scheduler-Timeout — erzeugt Artefakte ohne Beweis. Mit `start` zuerst bleibt im
-selben Fall eine `status:"partial"`-Zeile stehen: ein sichtbarer Teil-Lauf statt
-einer unsichtbaren Lücke.
+This is the inverse of the IMP-075 case and structurally guaranteed as long as §C
+comes last: **§A and §B each leave one artifact, §C IS the artifact.**
+Any abort in between — interrupt, crash, context end, token budget,
+scheduler timeout — produces artifacts with no proof. With `start` first, the
+same case instead leaves a `status:"partial"` line standing: a visible partial
+run instead of an invisible gap.
 
-Nebenbefund desselben Laufs: seine letzte Handlung war die Recherche, ob
-Konsumenten `items` oder `items_total` lesen — eine Frage, die nur entstand, weil
-das §C-Template unten jahrelang `"items": N` zeigte, während der Rest dieser Spec
-`items_total` vorschreibt. Die Drift ist mit dem Backfill behoben; Zahlenfelder
-werden ohnehin nicht mehr von Hand getippt (siehe `finish` unten).
+Side finding from the same run: its last action was researching whether
+consumers read `items` or `items_total` — a question that only arose because
+the §C template below had shown `"items": N` for years, while the rest of this spec
+mandates `items_total`. The drift is fixed via the backfill; number fields are
+no longer hand-typed anyway (see `finish` below).
 
-> Warum ein Skript und keine Prosa-Anweisung: dieselbe Lehre wie bei der Zählung
-> (2026-07-18 — `logbook-count.sh` ersetzte die Agenten-Schätzung). Ein Agent,
-> der abbricht, führt keine Prosa-Anweisung mehr aus. Ein Aufruf, der als erstes
-> passiert, ist dagegen schon passiert.
+> Why a script and not a prose instruction: the same lesson as with the counting
+> (2026-07-18 — `logbook-count.sh` replaced the agent's own estimate). An agent
+> that aborts no longer executes a prose instruction. A call that happens first,
+> by contrast, has already happened.
 
-## Tageszählung — VERBINDLICHES VERFAHREN
+## Daily count — MANDATORY PROCEDURE
 
-Du zählst NICHT selbst. Du führst das Referenzskript aus und übernimmst dessen JSON
-unverändert. Eine selbst geschätzte oder aus `git log` nachgerechnete Zahl ist ein
-Verfahrensfehler.
+You do NOT count yourself. You run the reference script and adopt its JSON
+unchanged. A self-estimated number, or one recomputed from `git log`, is a
+procedural error.
 
-**Skript:** `~/.claude/scheduled-tasks/daily-docs/bin/logbook-count.sh <YYYY-MM-DD>`
-(separat gepflegt — diese Spec referenziert nur den Aufruf und die Vertragsbedingungen,
-nicht die interne Logik).
+**Script:** `~/.claude/scheduled-tasks/daily-docs/bin/logbook-count.sh <YYYY-MM-DD>`
+(maintained separately — this spec references only the call and the contract terms,
+not the internal logic).
 
-### Zählbasis — ein Satz
-Ein Item ist eine eindeutige Datei nach Repo-Identität (`<repo_id>::<relpfad>`, sonst
-`fs::<pfad>` ausserhalb jedes Repos), deren Inhalt am Zieltag durch einen belegten
-Schreibvorgang verändert wurde. Merge-materialisierte Dateien zählen NICHT als Items
-— sie erscheinen unter `vcs_operationen` (siehe Outputs A), nie addiert zu `items_total`.
+### Count basis — one sentence
+An item is a unique file by repo identity (`<repo_id>::<relpath>`, else
+`fs::<path>` outside any repo) whose content was changed on the target day by an
+evidenced write. Merge-materialized files do NOT count as items
+— they appear under `vcs_operationen` (see Outputs A), never added into `items_total`.
 
-### Ablauf
+### Procedure
 1. `bash ~/.claude/scheduled-tasks/daily-docs/bin/logbook-count.sh "$yesterday"`
-2. **Exit ≠ 0 → kein Logbucheintrag mit Zahl.** Siehe Fail-Loud-Kontrakt unten.
-3. **Exit = 0 →** übernimm aus dem JSON unverändert die folgenden Felder. Die Namen sind
-   am 2026-07-18 gegen die echte Skriptausgabe geprüft — benutze GENAU diese, rate nicht:
+2. **Exit ≠ 0 → no logbook entry with a number.** See the fail-loud contract below.
+3. **Exit = 0 →** adopt the following fields from the JSON unchanged. The names were
+   verified against the real script output on 2026-07-18 — use EXACTLY these, don't guess:
 
-   | Feld im JSON | Bedeutung |
+   | Field in the JSON | Meaning |
    |---|---|
-   | `items_total` | die Tageszahl (NICHT `items` — dieses Feld existiert nicht) |
-   | `count_basis` | immer `files_touched_v3` |
-   | `evidence_tier` + `evidence_tier_grund` | Beweisstufe und ihre Begründung |
-   | `quellen_epochen` | ab wann jede Quelle existiert (ersetzt das frühere `aera`) |
-   | `sources` | Gelesenheits-Zertifikat je Quelle (Objekt, kein Array) |
-   | `vcs_operationen` + `vcs_zaehler` | Merges etc., eigener Absatz |
-   | `nicht_erfassbar` | Pflichtabschnitt des Eintrags |
-   | `status` | `OK` oder `DEGRADED` |
+   | `items_total` | the day's count (NOT `items` — that field does not exist) |
+   | `count_basis` | always `files_touched_v3` |
+   | `evidence_tier` + `evidence_tier_grund` | evidence tier and its justification |
+   | `quellen_epochen` | when each source starts to exist (replaces the earlier `aera`) |
+   | `sources` | a read-certificate per source (an object, not an array) |
+   | `vcs_operationen` + `vcs_zaehler` | merges etc., their own paragraph |
+   | `nicht_erfassbar` | mandatory section of the entry |
+   | `status` | `OK` or `DEGRADED` |
 
-   Alle diese Felder sind PFLICHT in jedem Eintrag — auch an einem `items_total:0`-Tag.
-   **Findest du ein Feld nicht: NICHT improvisieren, nicht auf ein ähnliches ausweichen.**
-   Dann hat sich der Skriptvertrag geändert → `status:"fail"`, `reason` = fehlendes Feld.
+   ALL of these fields are MANDATORY in every entry — even on an `items_total:0` day.
+   **Can't find a field: do NOT improvise, do NOT fall back to a similar-looking one.**
+   Then the script's contract has changed → `status:"fail"`, `reason` = the missing field.
 
-### Was du NIE tun darfst
-- `items_total` und `vcs_operationen` addieren — zwei eigenständige Grössen, keine Summanden.
-- **In der Prosa selbst gerechnete Zahlen nennen.** Kein „85 Commits", kein „39 Items auf der
-  Transkript-Achse", keine Teilsummen. Die EINZIGE gültige Zahl im Eintrag ist `items_total`
-  aus dem Skript. Belege werden AUFGEZÄHLT (SHAs, Pfade), nicht summiert.
-  *Gemessen beim Backfill 2026-07-18: Zahlen aus belegten Einzelteilen fühlen sich belegt an,
-  reproduzieren aber nicht — real aufgetreten „85 Commits" (tatsächlich 83) und „54 Commits"
-  (tatsächlich 53). Eine Summe ist nur belegt, wenn auch die Rechnung reproduzierbar ist.*
-- **Aus Dateinamen auf Technologie schliessen.** „BootScene.ts, MenuScene.ts" belegt kein
-  Framework. Entweder den Beleg finden und zitieren (`package.json`-Eintrag) oder die
-  Behauptung weglassen.
-- **Ein Verzeichnis als „Repo" bezeichnen, ohne `.git` geprüft zu haben.**
-- Bei Exit ≠ 0 irgendeine Zahl schreiben (auch keine „ungefähre" oder eine selbst aus
-  `git log` gezählte).
-- Den Abschnitt „Für diesen Tag nicht erfassbar" weglassen — er ist Pflicht in jedem
-  Eintrag, auch einem vollständigen.
-- `evidence_tier`/`quellen_epochen` selbst herleiten — beide kommen nur aus dem Skript.
+### What you must NEVER do
+- Add up `items_total` and `vcs_operationen` — two independent quantities, not summands.
+- **State numbers computed yourself in the prose.** No "85 commits", no "39 items on the
+  transcript axis", no partial sums. The ONLY valid number in the entry is `items_total`
+  from the script. Evidence is LISTED (SHAs, paths), never summed.
+  *Measured during the 2026-07-18 backfill: numbers from evidenced individual parts feel
+  evidenced but don't reproduce — actually observed "85 commits" (really 83) and "54 commits"
+  (really 53). A sum is only evidenced if the arithmetic behind it is reproducible too.*
+- **Infer technology from file names.** "BootScene.ts, MenuScene.ts" proves no
+  framework. Either find and cite the evidence (a `package.json` entry) or drop
+  the claim.
+- **Call a directory a "repo" without having checked for `.git`.**
+- Write any number at all on exit ≠ 0 (not even an "approximate" one, or one
+  self-counted from `git log`).
+- Omit the "Not capturable for this day" section — it is mandatory in every
+  entry, even a complete one.
+- Derive `evidence_tier`/`quellen_epochen` yourself — both come only from the script.
 
-### Fail-Loud-Kontrakt
-Bricht das Skript mit einem ABORT-Code ab: Run-Log-Zeile `"status":"fail"`,
-`"reason"` = die ABORT-Meldung wörtlich. KEINE Zahl erfinden, KEINE alternative
-Zählung improvisieren, kein `mkdir`/Workaround. Exit ≠ 0 bedeutet: kein `items_total`-Feld
-im Eintrag — weder im Logbuch noch im Run-Log.
-Mechanik: `bash bin/run-log.sh fail "$yesterday" --reason "<ABORT-Meldung wörtlich>"` —
-das Skript lässt die Zahlenfelder weg, statt sie auf `null` zu setzen.
+### Fail-loud contract
+If the script aborts with an ABORT code: run-log line `"status":"fail"`,
+`"reason"` = the ABORT message verbatim. NO invented number, NO improvised
+alternative count, no `mkdir`/workaround. Exit ≠ 0 means: no `items_total` field
+in the entry — neither in the logbook nor in the run log.
+Mechanism: `bash bin/run-log.sh fail "$yesterday" --reason "<ABORT message verbatim>"` —
+the script omits the number fields instead of setting them to `null`.
 
-### ABORT-Codes (Skript-Exit ≠ 0 — jeder ist ein Verfahrensstopp, kein Warnhinweis)
-| Exit | Bedeutung |
+### ABORT codes (script exit ≠ 0 — each is a procedural stop, not a warning)
+| Exit | Meaning |
 |---|---|
-| 1 | Tagesargument fehlt |
-| 2 | Fenstergrenzen leer/ungültig/nicht aufsteigend |
-| 3 | Suchwurzel fehlt oder Sentinel unlesbar (Volume nicht gemountet) |
-| 4 | 0 Transkripte gefunden — Messfehler, kein Leertag |
-| 5 | signals fehlt oder abgeschnitten |
-| 6 | Zeitzone nicht ermittelbar (IMP-219: weder `$TZ` noch `$CLAUDE_LOGBOOK_TZ` gesetzt, Systemzeitzone nicht lesbar) |
-| 7 | `items_total=0`, obwohl andere Quellen liefern |
-| 9 | Ausgabe nicht geschrieben oder leer trotz Eingabe |
-| 10 | Arbeitsverzeichnis nicht frisch |
-| 11 | Canary/Zweitzähler weicht ab |
-| 12 | Fehlschlag-Filter kollabiert bei 0 Mustern |
-| 13 | Q_T=0 trotz unabhängiger Zeugen |
-| 14 | `items_total` < 50% der Referenzachse |
-| 15/16 | Transkript-/Desktop-Scan unvollständig |
-| 17 | signals `empty_verified`, aber Ereigniszeilen im Fenster |
-| 18 | Zertifikatspflicht verletzt (kein `state=`) |
-| 19 | Symlink im Scanbaum oder Root über Symlink |
-| 20 | gepinntes Werkzeug (`/usr/bin/find`/`/usr/bin/grep`) fehlt |
-| 21 | S12/Q_V nicht auswertbar |
+| 1 | day argument missing |
+| 2 | window bounds empty/invalid/not ascending |
+| 3 | search root missing or sentinel unreadable (volume not mounted) |
+| 4 | 0 transcripts found — a measurement error, not an empty day |
+| 5 | signals missing or truncated |
+| 6 | timezone not determinable (IMP-219: neither `$TZ` nor `$CLAUDE_LOGBOOK_TZ` set, system timezone unreadable) |
+| 7 | `items_total=0` even though other sources deliver |
+| 9 | output not written or empty despite input |
+| 10 | working directory not fresh |
+| 11 | canary/second counter diverges |
+| 12 | failure filter collapses at 0 patterns |
+| 13 | Q_T=0 despite independent witnesses |
+| 14 | `items_total` < 50% of the reference axis |
+| 15/16 | transcript/desktop scan incomplete |
+| 17 | signals `empty_verified`, but event lines in the window |
+| 18 | certificate requirement violated (no `state=`) |
+| 19 | symlink in the scan tree, or root addressed via a symlink |
+| 20 | a pinned tool (`/usr/bin/find`/`/usr/bin/grep`) is missing |
+| 21 | S12/Q_V not evaluable |
 
-`evidence_tier` (1–4) plus `evidence_tier_grund` liefert das Skript ebenfalls, dazu
-`quellen_epochen` — die Startdaten der Quellen (`signals:2026-06-19`,
-`transkripte:2026-03-18`, `desktop:2026-02-04`). Für Tagesläufe (immer „gestern")
-existieren alle Quellen, die Epochen sind dann nur Kontext. Gemessen am 2026-07-18:
-ein Tageslauf liefert `evidence_tier:2` / `status:DEGRADED`, weil der Handarbeits-Zweig
-(`manifest`) rückwirkend nie existiert — das ist der NORMALZUSTAND, kein Fehler und
-kein Grund, den Eintrag zurückzuhalten. Stufe 1 ist derzeit für keinen Tag erreichbar.
+`evidence_tier` (1–4) plus `evidence_tier_grund` is also delivered by the script, along with
+`quellen_epochen` — the start dates of the sources (`signals:2026-06-19`,
+`transkripte:2026-03-18`, `desktop:2026-02-04`). For daily runs (always "yesterday"),
+all sources exist, so the epochs are just context. Measured on 2026-07-18:
+a daily run delivers `evidence_tier:2` / `status:DEGRADED`, because the manual-work
+branch (`manifest`) retroactively never exists — that is the NORMAL STATE, not an error and
+no reason to hold back the entry. Tier 1 is currently unreachable for any day.
 
-## Ergänzende Quellen für Prosa (NICHT für die Zählung)
+## Additional sources for the prose (NOT for the count)
 
-Diese liefern INHALT für Features/Bugs/Decisions — nicht die Item-Zahl (die kommt
-ausschliesslich aus dem Skript oben). Jede Prosa-Aussage muss auf eine SHA oder einen
-Item-Pfad aus dem Skript-JSON rückführbar sein — keine Vermutungen.
+These provide CONTENT for Features/Bugs/Decisions — not the item count (which comes
+exclusively from the script above). Every prose statement must trace back to a SHA or an
+item path from the script's JSON — no guessing.
 
-**Quellen-Hinweis (Nutzer-Direktive 2026-08-23, siehe `skills/meta-observer/SKILL.md`
-§ Quellen-Doktrin):** die ERZÄHLUNG des Tages — Entscheidungen, Blocker, Kurswechsel —
-stammt aus den Session-Transkripten des Tages; `git log` liefert nur die Faktenliste der
-Commits, nicht den Weg dorthin. Diese Gewichtung gilt für die Prosa unter „Activity" und
-„Research / Decisions" unten; an der Zählmechanik (Skript, `items_total`) ändert sie
-nichts.
+**Source note (user directive 2026-08-23, see `skills/meta-observer/SKILL.md`
+§ Source Doctrine):** the day's NARRATIVE — decisions, blockers, course changes —
+comes from that day's session transcripts; `git log` only supplies the fact list of
+commits, not the path that led there. This weighting applies to the prose under "Activity" and
+"Research / Decisions" below; it changes nothing about the counting
+mechanism (the script, `items_total`).
 
-1. **Commit-Messages** (Kontext, keine Zählquelle):
+1. **Commit messages** (context, not a count source):
    ```bash
    yesterday=$(date -v-1d +%Y-%m-%d)
-   # Weitere Suchwurzeln kommen aus der Umgebung (IMP-219, korrigiert
-   # 2026-09-25 — vorher eine feste Verzeichnistiefe zwischen Bauhof und
-   # einer Elternebene, das war eine Annahme ueber die Ordnerstruktur eines
-   # einzelnen Rechners im versionierten Code). Optionale, ":"-getrennte
-   # Variable CLAUDE_EXTRA_SEARCH_ROOTS (siehe templates/env.local.sh.template).
-   # Fehlt sie, werden NUR die beiden $HOME-Wurzeln durchsucht — die Schleife
-   # unten WARNt ohnehin pro fehlender Wurzel und arbeitet mit den
-   # vorhandenen weiter (siehe "Failure modes"), keine Logikänderung.
+   # Additional search roots come from the environment (IMP-219, corrected
+   # 2026-09-25 — previously a fixed directory depth between the workshop and
+   # a parent level, which was an assumption about one machine's folder
+   # structure baked into versioned code). Optional, ":"-separated
+   # variable CLAUDE_EXTRA_SEARCH_ROOTS (see templates/env.local.sh.template).
+   # If missing, ONLY the two $HOME roots are searched — the loop
+   # below WARNs per missing root regardless and keeps working with the
+   # roots present (see "Failure modes"), no logic change.
    [ -n "${CLAUDE_EXTRA_SEARCH_ROOTS:-}" ] || { [ -f "$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }
    ROOTS=("$HOME/Cowork" "$HOME/.claude")
    if [ -n "${CLAUDE_EXTRA_SEARCH_ROOTS:-}" ]; then
@@ -184,71 +184,71 @@ nichts.
      git -C "$repo" log --all --author="$email" \
          --pretty=tformat:'%H%x09%ad%x09%cd%x09%s' --date=format:'%Y-%m-%d' \
        | awk -F'\t' -v d="$yesterday" '$2==d || $3==d { printf "%s\t%s\n", substr($1,1,9), $4 }'
-   done | awk -F'\t' '!seen[$1]++'   # SHA-Dedupe, siehe Fußnote
+   done | awk -F'\t' '!seen[$1]++'   # SHA dedupe, see footnote
    ```
-   *Fußnote — vier reale Fehlschläge, deshalb so geschrieben:* Roots statt Ableitung
-   aus `~/.claude/projects/`-Verzeichnisnamen (das Encoding kollabiert „/" und „_"
-   verlustbehaftet zu „-"); `--all` statt current-branch (verpasste sonst Commits auf
-   `claude/*`-Worktree-Branches); author-date ODER committer-date (ein reiner
-   `--since/--until`-Filter auf Committer-Date verpasst Commits nach einem nächtlichen
-   Rebase); SHA-Dedupe (zwei Klone desselben Remotes — z.B.
-   `COWORK/proj-6964a0` und `$HOME/.claude` — emittieren jeden Commit
-   doppelt; am 2026-07-17 real beobachtet: 2 Commits erschienen als 4 Zeilen).
-2. **Signals:** `~/.claude/global-observation/signals.jsonl` (aktuell) +
-   `~/.claude/global-observation/archives/signals-<yesterday>.jsonl.gz` (rotiert) —
-   Einträge mit `date == $yesterday`. *Der alte Pfad `~/.claude/signals.jsonl` war der
-   dritte Ur-Defekt: die Datei existiert dort nicht, lieferte still 0 Treffer und wurde
-   fälschlich als „rotated away" erklärt.*
-3. **Memory-Updates:** Positivprobe nach INHALT, nie mtime (IMP-195 — Datei-mtime unter
-   `~/.claude/projects/` ist nachweislich kein Aktivitätssignal; ein nicht identifizierter
-   Prozess fasst Dateien in diesem Baum an, ohne den Inhalt zu ändern — 99 von 603
-   Transkriptdateien trugen im Lauf vom 2026-09-09 exakt `10:30` als mtime bei
-   wochenaltem Inhalt. Gleiches Muster wie `logbook-count.sh` § S1a, "nie mtime").
-   Prüfe je Datei in `~/.claude/projects/$(echo "$HOME" | tr '/' '-')/memory/*.md`
-   (Claude Codes eigene Verzeichniskodierung: jedes `/` im cwd-Pfad wird zu `-` —
-   für eine Session mit cwd `$HOME` ergibt das genau diesen Ordnernamen, IMP-219:
-   kein hartcodierter Benutzername mehr) das Frontmatter-Feld `modified:` gegen
+   *Footnote — four real failures, hence written this way:* roots instead of deriving
+   from `~/.claude/projects/` directory names (the encoding lossily collapses "/" and "_"
+   into "-"); `--all` instead of the current branch (otherwise missed commits on
+   `claude/*` worktree branches); author-date OR committer-date (a plain
+   `--since/--until` filter on committer-date misses commits after a nightly
+   rebase); SHA dedupe (two clones of the same remote — e.g.
+   `COWORK/proj-6964a0` and `$HOME/.claude` — each emit every commit
+   twice; observed for real on 2026-07-17: 2 commits appeared as 4 lines).
+2. **Signals:** `~/.claude/global-observation/signals.jsonl` (current) +
+   `~/.claude/global-observation/archives/signals-<yesterday>.jsonl.gz` (rotated) —
+   entries with `date == $yesterday`. *The old path `~/.claude/signals.jsonl` was the
+   third original defect: the file does not exist there, silently returned 0 hits, and was
+   wrongly declared "rotated away".*
+3. **Memory updates:** verify positively by CONTENT, never by mtime (IMP-195 — file mtime under
+   `~/.claude/projects/` is demonstrably not an activity signal; an unidentified
+   process touches files in this tree without changing their content — 99 of 603
+   transcript files in the 2026-09-09 run carried exactly `10:30` as mtime with
+   week-old content. Same pattern as `logbook-count.sh` § S1a, "never mtime").
+   For each file under `~/.claude/projects/$(echo "$HOME" | tr '/' '-')/memory/*.md`
+   (Claude Code's own directory encoding: every `/` in the cwd path becomes `-` —
+   for a session with cwd `$HOME` this yields exactly this folder name, IMP-219:
+   no hardcoded username anymore), check the frontmatter field `modified:` against
    `$yesterday`:
    ```bash
    HOME_PROJECT_DIR="$(echo "$HOME" | tr '/' '-')"
    grep -l "modified: ${yesterday}" ~/.claude/projects/${HOME_PROJECT_DIR}/memory/*.md 2>/dev/null
    ```
-   Nicht jede Memory-Datei trägt `modified:` im Frontmatter (ältere Dateien fehlt das
-   Feld ganz). Eine Datei ohne dieses Feld ist eine PROSA-QUELLE OHNE DATUMSBELEG — sie
-   darf zitiert, aber nicht als "gestern geändert" behauptet werden; mtime ersetzt den
-   fehlenden Beleg nicht.
-4. **Session-Metriken:** `~/.claude/session-env/*` von gestern
+   Not every memory file carries `modified:` in its frontmatter (older files lack the
+   field entirely). A file without this field is a PROSE SOURCE WITHOUT A DATE
+   RECORD — it may be cited, but not claimed as "changed yesterday"; mtime does not
+   substitute for the missing record.
+4. **Session metrics:** `~/.claude/session-env/*` from yesterday
 
-## Kategorisierung
-Nur aus belegten Fakten (Commit-Message, Item-Pfad, Transcript-Titel) — kein
-Ausschmücken:
+## Categorization
+Only from evidenced facts (commit message, item path, transcript title) — no
+embellishing:
 - Features Shipped
 - Bugs Fixed
 - Refactors / Cleanup
-- Research / Decisions (mit Begründung)
+- Research / Decisions (with justification)
 - Blockers Encountered
 - Plans for Today
 
 ## Outputs
 
 ### A) Local Markdown logbook
-Path: `~/.claude/logbook/YYYY-MM-DD.md` (YYYY-MM-DD = gestern)
+Path: `~/.claude/logbook/YYYY-MM-DD.md` (YYYY-MM-DD = yesterday)
 
-**Hardcoded mit Absicht (2026-07-18) — hier keine APP-SPEZIFISCHE Variable wieder
-einführen.** Der alte Pfad las `${LOGBOOK_DIR}`, nie in `settings.json`/
-`settings.local.json` gesetzt. Unset expandierte er zu leer → der Pfad wurde
-`/YYYY-MM-DD.md` (Filesystem-Root). Läufe reparierten sich still, indem sie das
-Verzeichnis aus einer früheren Zeile in `daily-docs-log.jsonl` erschlossen — ein
-stiller Fallback (`rules/fail-loud.md` verboten), der wochenlang den unset-Bug
-maskierte. `settings.local.json` wäre KEINE dauerhafte Lösung (gitignored,
-`*.local.json`) — der Pfad ist maschinenstabil und nicht geheim, er gehört in die
-Spec selbst. `$HOME` (IMP-219, statt eines literalen Benutzerpfads) fällt NICHT
-in dieselbe Gefahrenklasse wie das alte `${LOGBOOK_DIR}`: `$HOME` ist keine
-app-spezifische Konfigurationsvariable, die erst irgendwo verdrahtet werden muss
-— jeder Prozess (Login-Shell, launchd) bekommt sie vom Betriebssystem gesetzt, und
-der Pre-Flight-Guard unten prüft ohnehin `-d` auf das Ergebnis, bevor geschrieben wird.
+**Hardcoded on purpose (2026-07-18) — do not reintroduce an APP-SPECIFIC variable
+here.** The old path read `${LOGBOOK_DIR}`, never set in `settings.json`/
+`settings.local.json`. Unset, it expanded to empty → the path became
+`/YYYY-MM-DD.md` (filesystem root). Runs silently repaired themselves by inferring the
+directory from an earlier line in `daily-docs-log.jsonl` — a
+silent fallback (forbidden by `rules/fail-loud.md`) that masked the unset bug for
+weeks. `settings.local.json` would NOT be a durable solution (gitignored,
+`*.local.json`) — the path is machine-stable and not secret, it belongs in the
+spec itself. `$HOME` (IMP-219, instead of a literal user path) does NOT fall
+into the same danger class as the old `${LOGBOOK_DIR}`: `$HOME` is not an
+app-specific configuration variable that first needs wiring somewhere
+— every process (login shell, launchd) gets it set by the operating system, and
+the pre-flight guard below checks `-d` on the result anyway before writing.
 
-**Pre-flight-Guard — fail loud, kein Workaround:**
+**Pre-flight guard — fail loud, no workaround:**
 ```bash
 LOGBOOK_DIR_RESOLVED="$HOME/.claude/logbook"
 [ -n "$LOGBOOK_DIR_RESOLVED" ] && [ -d "$LOGBOOK_DIR_RESOLVED" ] || {
@@ -256,11 +256,53 @@ LOGBOOK_DIR_RESOLVED="$HOME/.claude/logbook"
   exit 1
 }
 ```
-Trippt der Guard: §C-Zeile `"status":"fail"` + `"reason"` mit dem unresolved Pfad,
-dann Stopp. NIE: Verzeichnis anlegen, Pfad aus früheren Log-Zeilen erschliessen, auf
-`/` schreiben.
+If the guard trips: §C line `"status":"fail"` + `"reason"` with the unresolved path,
+then stop. NEVER: create the directory, infer the path from earlier log lines, write to
+`/`.
 
-Format:
+**Output language (`CLAUDE_DAILY_DOCS_LANG`, see `templates/env.local.sh.template`):**
+this is the ONLY language-switchable surface in this routine — the prompt above and
+the script contracts stay English regardless. Read the variable the same way as
+`CLAUDE_LOGBOOK_NOTION_PAGE_ID` below (`[ -n "${CLAUDE_DAILY_DOCS_LANG:-}" ] || { [ -f
+"$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }`). `CLAUDE_DAILY_DOCS_LANG`
+unset or `en` → use the **English** heading set below. `CLAUDE_DAILY_DOCS_LANG=de` →
+use the **German** heading set instead, verbatim. The JSON field names you copy
+values from (`items_total`, `quellen_epochen`, `vcs_operationen`, `nicht_erfassbar`,
+`sources`, …) never change — only the section headings and static prose around them do.
+The §B Notion page always mirrors whichever heading set §A used for that day.
+
+Format (English, default):
+```markdown
+# YYYY-MM-DD — Daily Logbook
+
+## Count Status
+- items_total: N — count_basis: files_touched_v3 — evidence_tier: T (reason: …) — status: OK|DEGRADED
+- quellen_epochen: [verbatim from the script JSON]
+- sources: [certificates verbatim from the script JSON]
+
+## VCS Operations
+[own paragraph, NEVER counted into `items_total` — e.g. "3 merges, 40 files
+materialized, of which 13 exclusively merge-derived and not
+included in items_total"; if 0 operations: "none"]
+
+## Summary
+[2-3 sentences]
+
+## Activity
+### Features Shipped
+### Bugs Fixed
+### Refactors / Cleanup
+### Research / Decisions
+### Blockers
+
+## Not Capturable For This Day
+- [verbatim from `nicht_erfassbar[]`; never leave empty — even a complete day
+  has this section]
+
+## Plans for Today
+```
+
+Format (German, only when `CLAUDE_DAILY_DOCS_LANG=de`):
 ```markdown
 # YYYY-MM-DD — Daily Logbook
 
@@ -292,112 +334,112 @@ enthalten"; bei 0 Operationen: "keine"]
 ```
 
 ### B) Notion sync
-- Parent page: `${CLAUDE_LOGBOOK_NOTION_PAGE_ID}` (siehe `~/.claude/env.local.sh`,
-  Vorlage `templates/env.local.sh.template`) — die "📔 Claude Code Logbuch"-Page.
+- Parent page: `${CLAUDE_LOGBOOK_NOTION_PAGE_ID}` (see `~/.claude/env.local.sh`,
+  template `templates/env.local.sh.template`) — the "📔 Claude Code Logbook" page.
 
-**Hardcoded mit Absicht (2026-08-04), seit IMP-219 (2026-09-25) aus der Umgebung.**
-Dieselbe Lehre wie beim Logbuch-Pfad in §A, nur eine Runde später gezogen: Der Wert
-stand als `${NOTION_PARENT_PAGE_ID}` in `~/.claude/settings.local.json` — einer Datei,
-die Claude Code auf Nutzerebene **nicht liest** (die lokale Einstellungsebene existiert
-nur pro Projekt). Die Variable war also nie gesetzt, der Notion-Schritt fiel jeden Tag
-still aus, und der Lauf meldete `status:partial`. Das Ledger verbuchte den Punkt am
-2026-07-03 als „RESOLUTION: set in settings.local.json" — gelöst war er nicht, nur
-unsichtbar geworden. Der Wert ist maschinenstabil und **kein Zugangsmittel** (der
-Zugriff kommt aus der Notion-Anmeldung, nicht aus der Seiten-Kennung) — er stand
-deshalb bis IMP-219 direkt in dieser Spec. **Warum das jetzt nicht derselbe Fehler
-ist:** `~/.claude/env.local.sh` ist keine Claude-Code-Konfigurationsebene, die die
-Engine selbst einliest (wie `settings.local.json` es wäre) — es ist eine gewöhnliche
-Shell-Datei, die der AUSFÜHRENDE AGENT per `source`/`.` im Bash-Tool selbst liest
-(Pre-flight-Guard unten); der Engine-liest-Nutzerebene-nicht-Mechanismus, der den
-ursprünglichen Versuch scheitern liess, greift hier nicht.
+**Hardcoded on purpose (2026-08-04), from the environment since IMP-219 (2026-09-25).**
+The same lesson as the logbook path in §A, just learned one round later: the value
+used to sit as `${NOTION_PARENT_PAGE_ID}` in `~/.claude/settings.local.json` — a file
+Claude Code does **not read** at the user level (the local settings tier exists
+only per project). The variable was therefore never set, the Notion step silently
+failed every day, and the run reported `status:partial`. The ledger recorded the item on
+2026-07-03 as "RESOLUTION: set in settings.local.json" — it wasn't resolved, just
+made invisible. The value is machine-stable and **not a credential** (access
+comes from the Notion login, not from the page id) — it therefore sat
+directly in this spec until IMP-219. **Why this isn't the same mistake now:**
+`~/.claude/env.local.sh` is not a Claude Code configuration tier that the
+engine itself reads (the way `settings.local.json` would be) — it's an ordinary
+shell file that the EXECUTING AGENT reads itself via `source`/`.` in the Bash tool
+(pre-flight guard below); the engine-doesn't-read-the-user-tier mechanism that
+doomed the original attempt does not apply here.
 
-**Pre-flight-Guard — fail loud, kein Workaround:**
+**Pre-flight guard — fail loud, no workaround:**
 ```bash
 [ -n "${CLAUDE_LOGBOOK_NOTION_PAGE_ID:-}" ] || { [ -f "$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }
 NOTION_PARENT_RESOLVED="${CLAUDE_LOGBOOK_NOTION_PAGE_ID:-}"
 [ -n "$NOTION_PARENT_RESOLVED" ] || {
-  echo "FAIL: CLAUDE_LOGBOOK_NOTION_PAGE_ID nicht konfiguriert (siehe templates/env.local.sh.template)" >&2
+  echo "FAIL: CLAUDE_LOGBOOK_NOTION_PAGE_ID not configured (see templates/env.local.sh.template)" >&2
   exit 1
 }
 ```
-Trippt der Guard oder schlägt der Notion-Aufruf fehl: §C-Zeile `"status":"partial"`
-**mit** `"reason"`. NIE: den Schritt still überspringen — genau das hat den Ausfall
-wochenlang verdeckt (`rules/fail-loud.md`).
-- **IDEMPOTENT (2026-07-03):** erst `notion-fetch` auf den Parent, prüfen ob eine
-  Sub-Page namens `YYYY-MM-DD` bereits existiert (eine Alt-Routine, Trigger
-  `<routine-trigger-id>`, legt evtl. noch welche um 07:00 an, bis der User
-  sie unter claude.ai/code/routines löscht). Existiert sie: UPDATE
-  (`notion-update-page`) — nie einen doppelten Sibling anlegen. Nur bei Abwesenheit
-  neu erstellen.
-- Inhalt = dasselbe Markdown aus §A.
+If the guard trips, or the Notion call fails: §C line `"status":"partial"`
+**with** `"reason"`. NEVER: silently skip the step — that is exactly what masked the
+failure for weeks (`rules/fail-loud.md`).
+- **IDEMPOTENT (2026-07-03):** first `notion-fetch` on the parent, check whether a
+  sub-page named `YYYY-MM-DD` already exists (a legacy routine, trigger
+  `<routine-trigger-id>`, may still create some at 07:00, until the user
+  deletes it under claude.ai/code/routines). If it exists: UPDATE
+  (`notion-update-page`) — never create a duplicate sibling. Only create anew
+  when absent.
+- Content = the same markdown from §A (same language as §A used for that day).
 - Tools: `notion-create-pages` / `notion-update-page`.
 
-### C) Run log — zweiphasig, EINE Zeile pro Datum
+### C) Run log — two-phase, ONE line per date
 
-Ziel: `~/.claude/global-observation/daily-docs-log.jsonl`.
-**Die Zeile wird NIE von Hand geschrieben oder per `echo >>` angehängt.**
-Ausschliesslich über `bin/run-log.sh` — es baut die Zahlen- und Zertifikatsfelder
-per `jq` direkt aus dem `count.json` von `logbook-count.sh` und schneidet damit die
-historische Fehlerquelle „abgetippte Zahl" ab (real: „85 Commits" statt 83).
+Target: `~/.claude/global-observation/daily-docs-log.jsonl`.
+**The line is NEVER hand-written or appended via `echo >>`.**
+Exclusively via `bin/run-log.sh` — it builds the number and certificate fields
+via `jq` directly from `logbook-count.sh`'s `count.json`, cutting off the
+historical error source "hand-typed number" (real: "85 commits" instead of 83).
 
-**Phase 1 — `start`, bereits ganz oben im Lauf erledigt** (siehe „Lauf-Reihenfolge"):
-schreibt `{"date":…,"ts":…,"status":"partial","phase":"begonnen","reason":…}`.
+**Phase 1 — `start`, already done at the very top of the run** (see "Run order"):
+writes `{"date":…,"ts":…,"status":"partial","phase":"started","reason":…}`.
 
-**Phase 2 — nach §A und §B:**
+**Phase 2 — after §A and §B:**
 ```bash
 bash ~/.claude/scheduled-tasks/daily-docs/bin/run-log.sh finish "$yesterday" \
   --count-json "$J" \
   --logbook "$HOME/.claude/logbook/$yesterday.md" \
-  --notion-page-id "<id>" --notion-modus "<neue_subpage|update_bestehende_subpage>"
+  --notion-page-id "<id>" --notion-modus "<new_subpage|updated_existing_subpage>"
 ```
-Bei Skript-ABORT statt `finish`:
+On a script ABORT instead of `finish`:
 ```bash
-bash ~/.claude/scheduled-tasks/daily-docs/bin/run-log.sh fail "$yesterday" --reason "<ABORT-Meldung wörtlich>"
+bash ~/.claude/scheduled-tasks/daily-docs/bin/run-log.sh fail "$yesterday" --reason "<ABORT message verbatim>"
 ```
-Notion fehlgeschlagen, Logbuch aber geschrieben: `finish … --status partial --reason "<Grund>"`.
+Notion failed, but the logbook was written: `finish … --status partial --reason "<reason>"`.
 
-Resultierende Zeile (Feldnamen VERBINDLICH — `items` gibt es nicht, `aera` ist durch
-`quellen_epochen` ersetzt; beide standen bis 2026-08-01 fälschlich in diesem Template):
+Resulting line (field names MANDATORY — `items` does not exist, `aera` has been replaced by
+`quellen_epochen`; both wrongly appeared in this template until 2026-08-01):
 ```json
 {"date":"YYYY-MM-DD","ts":<unix>,"status":"ok|partial|fail","logbook_path":"…","notion_page_id":"…","items_total":N,"count_basis":"files_touched_v3","evidence_tier":T,"evidence_tier_grund":"…","quellen_epochen":{…},"sources":{…},"vcs_operationen":N,"git_ambiguous_nicht_gezaehlt":N,"items_sha256":"…","notion_modus":"…","reason":"…"}
 ```
 
-Das Skript erzwingt (Exit ≠ 0, keine stille Reparatur):
-- `reason` PFLICHT bei `partial`/`fail`, entfällt bei `ok`.
-- `fail`-Zeilen enthalten **keine** Zahlenfelder — nicht als `null`, sondern gar nicht
-  (Fail-Loud-Kontrakt).
-- `finish` verlangt eine existierende Logbuch-Datei — `status:"ok"` ohne Artefakt ist
-  unzulässig; und ein `count.json`, dessen `day` zum Datum passt.
-- Datumssortierung und Eindeutigkeit bleiben erhalten (Lückenerkennung hängt daran);
-  Installation atomar via temp + `mv`, vorher vollständig verifiziert.
-- Fehlt die `start`-Zeile, wird `finish` trotzdem geschrieben, aber mit
-  `"start_zeile_fehlte": true` markiert — der Prozessverstoss bleibt sichtbar.
+The script enforces (exit ≠ 0, no silent repair):
+- `reason` MANDATORY on `partial`/`fail`, omitted on `ok`.
+- `fail` lines contain **no** number fields — not as `null`, but absent entirely
+  (fail-loud contract).
+- `finish` requires an existing logbook file — `status:"ok"` without an artifact is
+  not allowed; and a `count.json` whose `day` matches the date.
+- Date ordering and uniqueness are preserved (gap detection depends on it);
+  installation is atomic via temp + `mv`, fully verified beforehand.
+- If the `start` line is missing, `finish` is still written, but marked with
+  `"start_zeile_fehlte": true` — the process violation stays visible.
 
-**Selbstprüfung** (Struktur, Duplikate, offene Teil-Läufe):
+**Self-check** (structure, duplicates, open partial runs):
 ```bash
 bash ~/.claude/scheduled-tasks/daily-docs/bin/run-log.sh check
 ```
-Eine `status:"partial"`-Zeile, die stehen bleibt, ist genau der Abbruchfall — sie
-gehört nachgearbeitet, nicht weggeräumt.
+A `status:"partial"` line that stays standing is exactly the abort case — it
+needs to be followed up on, not cleaned away.
 
 ## Failure modes
-- **Lauf bricht mitten drin ab** (Interrupt, Absturz, Kontextende, Token-Budget,
-  Scheduler-Timeout): Es bleibt die `status:"partial"`-Zeile aus `run-log.sh start`
-  stehen. Das ist der GEWOLLTE Endzustand — ein sichtbarer Teil-Lauf. Nicht
-  aufräumen, nicht auf `ok` heben, ohne dass §A und §B tatsächlich existieren.
-  Nacharbeit: fehlende Schritte nachziehen, dann `finish`. `run-log.sh check`
-  listet alle offenen Teil-Läufe.
-- **Skript-ABORT:** siehe Fail-Loud-Kontrakt oben — `status:"fail"`, `reason` =
-  ABORT-Meldung wörtlich, kein `items_total`-Feld, keine improvisierte Zahl.
-- **Logbook-Dir leer/fehlt:** `status:"fail"` mit explizitem `reason` (Pre-flight
-  Guard §A). Nie aus alten Log-Zeilen erschliessen, nie `mkdir`, nie auf `/` schreiben.
-- **Root für Prosa-Git-Log fehlt** (externes Volume nicht gemountet): `WARN` loggen,
-  mit den vorhandenen Roots weiterarbeiten, den fehlenden Root explizit unter „Für
-  diesen Tag nicht erfassbar" nennen. Das ändert NICHT den `status` — der hängt am
-  Skript-Exit, nicht an der Prosa-Vollständigkeit.
-- **Ruhiger Tag** (Skript liefert `items_total` korrekt, auch niedrig oder 0): trotzdem
-  vollständigen Eintrag schreiben und syncen. Nie überspringen.
-- **Notion-Auth-Fehler:** Markdown lokal schreiben, `status:"partial"` loggen,
-  zurückkehren.
-- **Notion-Konflikt** (Seite existiert, Version weicht ab): aktuellen Stand holen,
-  mergen, pushen. Bei unklarem Merge: lokal schreiben + für manuelle Prüfung markieren.
+- **Run aborts mid-way** (interrupt, crash, context end, token budget,
+  scheduler timeout): the `status:"partial"` line from `run-log.sh start` stays
+  standing. That is the INTENDED end state — a visible partial run. Do not
+  clean it up, do not raise it to `ok` without §A and §B actually existing.
+  Follow-up: complete the missing steps, then `finish`. `run-log.sh check`
+  lists all open partial runs.
+- **Script ABORT:** see the fail-loud contract above — `status:"fail"`, `reason` =
+  the ABORT message verbatim, no `items_total` field, no improvised number.
+- **Logbook dir empty/missing:** `status:"fail"` with an explicit `reason` (§A
+  pre-flight guard). Never infer from old log lines, never `mkdir`, never write to `/`.
+- **Root for the prose git log missing** (external volume not mounted): log a `WARN`,
+  keep working with the roots present, name the missing root explicitly under "Not
+  Capturable For This Day". This does NOT change the `status` — that depends on the
+  script exit, not on prose completeness.
+- **Quiet day** (script correctly reports `items_total`, even low or 0): still
+  write and sync a complete entry. Never skip.
+- **Notion auth error:** write the markdown locally, log `status:"partial"`,
+  return.
+- **Notion conflict** (page exists, version diverges): fetch the current state,
+  merge, push. If the merge is unclear: write locally + flag for manual review.

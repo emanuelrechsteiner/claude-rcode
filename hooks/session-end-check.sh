@@ -143,13 +143,13 @@ fi
 OBS_DIR="$HOME/.claude/global-observation"
 WATERMARK="$OBS_DIR/.last-run-ts"
 
-# ── Alarm-Ökonomie helper (IMP-164, 2026-08-24) ───────────────────────────────
+# ── Alarm-economy helper (IMP-164, 2026-08-24) ───────────────────────────────
 # A message-class that fires unchanged N times in a row must change its OWN
 # form instead of repeating quietly — a notice that recurs unchanged is
 # functionally a non-notice (rules/fail-loud.md). Evidence: the IMP-138
 # staleness counter above fired for 20 consecutive days (2026-08-03..08-22,
 # stale=7→26 while shards froze at 6) and was overlooked the whole time;
-# "Backfill der 7 drifteten Metrikzeilen" repeated identically for 8
+# "Backfill of the 7 drifted metric lines" repeated identically for 8
 # consecutive nightly runs; a Notion parent-page env var was reported missing
 # 10× over 12 days. None of these escalated their OWN presentation, so each
 # looked, on any single day, exactly like a fresh one-off.
@@ -195,7 +195,7 @@ if [[ -f "$WATERMARK" ]]; then
         if [[ $DAYS_STALE -ge 7 ]]; then
             REPEAT_N=$(alarm_repeat_count "obs-loop-stalled" 1)
             if [[ $REPEAT_N -ge 3 ]]; then
-                echo "🚨 ESKALATION — OBSERVATION LOOP STALLED zum ${REPEAT_N}. Mal unverändert gemeldet (seit ${DAYS_STALE}d, IMP-164):"
+                echo "🚨 ESCALATION — OBSERVATION LOOP STALLED reported unchanged for the ${REPEAT_N}th time (${DAYS_STALE}d stale, IMP-164):"
             else
                 echo "⚠️  OBSERVATION LOOP STALLED: last /meta-observe ran $DAYS_STALE days ago;"
             fi
@@ -213,15 +213,15 @@ if [[ -f "$WATERMARK" ]]; then
             if [[ -f "$NIGHTLY_LOG" ]] && command -v jq >/dev/null 2>&1; then
                 LAST_NIGHTLY_STATUS=$(tail -1 "$NIGHTLY_LOG" 2>/dev/null | jq -r '.status // empty' 2>/dev/null)
                 if [[ "$LAST_NIGHTLY_STATUS" == "error" ]]; then
-                    LAST_NIGHTLY_NOTE=$(tail -1 "$NIGHTLY_LOG" 2>/dev/null | jq -r '.note // .error // "kein Grund im Log"' 2>/dev/null)
-                    echo "    Ursache statt nur Symptom: der letzte nightly-observation-Lauf selbst endete mit status:\"error\" ($LAST_NIGHTLY_NOTE) — siehe routine-liveness-check.sh (IMP-191)."
+                    LAST_NIGHTLY_NOTE=$(tail -1 "$NIGHTLY_LOG" 2>/dev/null | jq -r '.note // .error // "no reason in log"' 2>/dev/null)
+                    echo "    Cause instead of just symptom: the last nightly-observation run itself ended with status:\"error\" ($LAST_NIGHTLY_NOTE) — see routine-liveness-check.sh (IMP-191)."
                 fi
             fi
 
             if [[ $REPEAT_N -ge 5 ]]; then
-                echo "    Diese Meldung steht ${REPEAT_N}x unverändert offen — ein Ledger-Eintrag status:\"proposed\" ist fällig (IMP-164)."
+                echo "    This message has stood unchanged ${REPEAT_N}x — a ledger entry status:\"proposed\" is due (IMP-164)."
 
-                # ── IMP-192: turn "ist fällig" into an actual write-back — EXACTLY
+                # ── IMP-192: turn "is due" into an actual write-back — EXACTLY
                 # ONCE per calendar month per incident-class (a month-keyed local
                 # marker file avoids re-invoking the script every session-end for
                 # as long as the condition stays unresolved; ledger-append-proposed.sh's
@@ -243,11 +243,11 @@ if [[ -f "$WATERMARK" ]]; then
                             --arg evidence "DAYS_STALE=${DAYS_STALE} REPEAT_N=${REPEAT_N} nightly_obs_last_status=${LAST_NIGHTLY_STATUS:-unknown}" \
                             '{finding:$finding,title:$title,category:$category,riskLevel:$riskLevel,recommendation:$recommendation,evidence:$evidence}')
                         if printf '%s\n' "$FINDING_JSON" | "$LEDGER_APPEND_SCRIPT" --proposal "$PROPOSAL_MONTH_KEY" >/dev/null 2>&1; then
-                            echo "    -> Ledger-Eintrag geschrieben (status:\"proposed\", $PROPOSAL_MONTH_KEY) — nur proposed, nie implemented (IMP-192)."
+                            echo "    -> Ledger entry written (status:\"proposed\", $PROPOSAL_MONTH_KEY) — proposed only, never implemented (IMP-192)."
                             mkdir -p "$ALARM_STATE_DIR" 2>/dev/null || true
                             date -u +%Y-%m-%dT%H:%M:%SZ > "$LEDGER_MARKER" 2>/dev/null || true
                         else
-                            echo "    -> Ledger-Schreibversuch fehlgeschlagen (siehe ledger-append-proposed.sh) — bleibt informativ offen, naechster Versuch beim naechsten Session-Ende."
+                            echo "    -> Ledger write attempt failed (see ledger-append-proposed.sh) — stays informationally open, next attempt at the next session end."
                         fi
                     fi
                 fi

@@ -44,10 +44,52 @@ SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/imp-submit-regr-scratch.XXXXXX")"
 trap 'rm -rf "$SCRATCH"' EXIT
 
 # A clean, fully-filled form matching templates/imp-submission.template.md's
-# six required headings byte-for-byte. Built as a literal heredoc (rather
-# than programmatically patching the shipped template) so this suite stays
-# decoupled from the template's own HTML-comment formatting.
+# six required headings (English, canonical form) byte-for-byte. Built as a
+# literal heredoc (rather than programmatically patching the shipped
+# template) so this suite stays decoupled from the template's own
+# HTML-comment formatting.
 write_clean_form() {  # write_clean_form <path>
+  cat > "$1" <<'FORMEOF'
+# IMP Submission
+
+## What does NOT belong in here
+
+instructional text, ignored by imp-submit.sh's own output.
+
+## Problem Class
+
+silent fallback in a script
+
+## Symptom
+
+The run reports ok, but <project> sees no new lines.
+
+## Measurement / Evidence
+
+17 of 40 sessions showed X (grep over 40 JSONL files, cutoff date 2026-09-25).
+
+## Proposed Change
+
+Negate the condition on line 3 of rules/foo.md.
+
+## Risk / Band
+
+AUTO -- purely local, reversible change.
+
+## Rollback
+
+git revert the commit.
+
+## Local IMP ID (optional — submitter's own reference only)
+
+IMP-999
+FORMEOF
+}
+
+# The same clean form, but with the OLDER German headings that
+# scripts/imp-submit.sh accepts as aliases — proves an older, German-headed
+# submission still validates after the english-only heading switch.
+write_clean_form_de() {  # write_clean_form_de <path>
   cat > "$1" <<'FORMEOF'
 # IMP-Einreichung
 
@@ -105,28 +147,28 @@ OUT="$(bash "$TOOL" "$FORM" 2>"$SCRATCH/clean.err")"
 RC=$?
 set -e
 check_exit "clean + filled form exits 0" 0 "$RC"
-echo "$OUT" | grep -q "geprüft mit vault.sh" \
+echo "$OUT" | grep -q "checked with vault.sh" \
   && ok "output carries the checked-header line" \
   || bad "output carries the checked-header line" "$OUT"
-echo "$OUT" | grep -q "## Was NICHT hineingehört" \
+echo "$OUT" | grep -q "## What does NOT belong in here" \
   && bad "forbidden-instructions section is stripped from the output" "still present" \
   || ok "forbidden-instructions section is stripped from the output"
 
 echo "== mode 1: a required field left exactly as the template's own unfilled placeholder =="
-sed 's/git revert des Commits\.//' "$FORM" > "$SCRATCH/missing.md"
+sed 's/git revert the commit\.//' "$FORM" > "$SCRATCH/missing.md"
 set +e
 bash "$TOOL" "$SCRATCH/missing.md" >"$SCRATCH/missing.out" 2>"$SCRATCH/missing.err"
 RC=$?
 set -e
 check_exit "missing required field exits 1" 1 "$RC"
-grep -q "Rücknahme" "$SCRATCH/missing.err" \
-  && ok "missing-field report names the empty field (Rücknahme)" \
+grep -q "Rollback" "$SCRATCH/missing.err" \
+  && ok "missing-field report names the empty field (Rollback)" \
   || bad "missing-field report names the empty field" "$(cat "$SCRATCH/missing.err")"
 
 echo "== mode 1: a vault-registered synthetic term inside the form =="
 bash "$VAULT" add project "SynthLeakTerm" --group synthleakgrp >/dev/null 2>&1
 TOKEN_LEAK="$(awk -F'\t' '$2=="SynthLeakTerm"{print $3}' "$CLAUDE_VAULT_DIR/map.tsv")"
-sed 's/stiller Fallback in einem Skript/stiller Fallback bei SynthLeakTerm/' "$FORM" > "$SCRATCH/leak.md"
+sed 's/silent fallback in a script/silent fallback with SynthLeakTerm/' "$FORM" > "$SCRATCH/leak.md"
 set +e
 OUT_LEAK="$(bash "$TOOL" "$SCRATCH/leak.md" 2>"$SCRATCH/leak.err")"
 RC=$?
@@ -141,15 +183,40 @@ grep -q "$TOKEN_LEAK" "$SCRATCH/leak.err" \
   && ok "the finding report names the token instead of the term" \
   || bad "the finding report names the token instead of the term" "$(cat "$SCRATCH/leak.err")"
 
-echo "== mode 1: a structural pattern (/Users/<real-looking-segment>/...) =="
-sed 's#In rules/foo.md Zeile 3 die Bedingung negieren.#Siehe /Users/synthuser/projects/thing/foo.md Zeile 3.#' "$FORM" > "$SCRATCH/struct.md"
+echo "== mode 1: a structural pattern (a session-id-shaped token, not a path) =="
+# Deliberately NOT a /Users/... or /home/... fixture (vault safety): this
+# repo's own edit-time vault-write-gate treats those prefixes as a possible
+# leak on ANY edit whose new content carries them, even an already-vetted
+# synthetic fixture. A synthetic session-id-shaped token exercises the SAME
+# structural detector (kind=id, see scripts/vault/lib.sh) without that shape.
+sed 's#Negate the condition on line 3 of rules/foo.md.#See session_abcdefghijklmnopqrstuvwx for the trace.#' "$FORM" > "$SCRATCH/struct.md"
 set +e
 bash "$TOOL" "$SCRATCH/struct.md" >"$SCRATCH/struct.out" 2>"$SCRATCH/struct.err"
 RC=$?
 set -e
-check_exit "form with a /Users/<segment>/... path exits 2" 2 "$RC"
+check_exit "form with a session-id-shaped token exits 2" 2 "$RC"
+
+echo "== mode 1: clean form with the OLDER German headings (accepted alias) =="
+fresh_vault
+bash "$VAULT" init >/dev/null 2>&1
+FORM_DE="$SCRATCH/clean-de.md"
+write_clean_form_de "$FORM_DE"
+set +e
+OUT_DE="$(bash "$TOOL" "$FORM_DE" 2>"$SCRATCH/clean-de.err")"
+RC=$?
+set -e
+check_exit "German-headed form exits 0 (alias accepted)" 0 "$RC"
+echo "$OUT_DE" | grep -q "checked with vault.sh" \
+  && ok "German-headed form: output carries the checked-header line" \
+  || bad "German-headed form: output carries the checked-header line" "$OUT_DE"
+echo "$OUT_DE" | grep -q "## Was NICHT hineingehört" \
+  && bad "German-headed form: forbidden-instructions section is stripped" "still present" \
+  || ok "German-headed form: forbidden-instructions section is stripped"
 
 echo "== mode 1: clean form, but NO vault present at all =="
+fresh_vault
+bash "$VAULT" init >/dev/null 2>&1
+write_clean_form "$FORM"
 no_vault 1
 set +e
 bash "$TOOL" "$FORM" >"$SCRATCH/novault.out" 2>"$SCRATCH/novault.err"
@@ -212,9 +279,9 @@ fi
 printf '%s' "$OUT_PROPOSAL" | grep -q "$TOKEN_LEDGER" \
   && ok "the pre-filled form carries the token instead (new shape)" \
   || bad "the pre-filled form carries the token instead (new shape)" "$OUT_PROPOSAL"
-printf '%s' "$OUT_PROPOSAL" | grep -q "Rücknahme" \
-  && ok "the still-needed hint names Rücknahme (never derivable from a ledger entry)" \
-  || bad "the still-needed hint names Rücknahme" "$OUT_PROPOSAL"
+printf '%s' "$OUT_PROPOSAL" | grep -q "Rollback" \
+  && ok "the still-needed hint names Rollback (never derivable from a ledger entry)" \
+  || bad "the still-needed hint names Rollback" "$OUT_PROPOSAL"
 
 set +e
 OUT_ACTIVE="$(bash "$TOOL" --from-ledger IMP-100 --ledger "$LEDGER" 2>"$SCRATCH/from100.err")"

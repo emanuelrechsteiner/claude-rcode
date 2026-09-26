@@ -83,7 +83,7 @@ screen_url() {
   local v6loop=0
   case "$authority" in
     \[::1\]|\[::1\]:*) v6loop=1 ;;
-    \[*) reason="Roh-IPv6-Adresse statt Domain — verschleiert die Identität des Ziels"; return ;;
+    \[*) reason="raw IPv6 address instead of a domain — obscures the target's identity"; return ;;
   esac
   host="${authority%%:*}"                       # drop :port
   [ "$v6loop" -eq 1 ] && host="localhost"
@@ -93,16 +93,16 @@ screen_url() {
 
   # (a) credentials in URL
   if [ -n "$userinfo" ]; then
-    reason="URL enthält eingebettete Zugangsdaten (user:pass@) — klassisches Phishing-/Verschleierungsmuster"; return
+    reason="URL contains embedded credentials (user:pass@) — a classic phishing/obfuscation pattern"; return
   fi
   # (b) punycode / homograph  (before the alphabetic-TLD test)
   case "$host" in
-    xn--*|*.xn--*) reason="Punycode-/Homograph-Domain ($host) — häufig zur Markenimitation genutzt"; return ;;
+    xn--*|*.xn--*) reason="punycode/homograph domain ($host) — commonly used for brand impersonation"; return ;;
   esac
   # raw non-ASCII bytes in the host = un-encoded IDN / Unicode homograph (e.g.
   # Cyrillic а in "раypal.com"); a legit hostname is LDH (letters/digits/.-_) only.
   if printf '%s' "$host" | LC_ALL=C grep -q '[^a-z0-9._-]'; then
-    reason="Host enthält Nicht-ASCII-/Sonderzeichen — möglicher Unicode-Homograph-Angriff"; return
+    reason="host contains non-ASCII/special characters — possible Unicode homograph attack"; return
   fi
   # (c0) LOOPBACK CARVE-OUT (IMP-117, 2026-08-01)
   #      Placed immediately before the raw-IP test (c) — and deliberately NOT
@@ -144,16 +144,16 @@ screen_url() {
     if ! printf '%s' "$tld" | grep -qE '^[a-z]{2,}$'; then
       segs=$(printf '%s' "$host" | awk -F. '{print NF}')
       if [ "$segs" -eq 4 ] || { [ "$segs" -eq 1 ] && printf '%s' "$host" | grep -qE '^(0x[0-9a-f]+|[0-9]+)$'; }; then
-        reason="Roh-/verschleierte IP-Adresse oder numerischer Host ($host) — verschleiert die Identität des Ziels"; return
+        reason="raw/obfuscated IP address or numeric host ($host) — obscures the target's identity"; return
       fi
     fi
     # (d) abused / file-confusable TLD
     if printf '%s' "$tld" | grep -qE '^(tk|ml|ga|cf|gq|zip|mov)$'; then
-      reason="Missbrauchsanfällige/dateiverwechselbare TLD (.$tld) — überdurchschnittlich für Malware/Phishing genutzt"; return
+      reason="abuse-prone/file-confusable TLD (.$tld) — disproportionately used for malware/phishing"; return
     fi
     # (e) URL shortener hides the destination
     if printf '%s' "$host" | grep -qE '(^|\.)(bit\.ly|tinyurl\.com|t\.co|goo\.gl|is\.gd|ow\.ly|buff\.ly|rebrand\.ly|cutt\.ly|shorturl\.at|tiny\.cc|rb\.gy|bit\.do|adf\.ly|shorte\.st|t\.ly|snip\.ly|lnkd\.in|v\.gd|s\.id|shrtco\.de)$'; then
-      reason="URL-Shortener ($host) verbirgt das eigentliche Ziel — nicht bewertbar"; return
+      reason="URL shortener ($host) hides the actual target — cannot be assessed"; return
     fi
   fi
   # (f) direct executable / installer download — last path segment, non-empty basename
@@ -164,7 +164,7 @@ screen_url() {
     ?*.?*)                                                       # name.ext, non-empty name
       base="${seg%.*}"; ext=$(printf '%s' "${seg##*.}" | tr 'A-Z' 'a-z')
       if [ -n "$base" ] && printf '%s' "$ext" | grep -qE '^(exe|msi|scr|bat|cmd|pif|apk|dmg|pkg|deb|rpm|run|bin|appimage|iso|jar|dll|cab|vbs|hta|wsf|reg|gadget|cpl|msc|jse|vbe|wsh|ps1)$'; then
-        reason="Direkter Download einer ausführbaren/Installer-Datei (.$ext) — primärer Malware-Vektor"; return
+        reason="direct download of an executable/installer file (.$ext) — a primary malware vector"; return
       fi ;;
   esac
 }
@@ -207,7 +207,7 @@ case "$TOOL" in
     INTERP='bash|sh|zsh|dash|python[0-9.]*|ruby|perl|node|pwsh|powershell|osascript|iex|invoke-expression|eval'
     if printf '%s' "$CMD_RCE" | grep -qiE '(curl|wget|aria2c|httpie|invoke-webrequest|iwr|fetch)' \
        && printf '%s' "$CMD_RCE" | grep -qiE "\|[[:space:]]*($INTERP)([^a-zA-Z0-9]|\$)|($INTERP)[[:space:]]+<\(|($INTERP)[[:space:]]+[^|]{0,8}\\\$\((curl|wget|fetch)"; then
-      reason="Gefetchter Remote-Inhalt wird in einen Interpreter gepiped/substituiert (curl|bash / iex-Muster) — Remote-Code-Execution-Vektor"
+      reason="fetched remote content is piped/substituted into an interpreter (curl|bash / iex pattern) — a remote-code-execution vector"
     fi
     # (b) screen the target URL(s) of any fetch CLI appearing ANYWHERE in the
     #     command — env-prefix (FOO=1 curl), cd&&…, timeout/nice wrappers, ;/&&
@@ -260,7 +260,7 @@ if [ -n "$reason" ]; then
          --arg tool "$TOOL" --arg reason "$reason" \
       '{ts:$ts, gate:"web-fetch", tool:$tool, decision:"ask", reason:$reason}' \
       >> "$LOG_FILE" 2>/dev/null || true
-  MSG="web-fetch-safety-gate (web-research-trust.md): ${reason}. Diese Anfrage überschreitet die deterministische Gefahrschwelle — bitte das Abrufen/Ausführen ausdrücklich bestätigen (y/n). Die Standing-Erlaubnis gilt nur für unauffällige Research-URLs."
+  MSG="web-fetch-safety-gate (web-research-trust.md): ${reason}. This request crosses the deterministic danger threshold — please explicitly confirm the fetch/execution (y/n). The standing permission only covers inconspicuous research URLs."
   REASON_JSON=$(printf '%s' "$MSG" | jq -Rs '.')
   cat <<JSON
 {

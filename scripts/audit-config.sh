@@ -245,18 +245,18 @@ if [[ -f "$SETTINGS" ]]; then
 fi
 
 # ============================================================================
-# Serena-Rückfall-Wächter (IMP-151)
+# Serena-regression watchdog (IMP-151)
 # ============================================================================
-# Vorfall 2026-08-15: das Plugin serena@claude-plugins-official war NEBEN der
-# regulären MCP-Registrierung "serena" installiert — zwei Serena-Server pro
-# Sitzung (einer ohne --context claude-code, also mit execute_shell_command
-# ungegated). Beide Rückfallwege prüfen, nicht nur den, der zuletzt auffiel.
+# Incident 2026-08-15: the plugin serena@claude-plugins-official was installed
+# ALONGSIDE the regular MCP registration "serena" — two Serena servers per
+# session (one without --context claude-code, i.e. with execute_shell_command
+# ungated). Check both regression paths, not just the one last spotted.
 if command -v claude >/dev/null 2>&1; then
     if claude plugin list 2>/dev/null | grep -qi serena; then
-        emit_warn "Serena-Plugin ist (re-)installiert — Doppel-Server-Risiko (Vorfall 2026-08-15). Deinstallieren: claude plugin uninstall serena@claude-plugins-official"
+        emit_warn "Serena plugin is (re-)installed — dual-server risk (incident 2026-08-15). Uninstall: claude plugin uninstall serena@claude-plugins-official"
     fi
 else
-    emit_warn "Serena-Rückfall-Wächter: claude-CLI nicht gefunden — Plugin-Status nicht prüfbar"
+    emit_warn "Serena-regression watchdog: claude CLI not found — plugin status not checkable"
 fi
 
 CLAUDE_JSON="$HOME/.claude.json"
@@ -268,10 +268,10 @@ if [[ -f "$CLAUDE_JSON" ]]; then
         | .key' "$CLAUDE_JSON" 2>/dev/null | wc -l | tr -d ' ')
     serena_regs=${serena_regs:-0}
     if [[ "$serena_regs" -gt 1 ]]; then
-        emit_warn "$CLAUDE_JSON hat $serena_regs Serena-MCP-Registrierungen (erwartet: genau 1) — Doppel-Server-Risiko"
+        emit_warn "$CLAUDE_JSON has $serena_regs Serena MCP registrations (expected: exactly 1) — dual-server risk"
     fi
 else
-    emit_warn "Serena-Rückfall-Wächter: $CLAUDE_JSON nicht gefunden — MCP-Registrierung nicht prüfbar"
+    emit_warn "Serena-regression watchdog: $CLAUDE_JSON not found — MCP registration not checkable"
 fi
 
 # ============================================================================

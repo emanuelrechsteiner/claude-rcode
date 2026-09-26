@@ -5,7 +5,7 @@
 # frontmatter `name` field of the spawned subagent) is "control-agent", writes
 # the session-scoped controller-ran flag that controller-first-mutation-gate.sh
 # reads to unlock further mutations for the REST OF THE SESSION (GRAFT-G1's
-# documented restlücke: the flag is a one-time, session-wide unlock — it does
+# documented residual gap: the flag is a one-time, session-wide unlock — it does
 # not re-arm for a thematically new mutation later in the same session).
 #
 # Schema (mirrors subagent-lock-release.sh):
@@ -17,7 +17,7 @@
 # and silently unlock mutations there. This is a "do nothing when unsure" no-op,
 # not error-masking (nothing was required to succeed here).
 #
-# Known restlücke (documented in the meta-proposal): if control-agent is ever
+# Known residual gap (documented in the meta-proposal): if control-agent is ever
 # renamed, agent_type drifts silently and this hook stops firing for it.
 set -u
 

@@ -66,7 +66,7 @@ A discipline agreed only in chat is not enforced — it lives here, in this rule
 | # | Error type | Countermeasure |
 |---|---|---|
 | 1 | **Circular check** — the test derives its expectation from the same declaration it is meant to check | Trigger 3 above: prove against the render, not the declaration |
-| 2 | **Checking against one's own paraphrase** instead of the source | "Check against the SOURCE" above + the *Abschreiben, nicht deuten* pattern below |
+| 2 | **Checking against one's own paraphrase** instead of the source | "Check against the SOURCE" above + the *"Copy, don't interpret"* pattern below |
 | 3 | **Confirmation bias when looking** | "Describe what you see, then judge" above + the adversarial counter-check below |
 | 4 | **Sub-agent replaces an explicit user instruction with its own judgement**, and the orchestrator waves it through | `agents/control-agent.md` §3 (verbatim instruction travels with the brief; deviation escalates, never decides) + §4 synthesis check |
 
@@ -78,7 +78,7 @@ Before extending unverified AI scaffolds, spawn a fresh-context `code-reviewer-a
 - Identifies issues, half-implementations, silent fallbacks
 - Returns "verified safe to extend" or "fix these N issues first"
 
-### Pattern: "Abschreiben, nicht deuten" (copy, don't interpret)
+### Pattern: "Copy, don't interpret" (Abschreiben, nicht deuten)
 
 **Sub-agents get pointed at the SOURCE, never at the orchestrator's paraphrase of it.** A delegation brief hands over the file path, the quoted requirement, the user's screenshot — not a summary. The orchestrator's summary was written by the same context that is about to be wrong; passing it down turns one agent's misreading into every sub-agent's premise, and no amount of downstream diligence can recover the dropped detail.
 
@@ -132,7 +132,7 @@ The agent may delete the test, weaken the assertion, or comment out the failing 
 Making a circular check stricter makes it stricter at agreeing with itself. Before tightening a check, ask what artifact it reads — if that artifact is the same one the fix wrote, no amount of hardening turns it into evidence.
 
 ### ❌ Handing a sub-agent your summary of the user's instruction
-See *Abschreiben, nicht deuten* above. The paraphrase is where the requirement quietly loses the detail that mattered.
+See *"Copy, don't interpret"* above. The paraphrase is where the requirement quietly loses the detail that mattered.
 
 ## References
 

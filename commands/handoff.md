@@ -138,22 +138,22 @@ Append a structured entry to `.rcode/agent-log.md`:
 **Current branch:** `[branch-name]`
 **Uncommitted work:** [Yes/No — if yes, describe or note stash]
 **Active Phase:** Phase [N] — [Name]
-**Next recommended action:** [Auftragsbrief — see the mandatory form below]
+**Next recommended action:** [task brief — see the mandatory form below]
 
 ### Questions for Human
 - [Question 1 — needs human input]
 ```
 
-### The "Next recommended action" is an Auftragsbrief (mandatory form, IMP-161)
+### The "Next recommended action" is a task brief (mandatory form, IMP-161)
 
 A handoff is an opening turn for the next agent, so it is written in the same
 form as a delegation brief: **`~/.claude/templates/auftragsbrief.md.template`** — five
-mandatory fields (Ort/path · Symptom · Ursache soweit bekannt · Messwert/Beleg ·
-Akzeptanzkriterium) plus "gemessen, nicht vermutet — BITTE SELBST NACHPRÜFEN"
-and an explicit "was ausdrücklich NICHT Auftrag ist". Read the template; the
+mandatory fields (location/path · symptom · cause if known · measurement/evidence ·
+acceptance criterion) plus "measured, not assumed — PLEASE VERIFY YOURSELF"
+and an explicit "what is explicitly NOT part of this task". Read the template; the
 fields are not restated here.
 
-**If one of the five is unknown at handoff time, write "unbekannt" — never a
+**If one of the five is unknown at handoff time, write "unknown" — never a
 guess dressed as a fact.** A complete opening turn carried 6 sessions through
 79–266 agent steps without a single correction; one opened with half-finished
 numbers and cost 24 correction turns. A handoff is exactly the moment where an

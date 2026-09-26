@@ -217,7 +217,7 @@ git checkout -b "work/$(date +%Y-%m-%d)-<slug>"
 
 Unchanged mechanics from §2–4 above: control-agent §2/§3/§4 for
 Agent/Model/Effort assignment, `~/.claude/rules/parallel-by-default.md` for
-independence + auto-dispatch vs. proposal, the Auftragsbrief form
+independence + auto-dispatch vs. proposal, the task brief form
 (`~/.claude/templates/auftragsbrief.md.template`) for every brief, the
 verbatim-instruction clause, and the explicit `model` parameter rule above
 on every spawn.
@@ -253,7 +253,7 @@ check depends on the literal `**Agent:** team-lead` line to recognize a
 **Branch:** <work branch>
 **Units:** <IDs with state>
 **Decisions:** …
-**Next action:** <Auftragsbrief one-liner or 'none'>
+**Next action:** <task brief one-liner or 'none'>
 ```
 
 **Never run `/phase-gate` merely because a command exits** — only when

@@ -115,7 +115,7 @@ case "$TASK" in
   weekly-improve)      LOG_BASENAME="weekly-improve-log" ;;
   *)
     # No per-task run-log exists for an unrecognized name, so there is no
-    # "zugehöriges Run-Log" to append to. Fall back to a generic runner-error
+    # "matching run log" to append to. Fall back to a generic runner-error
     # log — still under the overridable LOG_DIR, so this path is testable
     # without ever touching the real per-task logs.
     log_error "$LOG_DIR/routine-run-errors.jsonl" \

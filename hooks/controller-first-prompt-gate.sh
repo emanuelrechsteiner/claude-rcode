@@ -35,6 +35,7 @@ PROMPT_LC=$(printf '%s' "$PROMPT" | tr '[:upper:]' '[:lower:]')
 # ── Substance predicates — VERBATIM from parallel-analyze-prompt.sh ──────────
 # (Do not edit these independently of that file — they must stay in lockstep
 # so the two hooks agree on "substantial".)
+# German aliases kept: the owner writes German (und/alle/jede etc.).
 STRONG_TASK_RE='\b(build|baue?|create|erstelle?|implement|implementiere|refactor|refactore|migrate|migriere|port|portiere|convert|konvertiere|add|fuege|füge|extend|erweitere|develop|entwickle?)\b'
 MEDIUM_TASK_RE='\b(fix|fixe|repariere|change|aendere|ändere|update|aktualisiere|write|schreibe?|rewrite|modify|modifiziere)\b'
 MULTI_HINT_RE='\b([2-9]|[1-9][0-9]+|both|alle?|all|jede?|every|each|multiple|mehrere|several)\b|,.*,|\band\b|\bund\b'
@@ -60,14 +61,14 @@ if [ -f "$STATE_DIR/controller-ran" ]; then
   exit 0
 fi
 
-REMINDER='[Controller-First — vor dieser substanziellen Aufgabe]
-Diese Aufgabe wirkt substanziell (Task-Muster erkannt). Per Controller-First-Enforcement
-(rules/foundation.md; IMP-089/090): starte mit einem Controller-Schritt — control-agent-
-Dispatch oder ein passendes /issue-artiges Command — der den Prompt liest, dekomponiert
-und je Subagent Modell + Aufwand zuweist, BEVOR Dateien mutiert werden. Dies ist ein
-SOFT-Hinweis, kein Block; controller-first-mutation-gate.sh prüft denselben Zustand
-deterministisch bei Write/Edit/klassifiziertem Bash (Modus: CLAUDE_CONTROLLER_GATE_MODE,
-Default "note").'
+REMINDER='[Controller-First — before this substantial task]
+This task looks substantial (task pattern detected). Per Controller-First Enforcement
+(rules/foundation.md; IMP-089/090): start with a Controller step — a control-agent
+dispatch or a matching /issue-style command — that reads the prompt, decomposes it,
+and assigns model + effort per subagent BEFORE files are mutated. This is a
+SOFT reminder, not a block; controller-first-mutation-gate.sh checks the same state
+deterministically on Write/Edit/classified Bash (mode: CLAUDE_CONTROLLER_GATE_MODE,
+default "note").'
 
 jq -n --arg ctx "$REMINDER" '{
     hookSpecificOutput: {

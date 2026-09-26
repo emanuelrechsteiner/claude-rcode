@@ -13,10 +13,10 @@
 #     only, not check4/M/1-5).
 #   - An OPTIONAL final case, "given --root <dir> the tree passes", run ONLY
 #     when LINT_REGRESSION_TREE_ROOT is set in the environment. This suite
-#     deliberately does NOT default that env var to the Bauhof itself: other
+#     deliberately does NOT default that env var to the workshop itself: other
 #     R.Code-rework units may still be mid-edit when U9 runs, and this suite
 #     must not fail (or falsely pass) on their in-progress state. Per A4 the
-#     MAIN LOOP runs this case against the Bauhof after every unit finishes.
+#     MAIN LOOP runs this case against the workshop after every unit finishes.
 #
 # Fixtures live entirely under mktemp -d trees; nothing under this repo or
 # ~/.claude is read or written except the lint script itself (and, for the
@@ -209,7 +209,7 @@ rm -rf "$ROOT"
 
 # ── 15) OPTIONAL: "given --root <dir> the tree passes" — only when
 #        LINT_REGRESSION_TREE_ROOT is set (per A4; the main loop runs this
-#        against the Bauhof after all units finish, not this suite by
+#        against the workshop after all units finish, not this suite by
 #        default). Not counted as pass/fail when skipped. ──────────────────
 if [ -n "${LINT_REGRESSION_TREE_ROOT:-}" ]; then
   TREE_ROOT="$LINT_REGRESSION_TREE_ROOT"

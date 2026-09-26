@@ -5,10 +5,10 @@
 #
 # WHY A SEPARATE FILE: hooks/tests/security-findings-regression.sh already
 # covers the extractor's detection/dedup/hook logic in full, but it belongs
-# to Gewerk W3-H (hooks/**), not W3-S (scripts/** outside scripts/vault/**) —
-# per plans/vault-by-design-2026-09-25.md's Welle-1 note ("Brauchst du dort
-# einen neuen Fall, melde ihn, statt die Datei zu ändern; deine eigene
-# Suite-Abdeckung kommt in scripts/tests/, falls nötig"). That suite's own
+# to work package W3-H (hooks/**), not W3-S (scripts/** outside scripts/vault/**) —
+# per plans/vault-by-design-2026-09-25.md's wave-1 note (translated from
+# German: "If you need a new case there, report it instead of changing the
+# file; your own suite coverage goes into scripts/tests/ if needed"). That suite's own
 # --to-ledger cases run with --dry-run and only assert on the "N unacked
 # finding(s)" log line, printed BEFORE the per-session loop — they never
 # actually exercise (or would notice a regression in) the per-session

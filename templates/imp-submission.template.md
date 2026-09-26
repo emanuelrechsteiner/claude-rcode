@@ -1,68 +1,68 @@
 <!--
 Status: ACTIVE
-Last Updated: 2026-09-25
-Purpose: Vorlage für eine IMP-Einreichung ohne private Daten (IMP-219,
-Welle 4 / Gewerk G-script). Ausfüllen, dann mit `scripts/imp-submit.sh`
-prüfen lassen — siehe CONTRIBUTING.md, Abschnitt „Submitting an improvement
-(IMP) without your private data". Die sechs „## "-Überschriften unten sind
-die Pflichtfeld-Anker, die `scripts/imp-submit.sh` per exaktem Textvergleich
-wiederfindet — wer eine Überschrift umbenennt, macht das zugehörige Feld für
-das Skript unsichtbar (es zählt dann als nie ausgefüllt).
+Last Updated: 2026-09-26
+Purpose: Template for an IMP submission without private data (IMP-219,
+Wave 4 / Workstream G-script). Fill it in, then check it with
+`scripts/imp-submit.sh` — see CONTRIBUTING.md, section "Submitting an
+improvement (IMP) without your private data". The six "## " headings below
+are the required-field anchors that `scripts/imp-submit.sh` looks up by
+exact text match — renaming a heading makes the corresponding field
+invisible to the script (it then counts as never filled in).
+`scripts/imp-submit.sh` also accepts the older German headings this
+template used to ship (as aliases), so a form filled in against an earlier
+copy still validates.
 -->
 
-# IMP-Einreichung
+# IMP Submission
 
-## Was NICHT hineingehört
+## What does NOT belong in here
 
-Dieses Formular wird als Issue- oder PR-Text auf GitHub landen. Schreibe
-hinein: WAS beobachtbar ist, WELCHE Regel / WELCHER Hook / WELCHES Skill
-betroffen ist, und WELCHE Zahl das belegt. Schreibe NICHT hinein: echte
-Projekt-, Firmen- oder Kontonamen, maschinenspezifische Pfade
-(Benutzerordner, Projektwurzel, Volume-Name), persönliche Kennungen
-(E-Mail-Adresse, Sitzungs-, Trigger-, Notion-ID) oder eine identifizierende
-Phrase. Nutze stattdessen Platzhalter wie `<projekt>`, `<pfad>`, `<konto>`,
-`<team>`. `scripts/imp-submit.sh` prüft das ausgefüllte Formular gegen
-deinen lokalen Tresor (falls vorhanden, `scripts/vault/vault.sh`) und immer
-strukturell gegen bekannte Muster (Pfade, E-Mail-Adressen, IDs) — die beste
-Prüfung bleibt trotzdem, von Anfang an keinen echten Wert zu schreiben.
+This form ends up as GitHub issue or PR text. Write into it: WHAT is
+observable, WHICH rule / WHICH hook / WHICH skill is affected, and WHICH
+number backs it up. Do NOT write into it: real project, company, or account
+names, machine-specific paths (home directory, project root, volume name),
+personal identifiers (email address, session/trigger/Notion ID), or any
+identifying phrase. Use placeholders instead, like `<project>`, `<path>`,
+`<account>`, `<team>`. `scripts/imp-submit.sh` checks the filled-in form
+against your local vault (if present, `scripts/vault/vault.sh`) and always
+structurally against known patterns (paths, email addresses, IDs) — but the
+best check remains never writing a real value in the first place.
 
-## Problemklasse
+## Problem Class
 
-<!-- Eine Zeile: welche Art von Problem — z. B. "fehlende Eskalation",
-"stiller Fallback", "falsches Exit-Verhalten", "Token-Mehrverbrauch". -->
+<!-- One line: what kind of problem — e.g. "missing escalation",
+"silent fallback", "wrong exit behavior", "excess token spend". -->
 
 ## Symptom
 
-<!-- Was beobachtbar falsch ist — ohne Projekt- oder Ortsnamen. Nutze
-Platzhalter wie `<projekt>`, `<pfad>`, `<konto>`. -->
+<!-- What is observably wrong — without project or location names. Use
+placeholders like `<project>`, `<path>`, `<account>`. -->
 
-## Messwert / Beleg
+## Measurement / Evidence
 
-<!-- Die Zahl oder das Artefakt, an dem das Symptom hängt, plus Messtiefe —
-gemessen, nicht vermutet. Beispiel: "17 von 40 Sitzungen zeigten X (grep
-über 40 JSONL-Dateien, Stichtag <datum>)". -->
+<!-- The number or artifact the symptom hangs on, plus its measurement
+depth — measured, not assumed. Example: "17 of 40 sessions showed X (grep
+over 40 JSONL files, cutoff date <date>)". -->
 
-## Vorgeschlagene Änderung
+## Proposed Change
 
-<!-- Welche Regel / welcher Hook / welches Skill sich ändern sollte — wenn
-möglich als Diff-Skizze:
+<!-- Which rule / hook / skill should change — a diff sketch if possible:
 ```diff
-- alte Zeile
-+ neue Zeile
+- old line
++ new line
 ```
 -->
 
-## Risiko / Band
+## Risk / Band
 
-<!-- AUTO | SOFT-ACK | ESCALATE nach rules/agency-bands.md, plus eine Zeile
-Begründung (Reversibilität, Blast-Radius, Input-Vertrauen). -->
+<!-- AUTO | SOFT-ACK | ESCALATE per rules/agency-bands.md, plus one line of
+justification (reversibility, blast radius, input trust). -->
 
-## Rücknahme
+## Rollback
 
-<!-- Wie diese Änderung rückgängig gemacht werden kann, falls sie sich als
-falsch erweist. -->
+<!-- How this change can be reverted if it turns out to be wrong. -->
 
-## Lokale IMP-ID (optional — nur Referenz des Einreichers)
+## Local IMP ID (optional — submitter's own reference only)
 
-<!-- z. B. IMP-042, falls vorhanden — dient nur deiner eigenen Zuordnung,
-wird beim Absenden nicht weiter geprüft. -->
+<!-- e.g. IMP-042, if you have one — for your own tracking only, not
+checked further on submission. -->
