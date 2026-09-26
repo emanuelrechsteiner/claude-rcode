@@ -59,6 +59,14 @@ Every write, every commit and every publish is checked: 0 real values in any tra
 
 R.Code for Claude Code's rules and hooks are invisible until something happens. **Cockpit** is a companion tmux dashboard that makes a session visible while you work — a sidebar pane next to Claude Code showing context/usage, active subagents, workflow progress, and clickable links/files, fed by the same hooks this repo registers. It's optional; nothing in this repo depends on it.
 
+**Set it up** — separately, from its own repo, its own one-liner:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/emanuelrechsteiner/claude-cockpit/main/install.sh)
+```
+
+It installs Ghostty, tmux, Node and `jq` if missing, clones the Cockpit into `~/.claude/cockpit` and runs `npm install`, puts `cockpit` on your `PATH`, registers ten entries (eight hooks, `statusLine`, `subagentStatusLine`) in `~/.claude/settings.json`, and adds the ⌘1–⌘7 shortcuts plus the `rcode` color theme to your Ghostty config. Requirements: macOS, [Ghostty](https://ghostty.org) (the only terminal that sends ⌘1–⌘7 to the cards and matches the theme colors above), tmux ≥ 3.3, and Node ≥ 22. See [Cockpit &middot; set it up](https://rcode-for-claude-code.vercel.app/cockpit.html#setup) for the full step-by-step.
+
 <p align="center">
 <img src="docs/assets/cockpit/cockpit-hero.png" width="880" alt="Claude Code running /team-lead on the left, the Cockpit sidebar with seven live cards on the right, in a Ghostty terminal window"><br>
 <sub><em>Claude Code and the Cockpit side by side in Ghostty. Demo data.</em></sub>

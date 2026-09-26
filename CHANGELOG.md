@@ -12,6 +12,34 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-09-26
+
+The Cockpit is now public and installable, and the website and README show it
+as it runs today. No rule, hook, skill, agent or script behavior changed for a
+public install.
+
+### Added
+
+- Cockpit setup, step by step: the Cockpit page ("Set it up"), the install
+  page ("Optional: the Cockpit") and the README carry the one-line installer
+  of the companion repo `claude-cockpit`. It lists every change before making
+  it (Ghostty, tmux, Node and jq via Homebrew; the Cockpit under
+  `~/.claude/cockpit`; the `cockpit` command; ten entries in
+  `~/.claude/settings.json`; Ghostty keybindings and the `rcode` color theme),
+  asks once, backs up every file it edits, and supports `--dry-run`.
+
+### Changed
+
+- Cockpit product images: the Subagents card names model and effort for
+  every subagent and adds a status line (its task while running, "idle" once
+  done); the Workflows card lists every task with its own bar.
+- Website Cockpit page describes both cards.
+
+### Fixed
+
+- The publish step also removes the private Cockpit `subagentStatusLine`
+  setting, so a public install never points at a script it does not have.
+
 ## [1.4.0] - 2026-09-26
 
 A name that follows Anthropic's rules, a website, and a front page that shows
@@ -158,7 +186,8 @@ developer's machine; the framework carries tokens. Decision record:
 
 Superseded. Their history was replaced by 1.1.0 and is no longer available.
 
-[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.1.1...v1.2.0

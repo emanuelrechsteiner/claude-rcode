@@ -49,6 +49,13 @@
 # the statusLine key instead of shipping a dangling reference — never
 # guess a path that isn't actually there.
 #
+# subagentStatusLine (2026-09-26): the Cockpit also registers
+# "~/.claude/cockpit/statusline/subagent-statusline.sh" as subagentStatusLine
+# (it feeds the Cockpit's subagent card). There is no pre-Cockpit equivalent
+# to redirect to, so the key is deleted. Without this it would ship pointing
+# at a missing script and fail on every agent-panel refresh of every public
+# install — and the generic reference walk below did not look at this key.
+#
 # Replaces the old "expected exactly 8 cockpit hooks" fail-loud check,
 # which aborted the whole transform the moment the count drifted even by
 # one (e.g. after adding/removing an unrelated cockpit hook, or after
@@ -99,6 +106,8 @@ BEFORE_GRAPHIFY_COUNT="$(jq --arg re "$GRAPHIFY_HOOK_RE" \
   '[.hooks[][].hooks[]? | select(.command | test($re))] | length' "$SETTINGS")"
 STATUSLINE_HAS_COCKPIT="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
   '(.statusLine.command? // "") | test($re)' "$SETTINGS")"
+SUBAGENT_STATUSLINE_HAS_COCKPIT="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
+  '(.subagentStatusLine.command? // "") | test($re)' "$SETTINGS")"
 
 # Decide the statusLine action up front — this needs a filesystem check
 # (does the pre-Cockpit script exist in staging?), which jq cannot do.
@@ -118,6 +127,7 @@ jq \
   --arg graphify_re "$GRAPHIFY_HOOK_RE" \
   --arg action "$STATUSLINE_ACTION" \
   --arg prior_statusline "$PRIOR_STATUSLINE_PATH" \
+  --arg del_subagent "$SUBAGENT_STATUSLINE_HAS_COCKPIT" \
   '
   .hooks |= with_entries(
     .value |= (
@@ -133,6 +143,7 @@ jq \
     elif $action == "delete" then del(.statusLine)
     else .
     end
+  | if $del_subagent == "true" then del(.subagentStatusLine) else . end
 ' "$SETTINGS" > "$TMP"
 
 if ! jq -e . "$TMP" >/dev/null 2>&1; then
@@ -146,6 +157,8 @@ AFTER_GRAPHIFY_COUNT="$(jq --arg re "$GRAPHIFY_HOOK_RE" \
   '[.hooks[][].hooks[]? | select(.command | test($re))] | length' "$TMP")"
 STILL_HAS_COCKPIT_STATUSLINE="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
   '(.statusLine.command? // "") | test($re)' "$TMP")"
+STILL_HAS_COCKPIT_SUBAGENT_STATUSLINE="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
+  '(.subagentStatusLine.command? // "") | test($re)' "$TMP")"
 
 if [[ "$AFTER_COCKPIT_COUNT" -ne 0 ]]; then
   echo "40-strip-private-hooks: FAIL — $AFTER_COCKPIT_COUNT cockpit-event.sh hook(s) still present after transform (expected 0)" >&2
@@ -159,6 +172,11 @@ fi
 
 if [[ "$STILL_HAS_COCKPIT_STATUSLINE" == "true" ]]; then
   echo "40-strip-private-hooks: FAIL — cockpit statusLine still present after transform" >&2
+  exit 1
+fi
+
+if [[ "$STILL_HAS_COCKPIT_SUBAGENT_STATUSLINE" == "true" ]]; then
+  echo "40-strip-private-hooks: FAIL — cockpit subagentStatusLine still present after transform" >&2
   exit 1
 fi
 
@@ -186,7 +204,8 @@ MISSING_FILE="$(mktemp)"
 trap 'rm -f "$TMP" "$REFS_FILE" "$MISSING_FILE"' EXIT
 
 jq -r '
-  [ (.hooks[][].hooks[]?.command // empty), (.statusLine.command? // empty) ]
+  [ (.hooks[][].hooks[]?.command // empty), (.statusLine.command? // empty),
+    (.subagentStatusLine.command? // empty) ]
   | .[]
 ' "$TMP" \
   | grep -oE "$PATH_RE" \
@@ -224,4 +243,8 @@ case "$STATUSLINE_ACTION" in
   delete)   SUMMARY="$SUMMARY, deleted the cockpit statusLine key (no pre-Cockpit script found in staging)" ;;
   none)     ;;
 esac
+if [[ "$SUBAGENT_STATUSLINE_HAS_COCKPIT" == "true" ]]; then
+  SUMMARY="$SUMMARY, deleted the cockpit subagentStatusLine key"
+fi
+
 echo "40-strip-private-hooks: OK — $SUMMARY; verified ${REF_COUNT} remaining ~/.claude hook-script reference(s) all exist in staging"

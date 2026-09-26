@@ -115,9 +115,31 @@
   </section>
 
   <section>
+    <div class="wrap prose" id="setup">
+      <h2 class="h2">Set it up</h2>
+      <p class="body">The Cockpit installs separately from the framework &mdash; it&rsquo;s its own repo with its own one-liner:</p>
+      <div class="code-block">
+        <pre><code id="cockpit-install-cmd">bash &lt;(curl -fsSL https://raw.githubusercontent.com/emanuelrechsteiner/claude-cockpit/main/install.sh)</code></pre>
+        <button class="copy-btn" type="button" data-copy-target="cockpit-install-cmd">Copy</button>
+      </div>
+      <p class="body">What it installs, step by step:</p>
+      <ol>
+        <li class="body">Installs Ghostty, tmux, Node and <code>jq</code> with Homebrew, for whichever of the four are missing.</li>
+        <li class="body">Clones the Cockpit into <code>~/.claude/cockpit</code> and runs <code>npm install</code> there.</li>
+        <li class="body">Puts the <code>cockpit</code> command on your <code>PATH</code>.</li>
+        <li class="body">Registers ten entries in <code>~/.claude/settings.json</code> &mdash; eight hooks, plus <code>statusLine</code> and <code>subagentStatusLine</code> &mdash; so the Cockpit is fed by the same hooks that drive a session.</li>
+        <li class="body">Adds the &#8984;1&ndash;&#8984;7 card shortcuts and a <code>theme = rcode</code> line to <code>~/.config/ghostty/config</code>, and drops the matching color theme into <code>~/.config/ghostty/themes/rcode</code>.</li>
+      </ol>
+      <p class="body"><strong>Requirements:</strong> macOS, plus Ghostty (<code>brew install --cask ghostty</code>) &mdash; the terminal the screenshots above were captured in, and the only one that sends &#8984;1&ndash;&#8984;7 to the cards and shows the theme colors. Also tmux 3.3 or newer, Node 22 or newer, and <code>jq</code> (<code>brew install tmux node jq</code> covers all three if any are missing).</p>
+      <p class="body">The installer shows every step before it runs and asks once for a yes/no; pass <code>--dry-run</code> to see the plan without changing anything on disk. Once it&rsquo;s done: reload the Ghostty config (&#8984;+Shift+,), open a project in Ghostty, and type <code>cockpit</code>. The Cockpit stays optional &mdash; the framework runs without it.</p>
+    </div>
+  </section>
+
+  <section>
     <div class="wrap prose">
       <h2 class="h2">Seven cards, updated live</h2>
-      <p class="body">Two info cards sit on top: context-window usage and session/weekly usage. Below them are seven numbered cards you can jump to with <code>&#8984;1</code>&ndash;<code>&#8984;7</code>: 1 &middot; Model &amp; Effort, 2 &middot; Team Lead, 3 &middot; Subagents (per-agent status &mdash; <code>&#10003;</code> done, <code>&#10007;</code> failed, <code>&#10227;</code> running), 4 &middot; Workflows, 5 &middot; Links, 6 &middot; Files and 7 &middot; Plugins. All of them are fed by the same hooks this repo registers.</p>
+      <p class="body">Two info cards sit on top: context-window usage and session/weekly usage. Below them are seven numbered cards you can jump to with <code>&#8984;1</code>&ndash;<code>&#8984;7</code>: 1 &middot; Model &amp; Effort, 2 &middot; Team Lead, 3 &middot; Subagents, 4 &middot; Workflows, 5 &middot; Links, 6 &middot; Files and 7 &middot; Plugins. All of them are fed by the same hooks this repo registers.</p>
+      <p class="body"><strong>Subagents</strong> gives every subagent two lines: its type with model and effort (<code>&#10003;</code> done, <code>&#10227;</code> running, <code>&#10007;</code> failed), and a status line under it &mdash; what it is working on while it runs, <em>idle</em> once it is done.</p>
       <p class="body"><strong>Workflows</strong> shows the overall bar for the session&rsquo;s task list, and under it every task as its own row with its own bar: full when done, empty while open, a travelling two-cell block while it runs. A task reports a state, not a percentage, so the bar never pretends to measure one.</p>
       <p class="body">See <a href="https://github.com/emanuelrechsteiner/claude-cockpit">claude-cockpit</a> for setup and the full keybinding table.</p>
     </div>
