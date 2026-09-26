@@ -127,9 +127,9 @@ Tracker in `.rcode/config.json`: `github` (issues) or `plan` (`P-NNN` in `BRAINS
 
 Rails install per project. 22 commands (verify with `framework-inventory.sh`); /rcode-onboard is a skill. Before asserting availability on any machine, check `ls ~/.claude/commands/ | grep -i team`, not a doc. A backward Stage-jump requires a documented futility proof (`rcode/stages/backward-transitions.md`).
 
-### Output Style — Hausbau
+### Output Style — Hausbau (personal preference, opt-in)
 
-`output-styles/hausbau.md` (`"outputStyle": "Hausbau"`), house-building metaphor. `keep-coding-instructions: true` is load-bearing; `false` (default) strips the built-in engineering instructions. Main thread only, read at session start; a project-level `outputStyle` would override it. Facts stay concrete, the metaphor never softens a defect; where construction has no honest counterpart, say so and explain directly.
+`output-styles/hausbau.md`, house-building metaphor, for readers who are not deeply technical. This is the owner's own runtime preference (own `settings.json`, same category as `model`/`effortLevel`) — not a framework default; publish transform 40 strips `outputStyle` on release, so the public framework answers in plain developer language and anyone can opt in with `/output-style Hausbau`. `keep-coding-instructions: true` is load-bearing; `false` (default) strips the built-in engineering instructions. Main thread only, read at session start; a project-level `outputStyle` would override it. Facts stay concrete, the metaphor never softens a defect; where construction has no honest counterpart, say so and explain directly.
 
 ### Token Optimization
 

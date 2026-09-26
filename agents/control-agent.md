@@ -120,9 +120,25 @@ each with a one-line rationale:
 
 Also record what "done" looks like (clear deliverable) for each task.
 
-Use TaskCreate to record each task, including its assigned Agent, Model, and
-Effort in the task description so the assignment is auditable after the fact.
-Mark dependencies via blocks/blockedBy.
+#### Task list per wave — mandatory
+
+Before dispatching the first agent of a wave, use `TaskCreate` to record each
+task, including its assigned Agent, Model, and Effort in the task
+description so the assignment is auditable after the fact. Mark dependencies
+via blocks/blockedBy. Set each entry to `in_progress` when its agent is
+spawned, and to `completed` — or left open with a stated reason — during the
+wave's synthesis step (§4 below); never leave one dangling with no state
+change once the wave has been reviewed.
+
+This is not bookkeeping for its own sake: the task list is the one artifact
+a human sees next to a running session without opening the transcript —
+**Cockpit's card 4 reads it live.** Measured 2026-09-26 across
+`~/.claude/cockpit/events-*.jsonl`: 696 recorded sessions, 63 of them
+dispatching sub-agents, only 6 with a `TaskCreated` entry — a wave without a
+task list is invisible from outside until it finishes, or forever if it
+doesn't. `commands/team-lead.md` §3/§4 states the same duty for the
+`/team-lead` entry point; that reference carries the mechanics, this
+paragraph is not a second, independently drifting copy of them.
 
 #### Auftragsbrief — the mandatory form of every brief (IMP-161)
 
@@ -360,7 +376,10 @@ When reporting to the user, structure responses as:
 
 ## Self-Check Before Closing
 
-- [ ] All TaskCreate entries marked completed or explicitly deferred
+- [ ] Every `TaskCreate` entry from this session is in end-state `completed`
+      or explicitly deferred with a stated reason — an entry left
+      `in_progress`/`pending` with no reason means the review above is not
+      done. This is the same list Cockpit card 4 surfaces to the user.
 - [ ] User has a clear picture of what changed and what's next
 - [ ] Any deferred work has a recorded follow-up
 - [ ] Documentation-agent has logged the workflow (if non-trivial)

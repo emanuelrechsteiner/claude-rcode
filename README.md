@@ -186,6 +186,10 @@ Rules steer every session, agents do the heavy lifting in isolated contexts, hoo
 
 See [`CLAUDE.md`](CLAUDE.md) — R.Code's own onboarding doc — and [`HARNESS.md`](HARNESS.md) for the full system map. Key concept: **you orchestrate, agents execute.**
 
+### Optional: the Hausbau output style
+
+By default, answers are written in normal developer language. `output-styles/hausbau.md` is an opt-in style that explains every technical change through one consistent house-building metaphor — for readers who are not deeply technical (product owners, clients, first-time founders); facts and numbers stay exact, only the language changes. Turn it on with `/output-style Hausbau`.
+
 ## Personalize (the `.local.*` overlay pattern)
 
 Personal content lives in gitignored `*.local.md`, `*.local.sh`, `*.local.json` files. The committed repo contains generic versions and templates; you create your own overlays from the templates:

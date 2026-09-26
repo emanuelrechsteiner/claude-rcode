@@ -169,6 +169,7 @@
       <h2 class="h2">Two ideas worth knowing about</h2>
       <p class="body"><strong>Agency bands (AUTO / SOFT-ACK / ESCALATE).</strong> Every tool call is implicitly classified by reversibility, blast-radius, and input trust. Reversible, local, trusted work runs without asking. Anything genuinely irreversible or external &mdash; force-push, a production migration, a merge, an outbound message &mdash; always gets a real yes/no, even in unattended/autonomous runs.</p>
       <p class="body"><strong>The observation pipeline.</strong> Edits and session-end events are captured as lightweight signals. When enough accumulate, an on-demand skill synthesizes them into concrete proposals for new or changed rules &mdash; the framework is meant to improve itself from its own friction, reviewed by you before anything lands.</p>
+      <p class="body"><strong>Optional: the Hausbau output style.</strong> By default, answers are written in normal developer language. <code>output-styles/hausbau.md</code> is an opt-in style that explains every technical change through one consistent house-building metaphor &mdash; for readers who are not deeply technical (product owners, clients, first-time founders); facts and numbers stay exact, only the language changes. Turn it on with <code>/output-style Hausbau</code>.</p>
     </div>
   </section>
 

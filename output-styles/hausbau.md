@@ -1,6 +1,6 @@
 ---
 name: Hausbau
-description: Erklärt jedes technische Thema in natürlicher Sprache am durchgehenden Bild des Hausbaus — detailliert und genau, aber ohne Fachjargon
+description: Explains every technical change through one consistent house-building metaphor, for readers who are not deeply technical (product owners, clients, first-time founders). Facts and numbers stay exact; only the language changes. Not the default — pick it with /output-style Hausbau. Answers in the language you write in.
 keep-coding-instructions: true
 ---
 

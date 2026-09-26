@@ -56,6 +56,15 @@
 # at a missing script and fail on every agent-panel refresh of every public
 # install — and the generic reference walk below did not look at this key.
 #
+# outputStyle (2026-09-26): the "Hausbau" output style is the repo owner's
+# personal runtime preference (same category as `model`/`effortLevel` in
+# CLAUDE.md's "Zwei Orte" section) — it is NOT a framework default. A fresh
+# public install must answer in plain developer language unless someone
+# opts in explicitly (`/output-style Hausbau`). The style file itself
+# (output-styles/hausbau.md) still ships — only the private settings.json's
+# unconditional selection of it is removed. `del(.outputStyle)` is a no-op
+# (idempotent) when the key is already absent.
+#
 # Replaces the old "expected exactly 8 cockpit hooks" fail-loud check,
 # which aborted the whole transform the moment the count drifted even by
 # one (e.g. after adding/removing an unrelated cockpit hook, or after
@@ -108,6 +117,7 @@ STATUSLINE_HAS_COCKPIT="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
   '(.statusLine.command? // "") | test($re)' "$SETTINGS")"
 SUBAGENT_STATUSLINE_HAS_COCKPIT="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
   '(.subagentStatusLine.command? // "") | test($re)' "$SETTINGS")"
+HAD_OUTPUT_STYLE="$(jq 'has("outputStyle")' "$SETTINGS")"
 
 # Decide the statusLine action up front — this needs a filesystem check
 # (does the pre-Cockpit script exist in staging?), which jq cannot do.
@@ -144,6 +154,7 @@ jq \
     else .
     end
   | if $del_subagent == "true" then del(.subagentStatusLine) else . end
+  | del(.outputStyle)
 ' "$SETTINGS" > "$TMP"
 
 if ! jq -e . "$TMP" >/dev/null 2>&1; then
@@ -159,6 +170,7 @@ STILL_HAS_COCKPIT_STATUSLINE="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
   '(.statusLine.command? // "") | test($re)' "$TMP")"
 STILL_HAS_COCKPIT_SUBAGENT_STATUSLINE="$(jq --arg re "$COCKPIT_STATUSLINE_RE" \
   '(.subagentStatusLine.command? // "") | test($re)' "$TMP")"
+STILL_HAS_OUTPUT_STYLE="$(jq 'has("outputStyle")' "$TMP")"
 
 if [[ "$AFTER_COCKPIT_COUNT" -ne 0 ]]; then
   echo "40-strip-private-hooks: FAIL — $AFTER_COCKPIT_COUNT cockpit-event.sh hook(s) still present after transform (expected 0)" >&2
@@ -177,6 +189,11 @@ fi
 
 if [[ "$STILL_HAS_COCKPIT_SUBAGENT_STATUSLINE" == "true" ]]; then
   echo "40-strip-private-hooks: FAIL — cockpit subagentStatusLine still present after transform" >&2
+  exit 1
+fi
+
+if [[ "$STILL_HAS_OUTPUT_STYLE" == "true" ]]; then
+  echo "40-strip-private-hooks: FAIL — outputStyle still present after transform" >&2
   exit 1
 fi
 
@@ -245,6 +262,9 @@ case "$STATUSLINE_ACTION" in
 esac
 if [[ "$SUBAGENT_STATUSLINE_HAS_COCKPIT" == "true" ]]; then
   SUMMARY="$SUMMARY, deleted the cockpit subagentStatusLine key"
+fi
+if [[ "$HAD_OUTPUT_STYLE" == "true" ]]; then
+  SUMMARY="$SUMMARY, removed outputStyle (owner's personal preference, not a framework default)"
 fi
 
 echo "40-strip-private-hooks: OK — $SUMMARY; verified ${REF_COUNT} remaining ~/.claude hook-script reference(s) all exist in staging"

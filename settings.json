@@ -386,7 +386,6 @@
       }
     }
   },
-  "outputStyle": "Hausbau",
   "sandbox": {
     "enabled": false,
     "autoAllowBashIfSandboxed": true,

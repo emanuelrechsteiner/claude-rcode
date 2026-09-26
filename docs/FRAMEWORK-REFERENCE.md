@@ -387,15 +387,18 @@ R.Code rails (rules for commits, scope, workflow) are installed per-project by `
 
 react-perf-check, tailwindcss-v4-styling, import-fixer, fix-review, orchestration
 
-### Output Style — `Hausbau` (default since 2026-08-01)
+### Output Style — `Hausbau` (opt-in, not the published default; 2026-09-26)
 
-`~/.claude/output-styles/hausbau.md`, activated via `"outputStyle": "Hausbau"` in `settings.json`.
-Every explanation is written in plain language against one sustained metaphor — planning, building,
-moving into and maintaining a house — with a **fixed concept↔image mapping table** so the vocabulary
-stays stable across sessions instead of being reinvented per answer.
+`~/.claude/output-styles/hausbau.md`, activated via `"outputStyle": "Hausbau"` in `settings.json`
+or `/output-style Hausbau`. Every explanation is written in plain language against one sustained
+metaphor — planning, building, moving into and maintaining a house — with a **fixed concept↔image
+mapping table** so the vocabulary stays stable across sessions instead of being reinvented per
+answer. Intended for readers who are not deeply technical (product owners, clients, first-time
+founders); facts and numbers stay exact, only the language changes.
 
 | Property | Value |
 |---|---|
+| Default | **None (plain developer language); opt-in via `/output-style Hausbau`.** The owner's own `settings.json` carries `"outputStyle": "Hausbau"` as a personal runtime preference (same category as `model`/`effortLevel`); publish transform 40 (`publish-transforms.d/40-strip-private-hooks.sh`) strips that key on release, so a fresh public install answers in normal developer language until someone opts in. |
 | `keep-coding-instructions` | **`true` — load-bearing.** The frontmatter default is `false`, which would strip Claude Code's built-in software-engineering instructions (change scoping, comment discipline, verification). The style changes *how the work is described*, never how it is done — omitting this flag would silently degrade the work itself. |
 | Scope | **Main conversation only.** A subagent runs its own system prompt and is unaffected; only the synthesized answer the user reads is styled. A `fork` is the exception (inherits the parent prompt). |
 | Activation | Reads at session start — a change takes effect after `/clear` or a new session, not mid-conversation. |

@@ -12,6 +12,32 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-26
+
+Plain developer language by default, and a Cockpit that always shows the
+current wave of work.
+
+### Changed
+
+- **Default output style: none.** A fresh install answers in ordinary
+  software-developer language. The `Hausbau` output style (every change
+  explained through a house-building metaphor, for readers who are not deeply
+  technical) still ships in `output-styles/hausbau.md` and is opt-in:
+  `/output-style Hausbau`. Until 1.4.1 it was switched on for everyone.
+- `/team-lead` and the control agent record every wave as a task list
+  (`TaskCreate`, set to `in_progress` at dispatch and `completed` in the wave
+  review), so the wave is visible next to the session while it runs.
+
+### Added
+
+- Publish step removes the maintainer's personal `outputStyle` from the
+  published `settings.json`; regression suite
+  `hooks/tests/publish-strip-regression.sh`.
+- Cockpit (companion repo `claude-cockpit`): card 4 derives a "Welle" (wave)
+  from the subagent start/stop hook events, one row per subagent, in every
+  session that dispatches subagents — independent of whether the model keeps
+  a task list, which appears above it when present.
+
 ## [1.4.1] - 2026-09-26
 
 The Cockpit is now public and installable, and the website and README show it
@@ -186,7 +212,8 @@ developer's machine; the framework carries tokens. Decision record:
 
 Superseded. Their history was replaced by 1.1.0 and is no longer available.
 
-[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.2.0...v1.3.0

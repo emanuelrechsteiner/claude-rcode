@@ -89,6 +89,16 @@ Break the directive into atomic units of work. For each unit, determine:
   for a real y/n.
 - Single-domain / sequential work → dispatch the one right specialist rather
   than doing it yourself.
+- **Task list per wave (mandatory).** Before the first Agent call of a wave,
+  create one `TaskCreate` entry per unit — `subject` states the unit in one
+  sentence, `activeForm` its gerund form, and `description` names the
+  assigned Agent, Model, and Effort. Set each entry to `in_progress` at
+  dispatch, and to `completed` (or left open with a stated reason) in the
+  wave review (§4). Two reasons this is mandatory, not optional bookkeeping:
+  the task list is the one thing a human sees next to a running session
+  without opening the transcript — **Cockpit's card 4 reads it live** — and
+  without it a wave is invisible from outside until it finishes. Skip-list
+  units (§1) need no task entry.
 - **Every Agent call carries an explicit `model` parameter.** This turn is
   pinned to Fable by the `model:` frontmatter above, and a spawn whose target
   has no definition file of its own (`general-purpose`, `Explore`, `Plan`,
@@ -106,6 +116,12 @@ escalate) BEFORE dispatching the next wave. Then consolidate all outputs
 into one coherent result for the user. Surface any ESCALATE-band operations
 subagents flagged up to you (per `~/.claude/rules/agency-bands.md` — you are the
 human-facing escalation point for this delegation).
+
+**Task-list check.** Every unit of the wave has its `TaskCreate` entry in
+end-state `completed`, or is explicitly left open with a stated reason —
+an entry with no state change and no reason means this review is not
+finished. This is the same list Cockpit card 4 surfaces to the user; closing
+it here is what makes the wave's outcome visible, not just its start.
 
 ## R.Code Mode
 
