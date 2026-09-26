@@ -1,0 +1,142 @@
+/* GENERATED FILE — do not hand-edit.
+   Source: design-system tokens.json, schema v1
+   Regenerate with gen_tokens_css.py after any tokens.json change. */
+
+:root {
+  /* Fonts */
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* Color — dark ("Terminal"), the primary theme */
+  --ground: #0c0c0c;
+  --surface: #151515;
+  --line: #3a3a3a;
+  --ink: #ececec;
+  --muted: #9a9a9a;
+  --clay: #d97757;
+  --on-clay: #1a0f0a;
+  --go: #5fb800;
+  --wait: #d4a900;
+  --stop: #ff5c5c;
+  --focus: #34d1d6;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Color — light ("Paper") */
+    --ground: #f6f5f2;
+    --surface: #ffffff;
+    --line: #cfccc4;
+    --ink: #161616;
+    --muted: #5f5e5a;
+    --clay: #b8552f;
+    --on-clay: #ffffff;
+    --go: #3b7a00;
+    --wait: #8a6a00;
+    --stop: #b42318;
+    --focus: #007d82;
+  }
+}
+
+[data-theme="light"] {
+  --ground: #f6f5f2;
+  --surface: #ffffff;
+  --line: #cfccc4;
+  --ink: #161616;
+  --muted: #5f5e5a;
+  --clay: #b8552f;
+  --on-clay: #ffffff;
+  --go: #3b7a00;
+  --wait: #8a6a00;
+  --stop: #b42318;
+  --focus: #007d82;
+}
+
+[data-theme="dark"] {
+  --ground: #0c0c0c;
+  --surface: #151515;
+  --line: #3a3a3a;
+  --ink: #ececec;
+  --muted: #9a9a9a;
+  --clay: #d97757;
+  --on-clay: #1a0f0a;
+  --go: #5fb800;
+  --wait: #d4a900;
+  --stop: #ff5c5c;
+  --focus: #34d1d6;
+}
+
+/* Typography */
+/* Display (mono) */
+.display {
+  font-family: var(--font-mono);
+  font-size: 64px;
+  line-height: 60px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.h1 {
+  font-family: var(--font-mono);
+  font-size: 36px;
+  line-height: 42px;
+  font-weight: 700;
+}
+
+.h2 {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+/* Text (sans) */
+.lead {
+  font-family: var(--font-sans);
+  font-size: 19px;
+  line-height: 30px;
+  font-weight: 400;
+}
+
+.body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 26px;
+  font-weight: 400;
+}
+
+.small {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+/* Terminal (mono) */
+.code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

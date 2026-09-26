@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" width="1600" height="400" role="img" aria-label="R.Code for Claude Code — Build smarter. Build better.">
+  <defs>
+    <pattern id="banner-dark-alt-dither" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="8" height="8" fill="#d97757"/>
+      <rect x="8" y="8" width="8" height="8" fill="#d97757"/>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="1600" height="400" fill="#0c0c0c"/>
+  <text x="64" y="170" font-family="'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace" font-weight="800" font-size="84" fill="#d97757">R.Code</text>
+  <text x="64" y="228" font-family="'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace" font-weight="400" font-size="34" fill="#ececec">for Claude Code</text>
+  <text x="64" y="274" font-family="'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" fill="#9a9a9a">Build smarter. Build better.</text>
+  <g transform="translate(940,40) scale(1.1)">
+    <rect x="0" y="-8" width="320" height="176" rx="4" fill="#d97757"/>
+    <rect x="320" y="120" width="160" height="48" fill="url(#banner-dark-alt-dither)"/>
+    <rect x="0" y="192" width="160" height="116" rx="4" fill="#ececec"/>
+    <rect x="184" y="192" width="96" height="48" rx="4" fill="#5fb800"/>
+    <rect x="304" y="192" width="64" height="48" rx="4" fill="#d4a900"/>
+    <rect x="392" y="192" width="96" height="116" rx="4" fill="#34d1d6"/>
+  </g>
+</svg>

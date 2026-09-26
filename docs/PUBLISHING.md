@@ -238,3 +238,30 @@ for `main`:
 These settings are **not** something `scripts/publish.sh` can configure
 remotely — GitHub branch protection is a one-time manual setup step on the
 public repo itself.
+
+## Website (Vercel)
+
+The static site in `site/` is published with every release like any other
+file, but it is **served from Vercel**, not from GitHub Pages:
+`https://rcode-for-claude-code.vercel.app/`. There is no build step — the
+folder is plain HTML, CSS, JS, SVG and PNG. The Vercel project
+(`rcode-for-claude-code`) is linked from `site/` (`site/.vercel/` is
+git-ignored via `site/.gitignore`), so the deploy is one command from the
+private repo, run by the maintainer after the release commit exists:
+
+```bash
+vercel whoami && vercel teams ls        # confirm the active account/team first
+cd site && vercel deploy --prod --yes   # ships site/ as-is to the production alias
+```
+
+The deployment URLs Vercel prints (`*-<team>.vercel.app`) are protected by
+Vercel's SSO and answer 302; the production alias above answers 200 and is
+the only URL that belongs in docs, badges and `og:` tags. Absolute URLs are
+baked into every page's `<link rel="canonical">`, `og:url`, `og:image` and
+`twitter:image` — change them in all six pages if the alias ever changes.
+
+The GitHub repository's *social preview* image
+(`docs/assets/brand/social-preview.png`, 1280×640) has no API — upload it
+once under Settings → General → Social preview. Set the repository homepage
+to the Vercel URL: `gh repo edit emanuelrechsteiner/claude-rcode --homepage
+https://rcode-for-claude-code.vercel.app/`.

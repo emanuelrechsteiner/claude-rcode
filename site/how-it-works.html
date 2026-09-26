@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('rcode-theme');
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How it works &middot; R.Code for Claude Code</title>
+<meta name="description" content="Rules steer every session, agents and skills do the work, deterministic hooks gate every tool call, and an observation pipeline turns friction into reviewed rule changes.">
+<link rel="canonical" href="https://rcode-for-claude-code.vercel.app/how-it-works.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="R.Code for Claude Code">
+<meta property="og:title" content="How it works &middot; R.Code for Claude Code">
+<meta property="og:description" content="Rules steer every session, agents and skills do the work, deterministic hooks gate every tool call, and an observation pipeline turns friction into reviewed rule changes.">
+<meta property="og:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<meta property="og:url" content="https://rcode-for-claude-code.vercel.app/how-it-works.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How it works &middot; R.Code for Claude Code">
+<meta name="twitter:description" content="Rules steer every session, agents and skills do the work, deterministic hooks gate every tool call, and an observation pipeline turns friction into reviewed rule changes.">
+<meta name="twitter:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<link rel="icon" href="assets/brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds/tokens.css">
+<link rel="stylesheet" href="assets/ds/bundle.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand-mark" href="index.html" aria-label="R.Code for Claude Code — home">
+      <span class="brand-mark__main">R.Code</span><span class="brand-mark__sub">for Claude Code</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="install.html">Install</a>
+      <a href="how-it-works.html" aria-current="page">How it works</a>
+      <a href="cockpit.html">Cockpit</a>
+      <a href="vault.html">Vault</a>
+      <a href="https://github.com/emanuelrechsteiner/claude-rcode">GitHub</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-hero">
+    <div class="wrap page-hero__inner">
+      <div class="page-hero__copy prose">
+        <h1 class="h1">How R.Code for Claude Code works</h1>
+        <p class="lead">Rules steer every session, agents do the heavy lifting in isolated contexts, hooks enforce the non-negotiables deterministically &mdash; no LLM in the gate &mdash; and the observation pipeline turns friction into reviewed rule changes.</p>
+      </div>
+      <div class="page-hero__blocks" aria-hidden="true">
+        <svg viewBox="0 0 488 316" width="488" height="316" focusable="false" role="presentation">
+          <defs>
+            <pattern id="page-hero-dither" width="16" height="16" patternUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="8" height="8" fill="var(--clay)"></rect>
+              <rect x="8" y="8" width="8" height="8" fill="var(--clay)"></rect>
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="320" height="176" rx="4" fill="var(--clay)"></rect>
+          <rect x="320" y="128" width="160" height="48" fill="url(#page-hero-dither)"></rect>
+          <rect x="0" y="200" width="160" height="116" rx="4" fill="var(--ink)"></rect>
+          <rect x="184" y="200" width="96" height="48" rx="4" fill="var(--go)"></rect>
+          <rect x="304" y="200" width="64" height="48" rx="4" fill="var(--wait)"></rect>
+          <rect x="392" y="200" width="96" height="116" rx="4" fill="var(--focus)"></rect>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <h2 class="h2">How it fits together</h2>
+      <style>
+        .arch-diagram { margin: 0 0 var(--space-6, 24px); }
+        .arch-diagram img { display: block; width: 100%; height: auto; }
+        .arch-diagram .arch-diagram__light { display: none; }
+        @media (prefers-color-scheme: light) {
+          html:not([data-theme]) .arch-diagram__dark { display: none; }
+          html:not([data-theme]) .arch-diagram__light { display: block; }
+        }
+        html[data-theme="light"] .arch-diagram__dark { display: none; }
+        html[data-theme="light"] .arch-diagram__light { display: block; }
+        html[data-theme="dark"] .arch-diagram__dark { display: block; }
+        html[data-theme="dark"] .arch-diagram__light { display: none; }
+      </style>
+      <p class="arch-diagram">
+        <img class="arch-diagram__dark" src="assets/brand/architecture-dark.svg" width="1200" height="560" alt="Diagram: you direct the main thread, which dispatches specialized agents and skills; every tool call and edit passes through PreToolUse and PostToolUse hooks; PostToolUse hooks log signals that a meta-observer turns into proposals, which after your review become rules that are always loaded into the main thread.">
+        <img class="arch-diagram__light" src="assets/brand/architecture-light.svg" width="1200" height="560" alt="Diagram: you direct the main thread, which dispatches specialized agents and skills; every tool call and edit passes through PreToolUse and PostToolUse hooks; PostToolUse hooks log signals that a meta-observer turns into proposals, which after your review become rules that are always loaded into the main thread.">
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 class="h2">Rules &rarr; agents &rarr; hooks</h2>
+      <div class="flow">
+        <div class="rc-cockpit-box flow-step">
+          <p class="label">You</p>
+          <p class="body">Give a directive &mdash; a task, a bug, a question.</p>
+        </div>
+        <div class="flow-arrow" aria-hidden="true">&rarr;</div>
+        <div class="rc-cockpit-box flow-step">
+          <p class="label">Main thread</p>
+          <p class="body">Orchestrates. Always-loaded rules (<code>rules/*.md</code>) steer it; it plans, delegates, and synthesizes.</p>
+        </div>
+        <div class="flow-arrow" aria-hidden="true">&rarr;</div>
+        <div class="rc-cockpit-box flow-step">
+          <p class="label">Agents &amp; skills</p>
+          <p class="body">Specialized agents (Task tool: planning &middot; backend &middot; testing &middot; review &middot; UI &middot; research) or forked skills (research &middot; docs &middot; git &middot; debug) do the work.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 class="h2">Deterministic guardrails</h2>
+      <div class="flow">
+        <div class="rc-cockpit-box flow-step">
+          <p class="label">PreToolUse hooks</p>
+          <p class="body">Agency gates, secret scan, file protection &mdash; run before every tool call. No language model in the gate.</p>
+        </div>
+        <div class="flow-arrow" aria-hidden="true">&rarr;</div>
+        <div class="rc-cockpit-box flow-step">
+          <p class="label">PostToolUse hooks</p>
+          <p class="body">Auto-format, validation, signal capture &mdash; run after every edit.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 class="h2">The self-improvement loop</h2>
+      <div class="rc-cockpit-box flow-loop">
+        <ol>
+          <li class="body">Every edit and session-end event is captured as a lightweight signal &mdash; <code>signals.jsonl</code>.</li>
+          <li class="body">Once enough accumulate, the <code>meta-observer</code> skill synthesizes them into concrete proposals for new or changed rules.</li>
+          <li class="body">You review the proposals.</li>
+          <li class="body">Accepted proposals land in <code>rules/*.md</code> &mdash; always loaded starting the next session.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">Two ideas worth knowing about</h2>
+      <p class="body"><strong>Agency bands (AUTO / SOFT-ACK / ESCALATE).</strong> Every tool call is implicitly classified by reversibility, blast-radius, and input trust. Reversible, local, trusted work runs without asking. Anything genuinely irreversible or external &mdash; force-push, a production migration, a merge, an outbound message &mdash; always gets a real yes/no, even in unattended/autonomous runs.</p>
+      <p class="body"><strong>The observation pipeline.</strong> Edits and session-end events are captured as lightweight signals. When enough accumulate, an on-demand skill synthesizes them into concrete proposals for new or changed rules &mdash; the framework is meant to improve itself from its own friction, reviewed by you before anything lands.</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="block-rule" aria-hidden="true">
+  <span class="block-rule__seg block-rule__seg--clay"></span>
+  <span class="block-rule__seg block-rule__seg--ink"></span>
+  <span class="block-rule__seg block-rule__seg--go"></span>
+  <span class="block-rule__seg block-rule__seg--wait"></span>
+  <span class="block-rule__seg block-rule__seg--focus"></span>
+  <span class="block-rule__seg block-rule__seg--dither"></span>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="small">R.Code for Claude Code is an independent, community-maintained open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. &quot;Claude&quot; and &quot;Claude Code&quot; are trademarks of Anthropic, PBC. This project provides configuration files (rules, agents, hooks, skills) for use with Anthropic&rsquo;s Claude Code and claims no rights to those names or logos.</p>
+    <p class="small"><a href="https://github.com/emanuelrechsteiner/claude-rcode/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/emanuelrechsteiner/claude-rcode">View on GitHub</a></p>
+  </div>
+</footer>
+
+<script src="assets/ds/bundle.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

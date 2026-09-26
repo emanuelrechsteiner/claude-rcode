@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('rcode-theme');
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R.Code for Claude Code — Build smarter. Build better.</title>
+<meta name="description" content="Guardrails that hold, a team of specialist agents, a live Cockpit for your terminal, and a framework that never learns your real names.">
+<link rel="canonical" href="https://rcode-for-claude-code.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="R.Code for Claude Code">
+<meta property="og:title" content="R.Code for Claude Code — Build smarter. Build better.">
+<meta property="og:description" content="Guardrails that hold, a team of specialist agents, a live Cockpit for your terminal, and a framework that never learns your real names.">
+<meta property="og:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<meta property="og:url" content="https://rcode-for-claude-code.vercel.app/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="R.Code for Claude Code — Build smarter. Build better.">
+<meta name="twitter:description" content="Guardrails that hold, a team of specialist agents, a live Cockpit for your terminal, and a framework that never learns your real names.">
+<meta name="twitter:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<link rel="icon" href="assets/brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds/tokens.css">
+<link rel="stylesheet" href="assets/ds/bundle.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand-mark" href="index.html" aria-label="R.Code for Claude Code — home">
+      <span class="brand-mark__main">R.Code</span><span class="brand-mark__sub">for Claude Code</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html" aria-current="page">Home</a>
+      <a href="install.html">Install</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="cockpit.html">Cockpit</a>
+      <a href="vault.html">Vault</a>
+      <a href="https://github.com/emanuelrechsteiner/claude-rcode">GitHub</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <div class="hero-copy">
+        <p class="hero-name">
+          <span class="hero-name__main display">R.Code</span>
+          <span class="hero-name__sub">for Claude Code</span>
+        </p>
+        <p class="hero-tagline lead">Build smarter. Build better.</p>
+        <p class="hero-subline lead">A complete, portable Claude Code setup: guardrails that hold, a team of specialist agents, a live Cockpit for your terminal — and a framework that never learns your real names.</p>
+        <div class="hero-actions" id="hero-actions"></div>
+        <div class="hero-blocks-mobile" aria-hidden="true">
+          <svg viewBox="0 0 488 316" width="488" height="316" focusable="false" role="presentation">
+            <rect x="0" y="0" width="320" height="176" rx="4" fill="var(--clay)"></rect>
+            <rect x="0" y="200" width="160" height="116" rx="4" fill="var(--ink)"></rect>
+            <rect x="184" y="200" width="96" height="48" rx="4" fill="var(--go)"></rect>
+            <rect x="392" y="200" width="96" height="116" rx="4" fill="var(--focus)"></rect>
+          </svg>
+        </div>
+      </div>
+      <div class="hero-blocks" aria-hidden="true">
+        <svg viewBox="0 0 488 316" width="488" height="316" focusable="false" role="presentation">
+          <defs>
+            <pattern id="hero-dither" width="16" height="16" patternUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="8" height="8" fill="var(--clay)"></rect>
+              <rect x="8" y="8" width="8" height="8" fill="var(--clay)"></rect>
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="320" height="176" rx="4" fill="var(--clay)"></rect>
+          <rect x="320" y="128" width="160" height="48" fill="url(#hero-dither)"></rect>
+          <rect x="0" y="200" width="160" height="116" rx="4" fill="var(--ink)"></rect>
+          <rect x="184" y="200" width="96" height="48" rx="4" fill="var(--go)"></rect>
+          <rect x="304" y="200" width="64" height="48" rx="4" fill="var(--wait)"></rect>
+          <rect x="392" y="200" width="96" height="116" rx="4" fill="var(--focus)"></rect>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+
+  <section class="hero-shot-section">
+    <div class="wrap">
+      <figure class="hero-shot">
+        <div class="framed-shot"><img src="assets/cockpit/cockpit-hero.png" width="1600" height="900" loading="eager" alt="Claude Code running /team-lead on the left, the Cockpit sidebar with seven live cards on the right, in a Ghostty terminal window"></div>
+        <figcaption class="section-caption small"><em>Claude Code and the Cockpit side by side in Ghostty. Demo data.</em></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cockpit-section">
+    <div class="wrap">
+      <div class="cockpit-demo" id="cockpit-demo"></div>
+      <p class="section-caption small">Live components from the R.Code for Claude Code design system, with demo data — see <a href="cockpit.html">Cockpit</a> for the full six-card dashboard.</p>
+    </div>
+  </section>
+
+  <section class="benefits">
+    <div class="wrap">
+      <div class="grid-2">
+        <div class="rc-cockpit-box benefit-tile">
+          <span class="block-cap block-cap--clay" aria-hidden="true"></span>
+          <h2 class="rc-cockpit-box__heading h2">1 &middot; Guardrails that don&rsquo;t negotiate.</h2>
+          <div class="rc-cockpit-box__body">
+            <p class="body">Deterministic gates run before every tool call &mdash; no language model in the gate. Dangerous commands, force-pushes, production migrations and secret leaks are stopped before they run; anything irreversible always gets a human yes/no, even in autonomous mode.</p>
+          </div>
+        </div>
+        <div class="rc-cockpit-box benefit-tile">
+          <span class="block-cap block-cap--ink" aria-hidden="true"></span>
+          <h2 class="rc-cockpit-box__heading h2">2 &middot; A team, not a chatbot.</h2>
+          <div class="rc-cockpit-box__body">
+            <p class="body">Twelve specialist agents &mdash; planning, backend, testing, review, UI, research and more &mdash; dispatched in parallel on locked file sets. <code>/team-lead</code> decomposes the work, delegates it and reviews every wave.</p>
+          </div>
+        </div>
+        <div class="rc-cockpit-box benefit-tile">
+          <span class="block-cap block-cap--go" aria-hidden="true"></span>
+          <h2 class="rc-cockpit-box__heading h2">3 &middot; See it in the Cockpit.</h2>
+          <div class="rc-cockpit-box__body">
+            <p class="body">A tmux sidebar next to Claude Code: context and cost, running subagents, workflow progress, links and files &mdash; updated live from the same hooks. (Companion repo: claude-cockpit; screenshots show demo data.)</p>
+          </div>
+        </div>
+        <div class="rc-cockpit-box benefit-tile">
+          <span class="block-cap block-cap--focus" aria-hidden="true"></span>
+          <h2 class="rc-cockpit-box__heading h2">4 &middot; Pseudonymized by design.</h2>
+          <div class="rc-cockpit-box__body">
+            <p class="body">Real project names, machine paths and personal identifiers live only in a local vault. Every write, every commit and every publish is checked: 0 real values in any tracked file.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="learns">
+    <div class="wrap prose">
+      <h2 class="h2">It learns from the work.</h2>
+      <p class="body">Friction in a session becomes a signal; signals become reviewed proposals; you decide which become rules. Nothing changes the framework without a human.</p>
+      <p class="body"><a href="how-it-works.html">Read how it works &rarr;</a></p>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+
+  <section class="proof-points-section">
+    <div class="wrap">
+      <div class="proof-points">
+        <p class="small">21 always-loaded rules, 22 commands, 51 skills, 12 agents, 42 hooks, 3 scheduled routines (tracked in the published repo)</p>
+        <p class="small">28 regression suites, 1,100+ assertions, all green before every release</p>
+        <p class="small">14 deterministic gates a session meets (guard-unsafe, agency gates, secret scan, vault gate, file/config protection &hellip;)</p>
+        <p class="small">MIT license &middot; macOS, Linux, Windows &middot; one-line install</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+
+  <section class="demo-figures-section">
+    <div class="wrap">
+      <div class="demo-figures">
+        <figure>
+          <img src="assets/demo/gate-demo.svg" alt="A force-push command being stopped by a guardrail, waiting for a human yes or no.">
+          <figcaption class="small">Guardrails that don&rsquo;t negotiate. Deterministic gates run before every tool call &mdash; no language model in the gate.</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/demo/team-lead-demo.svg" alt="The team-lead command dispatching specialist agents in parallel.">
+          <figcaption class="small">A team, not a chatbot. <code>/team-lead</code> decomposes the work, delegates it and reviews every wave.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="install-quick">
+    <div class="wrap prose">
+      <h2 class="h2">Install in one line</h2>
+      <div class="install-quick__row">
+        <div class="block-bar" aria-hidden="true">
+          <span class="block-bar__seg block-bar__seg--clay"></span>
+          <span class="block-bar__seg block-bar__seg--go"></span>
+        </div>
+        <div class="code-block">
+          <pre><code id="quick-install-cmd">bash &lt;(curl -fsSL https://raw.githubusercontent.com/emanuelrechsteiner/claude-rcode/main/install.sh)</code></pre>
+          <button class="copy-btn" type="button" data-copy-target="quick-install-cmd">Copy</button>
+        </div>
+      </div>
+      <p class="body"><a href="install.html">See all install options (Windows, manual, updating) &rarr;</a></p>
+    </div>
+  </section>
+
+</main>
+
+<div class="block-rule" aria-hidden="true">
+  <span class="block-rule__seg block-rule__seg--clay"></span>
+  <span class="block-rule__seg block-rule__seg--ink"></span>
+  <span class="block-rule__seg block-rule__seg--go"></span>
+  <span class="block-rule__seg block-rule__seg--wait"></span>
+  <span class="block-rule__seg block-rule__seg--focus"></span>
+  <span class="block-rule__seg block-rule__seg--dither"></span>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="small">R.Code for Claude Code is an independent, community-maintained open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. &quot;Claude&quot; and &quot;Claude Code&quot; are trademarks of Anthropic, PBC. This project provides configuration files (rules, agents, hooks, skills) for use with Anthropic&rsquo;s Claude Code and claims no rights to those names or logos.</p>
+    <p class="small"><a href="https://github.com/emanuelrechsteiner/claude-rcode/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/emanuelrechsteiner/claude-rcode">View on GitHub</a></p>
+  </div>
+</footer>
+
+<script src="assets/ds/bundle.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

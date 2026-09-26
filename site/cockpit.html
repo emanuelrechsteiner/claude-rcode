@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('rcode-theme');
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cockpit &middot; R.Code for Claude Code</title>
+<meta name="description" content="Cockpit is a companion tmux dashboard for R.Code for Claude Code: context and usage, active subagents, workflow progress, links and files, updated live from the same hooks.">
+<link rel="canonical" href="https://rcode-for-claude-code.vercel.app/cockpit.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="R.Code for Claude Code">
+<meta property="og:title" content="Cockpit &middot; R.Code for Claude Code">
+<meta property="og:description" content="Cockpit is a companion tmux dashboard for R.Code for Claude Code: context and usage, active subagents, workflow progress, links and files, updated live from the same hooks.">
+<meta property="og:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<meta property="og:url" content="https://rcode-for-claude-code.vercel.app/cockpit.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cockpit &middot; R.Code for Claude Code">
+<meta name="twitter:description" content="Cockpit is a companion tmux dashboard for R.Code for Claude Code, updated live from the same hooks.">
+<meta name="twitter:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<link rel="icon" href="assets/brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds/tokens.css">
+<link rel="stylesheet" href="assets/ds/bundle.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand-mark" href="index.html" aria-label="R.Code for Claude Code — home">
+      <span class="brand-mark__main">R.Code</span><span class="brand-mark__sub">for Claude Code</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="install.html">Install</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="cockpit.html" aria-current="page">Cockpit</a>
+      <a href="vault.html">Vault</a>
+      <a href="https://github.com/emanuelrechsteiner/claude-rcode">GitHub</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-hero">
+    <div class="wrap page-hero__inner">
+      <div class="page-hero__copy prose">
+        <h1 class="h1">See it in the Cockpit</h1>
+        <p class="lead">Rules and hooks are invisible until something happens. The Cockpit is a companion tmux dashboard for R.Code for Claude Code that makes a session visible while you work &mdash; a sidebar pane next to Claude Code showing context and cost, running subagents, workflow progress, and clickable links and files, fed by the same hooks this repo registers. It&rsquo;s optional; nothing in the framework depends on it.</p>
+        <p class="body">The Cockpit runs as a tmux sidebar next to Claude Code, in any terminal. Both screenshots below were captured in Ghostty.</p>
+      </div>
+      <div class="page-hero__blocks" aria-hidden="true">
+        <svg viewBox="0 0 488 316" width="488" height="316" focusable="false" role="presentation">
+          <defs>
+            <pattern id="page-hero-dither" width="16" height="16" patternUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="8" height="8" fill="var(--clay)"></rect>
+              <rect x="8" y="8" width="8" height="8" fill="var(--clay)"></rect>
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="320" height="176" rx="4" fill="var(--clay)"></rect>
+          <rect x="320" y="128" width="160" height="48" fill="url(#page-hero-dither)"></rect>
+          <rect x="0" y="200" width="160" height="116" rx="4" fill="var(--ink)"></rect>
+          <rect x="184" y="200" width="96" height="48" rx="4" fill="var(--go)"></rect>
+          <rect x="304" y="200" width="64" height="48" rx="4" fill="var(--wait)"></rect>
+          <rect x="392" y="200" width="96" height="116" rx="4" fill="var(--focus)"></rect>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <figure class="hero-shot">
+        <div class="framed-shot"><img src="assets/cockpit/cockpit-hero.png" width="1600" height="900" alt="Claude Code running /team-lead on the left, the Cockpit sidebar with seven live cards on the right, in a Ghostty terminal window"></div>
+        <figcaption class="section-caption small"><em>Claude Code and the Cockpit side by side in Ghostty. Demo data.</em></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="shot-pair">
+        <figure>
+          <div class="framed-shot"><img src="assets/cockpit/cockpit-closeup.png" alt="The Cockpit column close-up, the Subagents card focused with a highlighted border."></div>
+          <figcaption class="small">Close-up &mdash; the Subagents card selected. The border and heading move into the <code>focus</code> color.</figcaption>
+        </figure>
+        <figure>
+          <div class="framed-shot"><img src="assets/cockpit/cockpit-fokus.png" alt="The Cockpit column with the Subagents card focused, border and heading in the focus color."></div>
+          <figcaption class="small">Focused &mdash; the Subagents card selected. Border and heading move into the <code>focus</code> color, and the footer shows the keyboard shortcuts for that card.</figcaption>
+        </figure>
+      </div>
+      <p class="section-caption small">Demo data only &mdash; <code>example-org/demo-projekt</code>, sample links, and placeholder file names. No real project name, path, or person appears in either screenshot.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">Seven cards, updated live</h2>
+      <p class="body">Two info cards sit on top: context-window usage and session/weekly usage. Below them are seven numbered cards you can jump to with <code>&#8984;1</code>&ndash;<code>&#8984;7</code>: 1 &middot; Model &amp; Effort, 2 &middot; Team Lead, 3 &middot; Subagents (per-agent status &mdash; <code>&#10003;</code> done, <code>&#10007;</code> failed, <code>&#10227;</code> running), 4 &middot; Workflows, 5 &middot; Links, 6 &middot; Files and 7 &middot; Plugins. All of them are fed by the same hooks this repo registers.</p>
+      <p class="body"><strong>Workflows</strong> shows the overall bar for the session&rsquo;s task list, and under it every task as its own row with its own bar: full when done, empty while open, a travelling two-cell block while it runs. A task reports a state, not a percentage, so the bar never pretends to measure one.</p>
+      <p class="body">See <a href="https://github.com/emanuelrechsteiner/claude-cockpit">claude-cockpit</a> for setup and the full keybinding table.</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="block-rule" aria-hidden="true">
+  <span class="block-rule__seg block-rule__seg--clay"></span>
+  <span class="block-rule__seg block-rule__seg--ink"></span>
+  <span class="block-rule__seg block-rule__seg--go"></span>
+  <span class="block-rule__seg block-rule__seg--wait"></span>
+  <span class="block-rule__seg block-rule__seg--focus"></span>
+  <span class="block-rule__seg block-rule__seg--dither"></span>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="small">R.Code for Claude Code is an independent, community-maintained open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. &quot;Claude&quot; and &quot;Claude Code&quot; are trademarks of Anthropic, PBC. This project provides configuration files (rules, agents, hooks, skills) for use with Anthropic&rsquo;s Claude Code and claims no rights to those names or logos.</p>
+    <p class="small"><a href="https://github.com/emanuelrechsteiner/claude-rcode/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/emanuelrechsteiner/claude-rcode">View on GitHub</a></p>
+  </div>
+</footer>
+
+<script src="assets/ds/bundle.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

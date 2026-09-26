@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 460" width="880" height="460" role="img" aria-labelledby="teamLeadTitle teamLeadDesc" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#ececec">
+<title id="teamLeadTitle">R.Code for Claude Code dispatches parallel agents via /team-lead</title>
+<desc id="teamLeadDesc">A terminal and Cockpit demo showing /team-lead dispatch three parallel agents on disjoint file-sets while a progress bar and status list report live completion.</desc>
+<defs>
+<clipPath id="clipPrompt2" clipPathUnits="userSpaceOnUse"><rect x="40" y="77" width="520" height="26"><animate attributeName="width" dur="14s" repeatCount="indefinite" calcMode="linear" keyTimes="0;0.2143;1" values="0;520;520"/></rect></clipPath>
+<pattern id="ditherInk" patternUnits="userSpaceOnUse" width="16" height="16"><rect x="0" y="0" width="8" height="8" fill="#ececec"/><rect x="8" y="8" width="8" height="8" fill="#ececec"/></pattern>
+</defs>
+<rect x="0" y="0" width="880" height="460" fill="#0c0c0c"/>
+<rect x="24" y="24" width="560" height="412" rx="4" fill="#151515" stroke="#3a3a3a" stroke-width="1"/>
+<line x1="24" y1="60" x2="584" y2="60" stroke="#3a3a3a" stroke-width="1"/>
+<text x="40" y="46" font-size="13" fill="#9a9a9a">claude — demo-projekt</text>
+<g clip-path="url(#clipPrompt2)"><text x="40" y="96" font-size="16" fill="#ececec">$ /team-lead "Add a /health endpoint with a test"</text></g>
+<g opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.2143;0.2286;1" values="0;0;1;1"/>
+<text x="40" y="120" font-size="16" fill="#9a9a9a">Dispatching 3 parallel agents on disjoint</text>
+<text x="40" y="144" font-size="16" fill="#9a9a9a">file-sets; locks pre-claimed</text>
+</g>
+<text y="184" opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.7857;0.8;1" values="0;0;1;1"/><tspan x="40" font-size="16" fill="#5fb800">✓</tspan><tspan dx="8" font-size="16" fill="#ececec">3/3 units done · tests green</tspan></text>
+<rect x="608" y="24" width="248" height="204" rx="4" fill="#151515" stroke="#3a3a3a" stroke-width="1"/>
+<text x="624" y="58" font-size="20" font-weight="700" fill="#ececec">2 · Subagents</text>
+<text x="624" y="98" font-size="14" fill="#d4a900" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2857;0.2871;1" values="1;1;0;0"/>⟳</text>
+<text x="624" y="98" font-size="14" fill="#5fb800" opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2857;0.2871;1" values="0;0;1;1"/>✓</text>
+<text x="648" y="98" font-size="14" fill="#ececec">planning-agent</text>
+<text x="624" y="120" font-size="14" fill="#d4a900" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.5;0.5014;1" values="1;1;0;0"/>⟳</text>
+<text x="624" y="120" font-size="14" fill="#5fb800" opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.5;0.5014;1" values="0;0;1;1"/>✓</text>
+<text x="648" y="120" font-size="14" fill="#ececec">backend-agent</text>
+<text x="624" y="142" font-size="14" fill="#d4a900" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.7143;0.7157;1" values="1;1;0;0"/>⟳</text>
+<text x="624" y="142" font-size="14" fill="#5fb800" opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.7143;0.7157;1" values="0;0;1;1"/>✓</text>
+<text x="648" y="142" font-size="14" fill="#ececec">testing-agent</text>
+<rect x="608" y="252" width="248" height="184" rx="4" fill="#151515" stroke="#3a3a3a" stroke-width="1"/>
+<text x="624" y="286" font-size="20" font-weight="700" fill="#ececec">3 · Workflows</text>
+<text x="624" y="328" font-size="14" fill="#ececec">Tasks</text>
+<text x="672" y="328" font-size="14" fill="#9a9a9a">[</text>
+<rect x="682" y="316" width="90" height="14" fill="url(#ditherInk)"/>
+<rect x="682" y="316" width="90" height="14" fill="#ececec"><animate attributeName="width" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2857;0.5;0.7143;1" values="0;30;60;90;90"/></rect>
+<text x="776" y="328" font-size="14" fill="#9a9a9a">]</text>
+<text x="788" y="328" font-size="14" fill="#ececec" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2857;0.5;0.7143;1" values="1;0;0;0;0"/>0/3</text>
+<text x="788" y="328" font-size="14" fill="#ececec" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2857;0.5;0.7143;1" values="0;1;0;0;0"/>1/3</text>
+<text x="788" y="328" font-size="14" fill="#ececec" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2857;0.5;0.7143;1" values="0;0;1;0;0"/>2/3</text>
+<text x="788" y="328" font-size="14" fill="#ececec" opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2857;0.5;0.7143;1" values="0;0;0;1;1"/>3/3</text>
+</svg>

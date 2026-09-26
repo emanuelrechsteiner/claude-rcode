@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('rcode-theme');
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found &middot; R.Code for Claude Code</title>
+<meta name="description" content="This page does not exist. Back to R.Code for Claude Code.">
+<link rel="icon" href="assets/brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds/tokens.css">
+<link rel="stylesheet" href="assets/ds/bundle.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand-mark" href="index.html" aria-label="R.Code for Claude Code — home">
+      <span class="brand-mark__main">R.Code</span><span class="brand-mark__sub">for Claude Code</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="install.html">Install</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="cockpit.html">Cockpit</a>
+      <a href="vault.html">Vault</a>
+      <a href="https://github.com/emanuelrechsteiner/claude-rcode">GitHub</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="not-found page-hero page-hero--center">
+    <div class="wrap page-hero__inner">
+      <div class="page-hero__blocks" aria-hidden="true">
+        <svg viewBox="0 0 488 316" width="488" height="316" focusable="false" role="presentation">
+          <defs>
+            <pattern id="page-hero-dither" width="16" height="16" patternUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="8" height="8" fill="var(--clay)"></rect>
+              <rect x="8" y="8" width="8" height="8" fill="var(--clay)"></rect>
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="320" height="176" rx="4" fill="var(--clay)"></rect>
+          <rect x="320" y="128" width="160" height="48" fill="url(#page-hero-dither)"></rect>
+          <rect x="0" y="200" width="160" height="116" rx="4" fill="var(--ink)"></rect>
+          <rect x="184" y="200" width="96" height="48" rx="4" fill="var(--go)"></rect>
+          <rect x="304" y="200" width="64" height="48" rx="4" fill="var(--wait)"></rect>
+          <rect x="392" y="200" width="96" height="116" rx="4" fill="var(--focus)"></rect>
+        </svg>
+      </div>
+      <div class="page-hero__copy prose">
+        <h1 class="h1">404</h1>
+        <p class="lead">This page does not exist.</p>
+        <p class="body"><a href="index.html">Back to R.Code for Claude Code home &rarr;</a></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+</main>
+
+<div class="block-rule" aria-hidden="true">
+  <span class="block-rule__seg block-rule__seg--clay"></span>
+  <span class="block-rule__seg block-rule__seg--ink"></span>
+  <span class="block-rule__seg block-rule__seg--go"></span>
+  <span class="block-rule__seg block-rule__seg--wait"></span>
+  <span class="block-rule__seg block-rule__seg--focus"></span>
+  <span class="block-rule__seg block-rule__seg--dither"></span>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="small">R.Code for Claude Code is an independent, community-maintained open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. &quot;Claude&quot; and &quot;Claude Code&quot; are trademarks of Anthropic, PBC. This project provides configuration files (rules, agents, hooks, skills) for use with Anthropic&rsquo;s Claude Code and claims no rights to those names or logos.</p>
+    <p class="small"><a href="https://github.com/emanuelrechsteiner/claude-rcode/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/emanuelrechsteiner/claude-rcode">View on GitHub</a></p>
+  </div>
+</footer>
+
+<script src="assets/ds/bundle.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

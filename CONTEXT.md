@@ -26,6 +26,8 @@ Purpose: Framework glossary for claude-code-config — terms coined once (rules/
 
 **Check trio** — a project's three pre-commit checks (type/build · test · lint), defined once in that project's own `CLAUDE.md` → `## Mandatory Pre-Commit`.
 
-**R.Code framework vs. R.Code workflow** — the public repo `claude-rcode` brands this whole configuration "R.Code"; inside this repo, "R.Code" usually means the project workflow (`.rcode/`). Say "R.Code workflow" when the project methodology specifically is meant.
+**R.Code for Claude Code** — the product name of this framework in every public and marketing surface (README, website, design system, release titles, social preview): the full name in titles, hero, social preview and the first mention per page or section; "R.Code" alone in running text after that. Never "Claude R.Code" — Anthropic's Claude Code legal page forbids "Claude"/"Claude Code" as part of a third-party product name (code.claude.com/docs/en/legal-and-compliance, read 2026-09-26). Owner decision 2026-09-26 („Nimm R.Code for Claude Code"), superseding "Claude R.Code" from earlier the same day. Tagline: "Build smarter. Build better." Repo and path names (`claude-rcode`, `.rcode/`, `rcode/`) stay as they are.
+
+**R.Code framework vs. R.Code workflow** — inside this repo, "R.Code" usually means the project workflow (`.rcode/`); the whole framework is "R.Code for Claude Code" (see above). Say "R.Code workflow" when the project methodology specifically is meant.
 
 **IMP / Ledger** — a numbered, ledger-tracked improvement (`IMP-NNN`, `global-observation/improvement-ledger.json`). Not every rework carries one — see `docs/adr/0002-rcode-plan-folgt-praxis.md` for a decision recorded without an IMP number.

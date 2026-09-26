@@ -1,0 +1,175 @@
+/* R.Code for Claude Code component styles. Class prefix: rc-. Values are tokens
+   only, except 1px/2px border and outline widths. */
+
+/* ---- CockpitBox --------------------------------------------------- */
+
+.rc-cockpit-box {
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+}
+
+.rc-cockpit-box--selected {
+  border-color: var(--focus);
+}
+
+.rc-cockpit-box__heading {
+  margin: 0 0 var(--space-4) 0;
+  color: var(--ink);
+}
+
+.rc-cockpit-box--selected .rc-cockpit-box__heading {
+  color: var(--focus);
+}
+
+.rc-cockpit-box__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--ink);
+}
+
+/* ---- ProgressBar ---------------------------------------------------------- */
+
+.rc-progressbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.rc-progressbar__label {
+  color: var(--muted);
+}
+
+.rc-progressbar__track {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--space-4);
+  border-radius: var(--radius-none);
+  overflow: hidden;
+  /* Dither: the unfilled remainder, space-2 cells in the bar's own tone,
+     never a grey track. */
+  background-image: linear-gradient(
+      45deg,
+      var(--rc-tone) 25%,
+      transparent 25%,
+      transparent 75%,
+      var(--rc-tone) 75%
+    ),
+    linear-gradient(
+      45deg,
+      var(--rc-tone) 25%,
+      transparent 25%,
+      transparent 75%,
+      var(--rc-tone) 75%
+    );
+  background-size: calc(var(--space-2) * 2) calc(var(--space-2) * 2);
+  background-position: 0 0, var(--space-2) var(--space-2);
+}
+
+.rc-progressbar__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: var(--radius-none);
+  background: var(--rc-tone);
+}
+
+/* ---- StatusList ------------------------------------------------------------ */
+
+.rc-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rc-status-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.rc-status-row__glyph {
+  display: inline-block;
+  min-width: var(--space-4);
+  text-align: center;
+}
+
+.rc-status-row__label {
+  color: var(--ink);
+}
+
+.rc-status-row__detail {
+  color: var(--muted);
+}
+
+/* ---- Button ----------------------------------------------------------- */
+
+.rc-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rc-button--primary {
+  background: var(--clay);
+  border-color: var(--clay);
+  color: var(--on-clay);
+}
+
+.rc-button--secondary {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.rc-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- Chip ------------------------------------------------------------- */
+
+.rc-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--rc-tone);
+  color: var(--ground);
+  white-space: nowrap;
+}
+
+/* ---- Terminal --------------------------------------------------------- */
+
+.rc-terminal {
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rc-terminal__line {
+  color: var(--ink);
+  white-space: pre;
+}

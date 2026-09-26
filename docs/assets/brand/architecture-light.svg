@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560" role="img" aria-labelledby="arch-light-title arch-light-desc">
+  <title id="arch-light-title">How R.Code fits together</title>
+  <desc id="arch-light-desc">You direct the main thread, which dispatches specialized agents and skills; every tool call and edit passes through PreToolUse and PostToolUse hooks; PostToolUse hooks log signals that a meta-observer turns into proposals, which after your review become rules that are always loaded into the main thread.</desc>
+  <defs>
+    <marker id="arrow-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#161616"/>
+    </marker>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5f5e5a"/>
+    </marker>
+    <marker id="arrow-go" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3b7a00"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="560" fill="#f6f5f2"/>
+
+  <g font-family="'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace">
+
+    <!-- Group: session -->
+    <rect x="40" y="40" width="420" height="400" rx="4" fill="#f6f5f2" stroke="#cfccc4" stroke-width="1"/>
+    <text x="56" y="66" font-size="12" letter-spacing="0.08em" fill="#5f5e5a">CLAUDE CODE SESSION</text>
+
+    <rect x="64" y="104" width="110" height="48" rx="4" fill="#ffffff" stroke="#b8552f" stroke-width="1"/>
+    <text x="119" y="132" text-anchor="middle" font-weight="700" font-size="14" fill="#b8552f">You</text>
+
+    <rect x="210" y="100" width="250" height="64" rx="4" fill="#ffffff" stroke="#cfccc4" stroke-width="1"/>
+    <text x="335" y="126" text-anchor="middle" font-weight="700" font-size="14" fill="#161616">Main thread</text>
+    <text x="335" y="146" text-anchor="middle" font-size="11.5" fill="#5f5e5a">orchestrates</text>
+
+    <rect x="210" y="204" width="250" height="84" rx="4" fill="#ffffff" stroke="#cfccc4" stroke-width="1"/>
+    <text x="335" y="234" text-anchor="middle" font-weight="700" font-size="14" fill="#161616">Specialized agents</text>
+    <text x="335" y="256" text-anchor="middle" font-size="11" fill="#5f5e5a">backend &#183; testing &#183; ui &#183; review</text>
+
+    <rect x="210" y="328" width="250" height="84" rx="4" fill="#ffffff" stroke="#cfccc4" stroke-width="1"/>
+    <text x="335" y="358" text-anchor="middle" font-weight="700" font-size="14" fill="#161616">Skills</text>
+    <text x="335" y="380" text-anchor="middle" font-size="11" fill="#5f5e5a">research &#183; docs &#183; git &#183; debug</text>
+
+    <!-- Group: guardrails -->
+    <rect x="500" y="40" width="400" height="260" rx="4" fill="#f6f5f2" stroke="#cfccc4" stroke-width="1"/>
+    <text x="516" y="66" font-size="12" letter-spacing="0.08em" fill="#5f5e5a">DETERMINISTIC GUARDRAILS</text>
+
+    <rect x="524" y="96" width="352" height="90" rx="4" fill="#ffffff" stroke="#b42318" stroke-width="1"/>
+    <text x="700" y="122" text-anchor="middle" font-weight="700" font-size="14" fill="#161616">PreToolUse hooks</text>
+    <text x="700" y="142" text-anchor="middle" font-size="11" fill="#5f5e5a">agency gates &#183; secret scan &#183;</text>
+    <text x="700" y="158" text-anchor="middle" font-size="11" fill="#5f5e5a">vault gate &#183; file protection</text>
+
+    <rect x="524" y="204" width="352" height="76" rx="4" fill="#ffffff" stroke="#007d82" stroke-width="1"/>
+    <text x="700" y="232" text-anchor="middle" font-weight="700" font-size="14" fill="#161616">PostToolUse hooks</text>
+    <text x="700" y="252" text-anchor="middle" font-size="11" fill="#5f5e5a">auto-format &#183; validation &#183; signal capture</text>
+
+    <!-- Group: self-improvement loop -->
+    <rect x="500" y="340" width="660" height="150" rx="4" fill="#f6f5f2" stroke="#cfccc4" stroke-width="1"/>
+    <text x="516" y="364" font-size="12" letter-spacing="0.08em" fill="#5f5e5a">SELF-IMPROVEMENT LOOP</text>
+
+    <rect x="524" y="396" width="135" height="64" rx="4" fill="#ffffff" stroke="#cfccc4" stroke-width="1"/>
+    <text x="591.5" y="432" text-anchor="middle" font-weight="700" font-size="13.5" fill="#161616">signals.jsonl</text>
+
+    <rect x="691" y="396" width="135" height="64" rx="4" fill="#ffffff" stroke="#cfccc4" stroke-width="1"/>
+    <text x="758.5" y="432" text-anchor="middle" font-weight="700" font-size="13.5" fill="#161616">meta-observer</text>
+
+    <rect x="858" y="396" width="110" height="64" rx="4" fill="#ffffff" stroke="#cfccc4" stroke-width="1"/>
+    <text x="913" y="432" text-anchor="middle" font-weight="700" font-size="14" fill="#161616">Proposals</text>
+
+    <rect x="1000" y="396" width="136" height="64" rx="4" fill="#ffffff" stroke="#cfccc4" stroke-width="1"/>
+    <text x="1068" y="432" text-anchor="middle" font-weight="700" font-size="14" fill="#161616">rules/*.md</text>
+
+    <!-- Edges: session internals -->
+    <line x1="174" y1="128" x2="205" y2="132" stroke="#161616" stroke-width="1.5" marker-end="url(#arrow-ink)"/>
+
+    <line x1="335" y1="164" x2="335" y2="199" stroke="#161616" stroke-width="1.5" marker-end="url(#arrow-ink)"/>
+    <text x="345" y="188" font-size="12" fill="#5f5e5a">Task tool</text>
+
+    <polyline points="210,140 190,140 190,370 205,370" fill="none" stroke="#161616" stroke-width="1.5" marker-end="url(#arrow-ink)"/>
+    <text x="182" y="258" text-anchor="end" font-size="12" fill="#5f5e5a">forked context</text>
+
+    <!-- Edges: session -> guardrails (dashed) -->
+    <line x1="460" y1="130" x2="519" y2="138" stroke="#5f5e5a" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-muted)"/>
+    <text x="486" y="112" text-anchor="middle" font-size="11.5" fill="#5f5e5a">every tool call</text>
+
+    <line x1="460" y1="246" x2="519" y2="242" stroke="#5f5e5a" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-muted)"/>
+    <text x="486" y="226" text-anchor="middle" font-size="11.5" fill="#5f5e5a">every edit</text>
+
+    <!-- Edge: PostToolUse -> signals.jsonl -->
+    <polyline points="700,280 700,384 591.5,384 591.5,391" fill="none" stroke="#161616" stroke-width="1.5" marker-end="url(#arrow-ink)"/>
+
+    <!-- Edges: self-improvement chain -->
+    <line x1="659" y1="428" x2="686" y2="428" stroke="#161616" stroke-width="1.5" marker-end="url(#arrow-ink)"/>
+    <line x1="826" y1="428" x2="853" y2="428" stroke="#161616" stroke-width="1.5" marker-end="url(#arrow-ink)"/>
+    <line x1="968" y1="428" x2="995" y2="428" stroke="#3b7a00" stroke-width="1.5" marker-end="url(#arrow-go)"/>
+    <text x="984" y="384" text-anchor="middle" font-size="11.5" fill="#5f5e5a">your review</text>
+
+    <!-- Edge: rules/*.md -> Main thread (routed around) -->
+    <polyline points="1068,396 1068,20 335,20 335,95" fill="none" stroke="#161616" stroke-width="1.5" marker-end="url(#arrow-ink)"/>
+    <text x="701" y="14" text-anchor="middle" font-size="11.5" fill="#5f5e5a">always loaded</text>
+
+  </g>
+</svg>

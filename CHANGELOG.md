@@ -12,6 +12,37 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-26
+
+A name that follows Anthropic's rules, a website, and a front page that shows
+what the framework does. No rule, hook, skill, agent, script or setting changed.
+
+### Added
+
+- Website at <https://rcode-for-claude-code.vercel.app/>: home, install,
+  how it works, Cockpit and vault pages. Static files in `site/`, served by
+  Vercel; deployed by the maintainer with each release (`docs/PUBLISHING.md`).
+- Two animated terminal demos in `docs/assets/demo/`: the Autonomy Arbiter
+  stopping `gh pr merge` until you answer, and `/team-lead` running three
+  agents while the Cockpit shows their progress.
+- Brand assets in `docs/assets/brand/`: wordmark, banners for light and dark
+  themes, social preview image (1280×640), favicon, and the architecture
+  diagram (`architecture-{dark,light}.svg`) in the brand's own style.
+- Cockpit product images in `docs/assets/cockpit/`: Claude Code and the
+  Cockpit side by side in Ghostty, and the Cockpit column up close. Demo
+  data only.
+- The block composition from the banner (colored, modular blocks) is the
+  brand's primary motif and runs through every page of the website.
+
+### Changed
+
+- The project is named **R.Code for Claude Code**. Anthropic does not allow
+  "Claude" or "Claude Code" as part of a third-party product name. The
+  repository name `claude-rcode` stays.
+- README rebuilt as a front page: banner, tagline "Build smarter. Build
+  better.", four benefits, demos, one-line install, generated component counts.
+- Trademark notice on the README and every site page.
+
 ## [1.3.0] - 2026-09-26
 
 Pseudonymized by design: real names, machine paths and personal identifiers
@@ -127,7 +158,8 @@ developer's machine; the framework carries tokens. Decision record:
 
 Superseded. Their history was replaced by 1.1.0 and is no longer available.
 
-[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.1.0...v1.1.1

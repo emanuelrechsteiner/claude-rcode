@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 460" width="880" height="460" role="img" aria-labelledby="gateTitle gateDesc" font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#ececec">
+<title id="gateTitle">R.Code for Claude Code stops a pull-request merge until you say yes</title>
+<desc id="gateDesc">A terminal demo: the agent tries "gh pr merge 42", the Autonomy Arbiter gate blocks it as irreversible, the user answers no, and nothing is merged.</desc>
+<defs>
+<clipPath id="clipPrompt" clipPathUnits="userSpaceOnUse"><rect x="40" y="77" width="250" height="26"><animate attributeName="width" dur="14s" repeatCount="indefinite" calcMode="linear" keyTimes="0;0.2143;1" values="0;250;250"/></rect></clipPath>
+</defs>
+<rect x="0" y="0" width="880" height="460" fill="#0c0c0c"/>
+<rect x="24" y="24" width="832" height="412" rx="4" fill="#151515" stroke="#3a3a3a" stroke-width="1"/>
+<line x1="24" y1="60" x2="856" y2="60" stroke="#3a3a3a" stroke-width="1"/>
+<text x="40" y="46" font-size="13" fill="#9a9a9a">claude — demo-projekt</text>
+<g clip-path="url(#clipPrompt)"><text x="40" y="96" font-size="16" fill="#ececec">$ gh pr merge 42 --merge</text></g>
+<rect x="276" y="79" width="9" height="18" fill="#ececec" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.2143;0.2232;0.2321;0.2411;0.25;0.2589;0.2679;0.2768;0.2857" values="0;1;0;1;0;1;0;1;0;0"/></rect>
+<g opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.2857;0.3;1" values="0;0;1;1"/>
+<rect x="40" y="128" width="520" height="190" rx="4" fill="#151515" stroke="#ff5c5c" stroke-width="1"/>
+<text x="56" y="160" font-size="16" fill="#ff5c5c">AUTONOMY ARBITER — ESCALATE (irreversible op,</text>
+<text x="56" y="184" font-size="16" fill="#ff5c5c">requires user y/n even in YOLO mode)</text>
+<text y="208"><tspan x="56" fill="#9a9a9a">Op:</tspan><tspan x="142" fill="#ececec">gh pr merge</tspan></text>
+<text y="232"><tspan x="56" fill="#9a9a9a">Reason:</tspan><tspan x="142" fill="#ececec">merges + closes the PR and notifies</tspan></text>
+<text x="142" y="256" font-size="16" fill="#ececec">others; cannot be unmerged cleanly</text>
+<text x="56" y="292" font-size="16" fill="#ececec">Proceed? (y/n) n</text>
+<rect x="196" y="276" width="16" height="20" fill="#151515" opacity="0"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.5;0.5143;1" values="1;1;0;0"/></rect>
+</g>
+<g opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.2857;0.3;1" values="0;0;1;1"/>
+<rect x="612" y="72" width="220" height="100" rx="4" fill="#151515" stroke="#3a3a3a" stroke-width="1"/>
+<text x="628" y="100" font-size="20" font-weight="700" fill="#ececec">1 · Team Lead</text>
+<rect x="628" y="118" width="130" height="24" rx="4" fill="#d4a900"/>
+<text x="636" y="135" font-size="13" fill="#0c0c0c">● needs-input</text>
+</g>
+<text x="40" y="350" font-size="16" fill="#ff5c5c" opacity="1"><animate attributeName="opacity" dur="14s" repeatCount="indefinite" keyTimes="0;0.5714;0.5857;1" values="0;0;1;1"/>✗ declined — nothing was merged</text>
+</svg>

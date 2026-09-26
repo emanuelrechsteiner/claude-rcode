@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('rcode-theme');
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install &middot; R.Code for Claude Code</title>
+<meta name="description" content="Install R.Code for Claude Code in one line on macOS, Linux or Windows, or clone it manually. Fresh, overwrite and augment modes explained.">
+<link rel="canonical" href="https://rcode-for-claude-code.vercel.app/install.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="R.Code for Claude Code">
+<meta property="og:title" content="Install &middot; R.Code for Claude Code">
+<meta property="og:description" content="Install R.Code for Claude Code in one line on macOS, Linux or Windows, or clone it manually. Fresh, overwrite and augment modes explained.">
+<meta property="og:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<meta property="og:url" content="https://rcode-for-claude-code.vercel.app/install.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Install &middot; R.Code for Claude Code">
+<meta name="twitter:description" content="Install R.Code for Claude Code in one line on macOS, Linux or Windows, or clone it manually.">
+<meta name="twitter:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<link rel="icon" href="assets/brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds/tokens.css">
+<link rel="stylesheet" href="assets/ds/bundle.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand-mark" href="index.html" aria-label="R.Code for Claude Code — home">
+      <span class="brand-mark__main">R.Code</span><span class="brand-mark__sub">for Claude Code</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="install.html" aria-current="page">Install</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="cockpit.html">Cockpit</a>
+      <a href="vault.html">Vault</a>
+      <a href="https://github.com/emanuelrechsteiner/claude-rcode">GitHub</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-hero">
+    <div class="wrap page-hero__inner">
+      <div class="page-hero__copy prose">
+        <h1 class="h1">Install R.Code for Claude Code</h1>
+        <p class="lead">One line gets you a complete, portable Claude Code setup on macOS, Linux, or Windows. The installer never touches credentials &mdash; Claude Code handles its own login on first launch.</p>
+      </div>
+      <div class="page-hero__blocks" aria-hidden="true">
+        <svg viewBox="0 0 488 316" width="488" height="316" focusable="false" role="presentation">
+          <defs>
+            <pattern id="page-hero-dither" width="16" height="16" patternUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="8" height="8" fill="var(--clay)"></rect>
+              <rect x="8" y="8" width="8" height="8" fill="var(--clay)"></rect>
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="320" height="176" rx="4" fill="var(--clay)"></rect>
+          <rect x="320" y="128" width="160" height="48" fill="url(#page-hero-dither)"></rect>
+          <rect x="0" y="200" width="160" height="116" rx="4" fill="var(--ink)"></rect>
+          <rect x="184" y="200" width="96" height="48" rx="4" fill="var(--go)"></rect>
+          <rect x="304" y="200" width="64" height="48" rx="4" fill="var(--wait)"></rect>
+          <rect x="392" y="200" width="96" height="116" rx="4" fill="var(--focus)"></rect>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">One-liner (Mac/Linux)</h2>
+      <div class="code-block">
+        <pre><code id="install-unix">bash &lt;(curl -fsSL https://raw.githubusercontent.com/emanuelrechsteiner/claude-rcode/main/install.sh)</code></pre>
+        <button class="copy-btn" type="button" data-copy-target="install-unix">Copy</button>
+      </div>
+      <p class="body"><code>install.sh</code> auto-detects the right mode for your machine:</p>
+      <table>
+        <thead>
+          <tr><th>Detected state</th><th>Mode</th><th>What happens</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>No <code>~/.claude</code>, or empty</td>
+            <td><strong>fresh</strong></td>
+            <td>Clones straight into <code>~/.claude</code>, copies templates to <code>*.local.*</code> overlays, makes hooks executable</td>
+          </tr>
+          <tr>
+            <td><code>~/.claude</code> already tracks this repo</td>
+            <td><strong>fresh</strong> (self-update)</td>
+            <td><code>git pull</code> &mdash; safe, your <code>.local.*</code> files are gitignored and untouched</td>
+          </tr>
+          <tr>
+            <td><code>~/.claude</code> has unrelated content</td>
+            <td>asks you</td>
+            <td>Prompts <code>overwrite | augment | abort</code> with a recommendation based on what it finds</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="body">You can also force a mode explicitly: <code>./install.sh --mode {auto|fresh|overwrite|augment}</code> (default <code>auto</code>).</p>
+      <ul>
+        <li class="body"><strong>fresh</strong> &mdash; clone (or self-update) straight into <code>~/.claude</code>.</li>
+        <li class="body"><strong>overwrite</strong> &mdash; backs up your entire existing <code>~/.claude</code> to <code>~/.claude.backup-&lt;timestamp&gt;</code> (nothing is deleted, only moved), then does a fresh install. Because moving your whole config is a state-changing operation, this always asks for a one-time confirmation, including when <code>--mode overwrite</code> is passed directly (skip with <code>--yes</code> once you&rsquo;re sure).</li>
+        <li class="body"><strong>augment</strong> &mdash; scans your existing <code>~/.claude</code> unit-by-unit (every rule, hook, skill, agent, command, plus your <code>settings.json</code>), classifies each unit against what you already have as <strong>new</strong> (safe to add), <strong>identical</strong> (skipped), or <strong>conflicting</strong> (shown as a diff, your call: keep yours / take this repo&rsquo;s / skip). It prints a recommendation based on how much new value would be added versus how much would collide. Nothing is written without your say-so per conflicting file, <code>settings.json</code> is never replaced wholesale (only its <code>hooks</code> registrations are merged via <code>jq</code>, your <code>env</code>/<code>model</code>/<code>permissions</code> stay untouched), and <code>--dry-run</code> prints the full report and changes nothing on disk.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">One-liner (Windows PowerShell)</h2>
+      <div class="code-block">
+        <pre><code id="install-win">iwr -useb https://raw.githubusercontent.com/emanuelrechsteiner/claude-rcode/main/install.ps1 | iex</code></pre>
+        <button class="copy-btn" type="button" data-copy-target="install-win">Copy</button>
+      </div>
+      <p class="body"><code>install.ps1</code> is a minimal, community-maintained installer: clone/backup only (no <code>augment</code> scan-and-merge &mdash; that logic is bash-only). The hooks themselves need WSL or Git Bash to execute; PowerShell alone gets you the files, not the automation.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">Manual (works everywhere with git)</h2>
+      <div class="code-block">
+        <pre><code id="install-manual-unix"># Mac/Linux:
+git clone https://github.com/emanuelrechsteiner/claude-rcode.git ~/.claude
+
+# Windows (PowerShell):
+git clone https://github.com/emanuelrechsteiner/claude-rcode.git $HOME\.claude
+
+# Then copy templates to personalize (both platforms):
+cp ~/.claude/templates/CLAUDE.local.md.template ~/.claude/CLAUDE.local.md
+cp ~/.claude/templates/identity.local.md.template ~/.claude/rules/identity.local.md</code></pre>
+        <button class="copy-btn" type="button" data-copy-target="install-manual-unix">Copy</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">Logging in</h2>
+      <p class="body">The installer never touches credentials. On first <code>claude</code> launch after install, Claude Code runs its own login flow:</p>
+      <pre class="code-block"><code>Setup complete. Start Claude Code with:  claude
+On first launch, Claude Code runs its OWN login flow &mdash; choose either:
+  &bull; Pro/Max subscription  &rarr; browser OAuth (claude.ai)
+  &bull; Anthropic API key      &rarr; paste when prompted, or export ANTHROPIC_API_KEY
+R.Code never stores or reads your credentials.</code></pre>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose rc-cockpit-box">
+      <h2 class="rc-cockpit-box__heading h2">First command</h2>
+      <div class="rc-cockpit-box__body">
+        <p class="body">Once installed and logged in, start any development task with <code>/team-lead "&lt;what you want&gt;"</code> &mdash; the entrance point that picks the right stage, loads its playbook, and dispatches. See <a href="how-it-works.html">How it works</a> for what happens after that.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="block-rule" aria-hidden="true">
+  <span class="block-rule__seg block-rule__seg--clay"></span>
+  <span class="block-rule__seg block-rule__seg--ink"></span>
+  <span class="block-rule__seg block-rule__seg--go"></span>
+  <span class="block-rule__seg block-rule__seg--wait"></span>
+  <span class="block-rule__seg block-rule__seg--focus"></span>
+  <span class="block-rule__seg block-rule__seg--dither"></span>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="small">R.Code for Claude Code is an independent, community-maintained open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. &quot;Claude&quot; and &quot;Claude Code&quot; are trademarks of Anthropic, PBC. This project provides configuration files (rules, agents, hooks, skills) for use with Anthropic&rsquo;s Claude Code and claims no rights to those names or logos.</p>
+    <p class="small"><a href="https://github.com/emanuelrechsteiner/claude-rcode/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/emanuelrechsteiner/claude-rcode">View on GitHub</a></p>
+  </div>
+</footer>
+
+<script src="assets/ds/bundle.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

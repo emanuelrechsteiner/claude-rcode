@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('rcode-theme');
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vault &middot; R.Code for Claude Code</title>
+<meta name="description" content="Real project names, machine paths and personal identifiers live only in a local vault. Every write, every commit and every publish is checked: 0 real values in any tracked file.">
+<link rel="canonical" href="https://rcode-for-claude-code.vercel.app/vault.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="R.Code for Claude Code">
+<meta property="og:title" content="Vault &middot; R.Code for Claude Code">
+<meta property="og:description" content="Real project names, machine paths and personal identifiers live only in a local vault. Every write, every commit and every publish is checked: 0 real values in any tracked file.">
+<meta property="og:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<meta property="og:url" content="https://rcode-for-claude-code.vercel.app/vault.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Vault &middot; R.Code for Claude Code">
+<meta name="twitter:description" content="Real project names, machine paths and personal identifiers live only in a local vault, checked on every write, commit and publish.">
+<meta name="twitter:image" content="https://rcode-for-claude-code.vercel.app/assets/brand/social-preview.png">
+<link rel="icon" href="assets/brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/ds/tokens.css">
+<link rel="stylesheet" href="assets/ds/bundle.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand-mark" href="index.html" aria-label="R.Code for Claude Code — home">
+      <span class="brand-mark__main">R.Code</span><span class="brand-mark__sub">for Claude Code</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="install.html">Install</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="cockpit.html">Cockpit</a>
+      <a href="vault.html" aria-current="page">Vault</a>
+      <a href="https://github.com/emanuelrechsteiner/claude-rcode">GitHub</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button">Switch to light</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-hero">
+    <div class="wrap page-hero__inner">
+      <div class="page-hero__copy prose">
+        <h1 class="h1">Pseudonymized by design</h1>
+        <p class="lead">R.Code for Claude Code keeps real names and paths out of the framework itself. Real project names, machine paths and personal identifiers live only in a local vault. Every write, every commit and every publish is checked: 0 real values in any tracked file.</p>
+      </div>
+      <div class="page-hero__blocks" aria-hidden="true">
+        <svg viewBox="0 0 488 316" width="488" height="316" focusable="false" role="presentation">
+          <defs>
+            <pattern id="page-hero-dither" width="16" height="16" patternUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="8" height="8" fill="var(--clay)"></rect>
+              <rect x="8" y="8" width="8" height="8" fill="var(--clay)"></rect>
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="320" height="176" rx="4" fill="var(--clay)"></rect>
+          <rect x="320" y="128" width="160" height="48" fill="url(#page-hero-dither)"></rect>
+          <rect x="0" y="200" width="160" height="116" rx="4" fill="var(--ink)"></rect>
+          <rect x="184" y="200" width="96" height="48" rx="4" fill="var(--go)"></rect>
+          <rect x="304" y="200" width="64" height="48" rx="4" fill="var(--wait)"></rect>
+          <rect x="392" y="200" width="96" height="116" rx="4" fill="var(--focus)"></rect>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <div class="block-rule" aria-hidden="true">
+    <span class="block-rule__seg block-rule__seg--clay"></span>
+    <span class="block-rule__seg block-rule__seg--ink"></span>
+    <span class="block-rule__seg block-rule__seg--go"></span>
+    <span class="block-rule__seg block-rule__seg--wait"></span>
+    <span class="block-rule__seg block-rule__seg--focus"></span>
+    <span class="block-rule__seg block-rule__seg--dither"></span>
+  </div>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">The vault</h2>
+      <p class="body">Real values live only on your machine, in a local vault (gitignored, never committed). The framework&rsquo;s own tracked files refer to them through tokens instead of the real value.</p>
+      <p class="body">Several spellings of the same real thing &mdash; a short name, a long name, another casing, a path alias &mdash; can share one group, so the same real entity stays recognizable as one entity after replacement, instead of splintering into unconnected tokens.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">Tokens, not placeholders</h2>
+      <p class="body">A token is an HMAC-SHA256 prefix keyed with a local secret, not a plain hash. Project and account names have too little entropy &mdash; a plain hash would be reversible by dictionary lookup; an HMAC keyed with a secret is not. On the same machine a token stays stable across sessions, so a record built over many sessions stays legible together. On a different machine, the same real value produces a different token &mdash; two developers&rsquo; vaults are never linkable against each other.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">Three gates, one matcher</h2>
+      <p class="body">A real value is refused at three independent points, all sourced from the same matcher so no second, independently written check can drift from the first:</p>
+      <ul>
+        <li class="body">A <strong>PreToolUse hook</strong> refuses an Edit or Write that would land a real value in a versioned file.</li>
+        <li class="body">A <strong>git pre-commit hook</strong> checks staged content for writers outside Claude Code itself.</li>
+        <li class="body">A <strong>public CI check</strong> checks the published clone, so a gap on one machine still gets caught before the public repo sees it.</li>
+      </ul>
+      <p class="body">Structural patterns &mdash; user/volume paths, email addresses, UUIDs, session and trigger identifiers &mdash; don&rsquo;t need a vault entry to be caught, so the same three gates work even in a fresh public clone that has never had a vault.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2 class="h2">Contributing without your private data</h2>
+      <p class="body">Working with R.Code for Claude Code naturally produces local findings &mdash; observations your own routine writes into your personal, local improvement ledger. Real project names, paths, and account identifiers may legitimately appear there; they belong on your machine, never in the published framework. To share a finding upstream without any of that leaving your machine:</p>
+      <ol>
+        <li class="body">Create your local vault once (idempotent): <code>bash scripts/vault/vault.sh init</code>. Register your own recurring private terms with <code>vault.sh add</code>.</li>
+        <li class="body">Get a submission form: copy the submission template and fill it in by hand, or pre-fill it from a local ledger entry &mdash; every value taken from the ledger is tokenized before it is written.</li>
+        <li class="body">Have it checked: a clean run prints ready-to-paste issue/PR text on stdout; a finding blocks and names only the kind and token, never the real value.</li>
+        <li class="body">Open the printed text as a GitHub issue or PR.</li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<div class="block-rule" aria-hidden="true">
+  <span class="block-rule__seg block-rule__seg--clay"></span>
+  <span class="block-rule__seg block-rule__seg--ink"></span>
+  <span class="block-rule__seg block-rule__seg--go"></span>
+  <span class="block-rule__seg block-rule__seg--wait"></span>
+  <span class="block-rule__seg block-rule__seg--focus"></span>
+  <span class="block-rule__seg block-rule__seg--dither"></span>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="small">R.Code for Claude Code is an independent, community-maintained open-source project. It is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. &quot;Claude&quot; and &quot;Claude Code&quot; are trademarks of Anthropic, PBC. This project provides configuration files (rules, agents, hooks, skills) for use with Anthropic&rsquo;s Claude Code and claims no rights to those names or logos.</p>
+    <p class="small"><a href="https://github.com/emanuelrechsteiner/claude-rcode/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/emanuelrechsteiner/claude-rcode">View on GitHub</a></p>
+  </div>
+</footer>
+
+<script src="assets/ds/bundle.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

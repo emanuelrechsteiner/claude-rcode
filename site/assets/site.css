@@ -1,0 +1,863 @@
+/* R.Code for Claude Code — site layout and page styles.
+   Uses design-system tokens only (assets/ds/tokens.css) plus 1px/2px
+   border and outline widths, per the design system's own convention. */
+
+/* ---- Reset / base -------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 26px;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+dl,
+figure {
+  margin: 0 0 var(--space-4) 0;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: var(--clay);
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* ---- Focus + motion -------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -48px;
+  z-index: 100;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+/* ---- Layout ----------------------------------------------------------- */
+
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+main {
+  display: block;
+}
+
+section {
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-12);
+}
+
+section:first-child {
+  padding-top: var(--space-6);
+}
+
+.prose {
+  max-width: 65ch;
+}
+
+/* On `class="wrap prose"` the page column stays the full .wrap width, so the
+   text lines up with the page heads; the 65ch reading measure moves to the
+   children instead of shrinking (and re-centering) the whole column. */
+.wrap.prose {
+  max-width: 1120px;
+}
+
+.wrap.prose > * {
+  max-width: 65ch;
+}
+
+/* ---- Block motif ---------------------------------------------------------- */
+/* The block composition is the brand's primary motif (design system, "Visual
+   foundations"): solid rectangles in the identity colors, fitted together on
+   the space-2 grid, always cut off by a container edge on at least one side.
+   Tokens only — colors switch with the theme automatically. */
+
+.block-cap {
+  display: block;
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+}
+
+.block-cap--clay {
+  background: var(--clay);
+}
+
+.block-cap--ink {
+  background: var(--ink);
+}
+
+.block-cap--go {
+  background: var(--go);
+}
+
+.block-cap--wait {
+  background: var(--wait);
+}
+
+.block-cap--focus {
+  background: var(--focus);
+}
+
+.block-rule {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-6);
+  height: var(--space-2);
+  width: 100%;
+  overflow: hidden;
+}
+
+.block-rule__seg {
+  flex: 0 0 auto;
+}
+
+.block-rule__seg--clay {
+  flex-basis: 32%;
+  background: var(--clay);
+}
+
+.block-rule__seg--ink {
+  flex-basis: 14%;
+  background: var(--ink);
+}
+
+.block-rule__seg--go {
+  flex-basis: 10%;
+  background: var(--go);
+}
+
+.block-rule__seg--wait {
+  flex-basis: 8%;
+  background: var(--wait);
+}
+
+.block-rule__seg--focus {
+  flex-basis: 12%;
+  background: var(--focus);
+}
+
+.block-rule__seg--dither {
+  flex: 1 1 auto;
+  background-image: linear-gradient(
+      45deg,
+      var(--clay) 25%,
+      transparent 25%,
+      transparent 75%,
+      var(--clay) 75%
+    ),
+    linear-gradient(
+      45deg,
+      var(--clay) 25%,
+      transparent 25%,
+      transparent 75%,
+      var(--clay) 75%
+    );
+  background-size: calc(var(--space-2) * 2) calc(var(--space-2) * 2);
+  background-position: 0 0, var(--space-2) var(--space-2);
+}
+
+/* Hero composition (index.html) — large, right of the copy, cut by its own
+   column's right edge. Below 720px a smaller subset takes over instead. */
+
+.hero-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.hero-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hero-blocks {
+  flex: 0 0 340px;
+  height: 274px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-blocks svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: auto;
+}
+
+.hero-blocks-mobile {
+  display: none;
+}
+
+/* Page-header composition (install/how-it-works/cockpit/vault/404) — a small
+   subset of the same composition, cut by its column's right edge. */
+
+.page-hero__inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.page-hero__copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-hero__blocks {
+  flex: 0 0 280px;
+  width: 280px;
+  height: 208px;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-hero__blocks svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 320px;
+  height: auto;
+}
+
+.page-hero--center .page-hero__inner {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.page-hero--center .page-hero__blocks {
+  margin: 0 auto var(--space-4) auto;
+}
+
+/* Install marginalia (index.html) — a narrow vertical block bar beside the
+   quick-install code block. */
+
+.install-quick__row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.block-bar {
+  flex: 0 0 var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.block-bar__seg--clay {
+  flex: 3 1 0;
+  background: var(--clay);
+  border-radius: var(--radius-sm);
+}
+
+.block-bar__seg--go {
+  flex: 1 1 0;
+  background: var(--go);
+  border-radius: var(--radius-sm);
+}
+
+.install-quick__row .code-block {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+/* ---- Header / nav ------------------------------------------------------ */
+
+.site-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-4);
+}
+
+.brand-mark {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 18px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand-mark__main {
+  color: var(--clay);
+}
+
+.brand-mark__sub {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.55em;
+  margin-left: var(--space-1);
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.site-nav a {
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.site-nav a:hover,
+.site-nav a[aria-current="page"] {
+  color: var(--clay);
+}
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--focus);
+}
+
+/* ---- Footer ------------------------------------------------------------ */
+
+.site-footer {
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.site-footer p {
+  color: var(--muted);
+  max-width: 75ch;
+}
+
+.site-footer a {
+  color: var(--muted);
+}
+
+.site-footer a:hover {
+  color: var(--clay);
+}
+
+/* ---- Hero --------------------------------------------------------------- */
+
+.hero {
+  padding-top: var(--space-12);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-name {
+  margin: 0 0 var(--space-4) 0;
+}
+
+.hero-name__main {
+  display: block;
+  color: var(--clay);
+}
+
+.hero-name__sub {
+  display: block;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--ink);
+  font-size: 26px;
+  line-height: 32px;
+  margin-top: var(--space-2);
+}
+
+.hero-tagline {
+  color: var(--ink);
+  margin-bottom: var(--space-2);
+}
+
+.hero-subline {
+  color: var(--muted);
+  max-width: 65ch;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  margin-bottom: 0;
+}
+
+.hero-actions .rc-button {
+  font-size: 16px;
+}
+
+/* ---- Hero shot ------------------------------------------------------------ */
+
+/* The hero shot and the live cockpit cards below it are one group: the
+   screenshot, then the same boxes as live components. */
+.hero-shot-section {
+  padding-top: var(--space-6);
+  padding-bottom: 0;
+}
+
+.cockpit-section {
+  padding-top: var(--space-6);
+}
+
+.hero-shot {
+  margin: 0;
+}
+
+/* The rendered screenshot already draws its own window frame on a ground
+   margin — no second box around it. */
+.hero-shot .framed-shot {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* ---- Cockpit demo -------------------------------------------------------- */
+
+.cockpit-demo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+.cockpit-demo .rc-cockpit-box {
+  height: 100%;
+  margin: 0;
+}
+
+/* Two screenshots of different aspect ratio side by side: column widths
+   proportional to each image's width/height ratio make both frames exactly
+   the same height (close-up 1440x2000, focus 922x2072). */
+.shot-pair {
+  display: grid;
+  grid-template-columns: 72fr 44.5fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.shot-pair figure {
+  margin: 0;
+}
+
+.shot-pair figcaption {
+  color: var(--muted);
+  margin-top: var(--space-2);
+}
+
+.section-caption {
+  color: var(--muted);
+  margin-top: var(--space-4);
+}
+
+/* ---- Grids --------------------------------------------------------------- */
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.benefit-tile p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.benefit-tile .rc-cockpit-box__heading {
+  color: var(--ink);
+}
+
+/* ---- Proof points -------------------------------------------------------- */
+
+/* Four facts as four modules: a 2x2 grid, each item headed by a small
+   square in the next identity color (clay, ink, go, focus — the block
+   composition's order). */
+.proof-points {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.proof-points p {
+  color: var(--muted);
+  margin: 0;
+  padding-left: calc(var(--space-2) + var(--space-4));
+  position: relative;
+}
+
+.proof-points p::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: 1px;
+  background: var(--clay);
+}
+
+.proof-points p:nth-child(2)::before {
+  background: var(--ink);
+}
+
+.proof-points p:nth-child(3)::before {
+  background: var(--go);
+}
+
+.proof-points p:nth-child(4)::before {
+  background: var(--focus);
+}
+
+/* ---- Demo figures --------------------------------------------------------- */
+
+.demo-figures {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.demo-figures figure {
+  margin: 0;
+}
+
+.demo-figures img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.demo-figures figcaption {
+  color: var(--muted);
+  margin-top: var(--space-2);
+}
+
+/* ---- Framed screenshots ---------------------------------------------------- */
+
+.framed-shot {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.framed-shot img {
+  width: 100%;
+  height: auto;
+}
+
+/* ---- Code blocks + copy buttons -------------------------------------------- */
+
+.code-block {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  padding-right: calc(var(--space-4) * 3);
+  margin-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.code-block pre {
+  margin: 0;
+}
+
+.code-block code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.copy-btn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  color: var(--ink);
+  border-color: var(--focus);
+}
+
+/* ---- Tables --------------------------------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-6);
+}
+
+th,
+td {
+  text-align: left;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+td {
+  color: var(--ink);
+}
+
+td code,
+p code,
+li code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-1);
+}
+
+/* ---- Flow (how it works) --------------------------------------------------- */
+
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.flow-step {
+  flex: 1 1 200px;
+}
+
+.flow-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  min-width: var(--space-6);
+}
+
+.flow-loop {
+  margin-top: var(--space-6);
+}
+
+.flow-loop ol {
+  padding-left: var(--space-6);
+  color: var(--ink);
+}
+
+.flow-loop li {
+  margin-bottom: var(--space-2);
+}
+
+/* ---- 404 -------------------------------------------------------------------- */
+
+.not-found {
+  text-align: center;
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-12);
+}
+
+/* ---- Responsive ------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .grid-2,
+  .cockpit-demo,
+  .demo-figures,
+  .proof-points,
+  .shot-pair {
+    grid-template-columns: 1fr;
+  }
+
+  section {
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-6);
+  }
+
+  /* Header in two rows instead of three: brand + theme toggle, then the
+     nav as one horizontally scrollable line. */
+  .site-header__inner {
+    gap: var(--space-2) var(--space-4);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+
+  .site-nav {
+    order: 3;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: calc(var(--space-2) + var(--space-1));
+    padding-bottom: var(--space-1);
+  }
+
+  .site-nav a {
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  .flow {
+    flex-direction: column;
+  }
+
+  .flow-arrow {
+    min-height: var(--space-6);
+  }
+
+  .hero-name .display {
+    font-size: 44px;
+    line-height: 1;
+  }
+
+  .hero-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-blocks {
+    display: none;
+  }
+
+  .hero-blocks-mobile {
+    display: block;
+    overflow: hidden;
+    margin-top: var(--space-6);
+    margin-right: calc(-1 * var(--space-4));
+  }
+
+  /* Right-aligned and cut by the viewport edge, as on desktop. */
+  .hero-blocks-mobile {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .hero-blocks-mobile svg {
+    display: block;
+    flex: 0 0 auto;
+    width: 300px;
+    height: auto;
+    max-width: none;
+    margin-right: -40px;
+  }
+
+  .page-hero__inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-hero__blocks {
+    order: -1;
+    flex: 0 0 auto;
+    width: 200px;
+    height: 150px;
+    margin-bottom: var(--space-4);
+  }
+
+  .page-hero__blocks svg {
+    width: 230px;
+  }
+
+  .install-quick__row {
+    flex-direction: column;
+  }
+
+  .block-bar {
+    flex-direction: row;
+    width: 100%;
+    height: var(--space-2);
+  }
+}
