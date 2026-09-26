@@ -9,8 +9,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # WHY THIS EXISTS: a project's units live in one of two places — GitHub
 # issues (tracker "github") or checkbox/table lines inside BRAINSTORM.md
-# (tracker "plan", for projects with no issue tracker, e.g. Projekt N: 0/28
-# commits reference anything, no remote). Every gather script that needs
+# (tracker "plan", for projects with no issue tracker — a real project was
+# measured at 0/28 commits referencing any unit, with no git remote at
+# all). Every gather script that needs
 # "how many units, which are open/closed, which phase" used to assume
 # GitHub; M14 in the spec is exactly that hard GitHub prerequisite breaking
 # on real, working, GitHub-less projects. This script is the fix: it reads
@@ -29,8 +30,8 @@
 #       `| P-001 | [Phase 1] <Title> | <Type> | <Area> | ... |`
 #   (c) K-A, 2026-09-23 — LOCAL-NUMBER table: a table whose FIRST HEADER
 #       cell (case-insensitive) is one of `#`, `ID`, `Nr`, `Nr.`, and whose
-#       row's first cell is a bare integer or `#`+integer (e.g. the
-#       Projekt N shape: header `| # | Titel | ... |`, row `| 12 | ... |`).
+#       row's first cell is a bare integer or `#`+integer (e.g. a real
+#       project's shape: header `| # | Titel | ... |`, row `| 12 | ... |`).
 #       The unit id is written `#N` (a LOCAL plan number, NOT a GitHub
 #       issue — the `tracker` field disambiguates; this grammar only ever
 #       runs in plan mode, so it never collides with github `#N`

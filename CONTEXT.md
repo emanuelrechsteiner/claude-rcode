@@ -6,7 +6,7 @@ Purpose: Framework glossary for claude-code-config — terms coined once (rules/
 
 # Context — claude-code-config
 
-**Bauhof** — this repo's working copy, `/Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS/claude-code-config`. All edits and commits happen here; nothing here is live.
+**Bauhof** — this repo's working copy outside `~/.claude`, token `<BAUHOF>` (real path lives locally in `~/.claude/env.local.sh`). All edits and commits happen here; nothing here is live.
 
 **Haus** — the deployed installation Claude Code actually reads, `~/.claude`. Never edited by hand; receives only `claude-deploy`.
 

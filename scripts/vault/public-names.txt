@@ -1,0 +1,44 @@
+# public-names.txt — names the framework publishes ITSELF under.
+#
+# These are NEVER vault terms: scripts/vault/lib.sh's vault_add_row refuses
+# to store a row whose term exactly matches one of these (case-insensitive),
+# vault_import_legacy/vault_import_registry skip them during bulk import
+# (counted, not silently dropped), `vault.sh prune-public` removes any that
+# already exist in a vault built before this file did, and every matcher
+# consumer (vault_terms_for_kinds, vault_term_token_pairs_for_kinds,
+# vault_build_rules_file) filters them out as defense-in-depth even if one
+# somehow ends up in map.tsv anyway (plans/vault-by-design-2026-09-25.md
+# §7.1).
+#
+# Format: one name per line, exact match (case-insensitive), no regex. '#'
+# comments and blank lines are ignored. A LONGER name that merely CONTAINS
+# one of these (e.g. a directory named "claude-code-config-extra") is NOT
+# covered — only an exact match is exempted, so a real private term can
+# never hide behind a public name as a prefix/suffix.
+#
+# Reason this file exists — TWO categories, both public by definition:
+#
+# 1. This framework's OWN public identity: the project registry
+#    legitimately lists this framework's own public repos as entries like
+#    any other project, so a straight import would otherwise classify the
+#    framework's own public identity as a private term to protect —
+#    exactly backwards.
+#
+# 2. Third-party product names the framework WORKS WITH, whose tool
+#    prefixes and standard folder names appear throughout tracked source
+#    by necessity, not as leaked private data (2026-09-25 rework round 3,
+#    finding #6). Example: Anthropic's own product Claude Cowork — its MCP
+#    tool-name prefix (`mcp__cowork__...`), its sandbox, and the standard
+#    folder it creates in a user's home directory that a routine in this
+#    repo's own code legitimately searches for BY THAT NAME. Tokenizing
+#    this name would make that code search for a folder that does not
+#    exist — a functional break, not a privacy improvement. Owner decision
+#    (recorded here, named again in the handback report): case-insensitive
+#    exact-match public-name filtering means BOTH the lowercase tool-prefix
+#    form and the capitalized product-name form are covered by one entry —
+#    this is intentional, not an oversight.
+
+claude-rcode
+claude-code-config
+R.Code
+Cowork

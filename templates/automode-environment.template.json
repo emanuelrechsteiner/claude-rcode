@@ -1,0 +1,29 @@
+{
+  "_comment": "Generische Vorlage fuer settings.json:autoMode.environment (IMP-219, vault-by-design). Dieser Block ist ein HAUS-ONLY-Schluessel — er lebt nur in ~/.claude/settings.json und wandert nie in den Bauhof (siehe HAUS_ONLY_KEYS_JSON in scripts/deploy-to-live.sh). Ersetze die Platzhalter in [eckigen Klammern] durch deine eigenen Angaben, entferne diesen Kommentar-Schluessel und uebernimm nur das 'environment'-Array in dein eigenes autoMode-Objekt.",
+  "environment": [
+    "### Org-wide",
+    "**Organization**: None configured",
+    "**Cloud provider(s)**: None configured",
+    "**Repository visibility**: [public|private] — `[host]/[account]/[repo]` (confirmed via gh; note any rulesets or protected-branch entries)",
+    "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+    "**Secrets management**: None configured",
+    "**Default / protected branches**: [describe branch protection, if any]",
+    "**CI/CD deploy targets**: None configured",
+    "**Network posture**: None configured",
+    "**Source control**: The trusted repo (`[host]/[account]/[repo]`) and its `origin` remote only",
+    "**Trusted internal domains**: None configured",
+    "**Trusted cloud buckets**: None configured",
+    "**Key internal services**: None configured",
+    "**Internal package registry**: None configured",
+    "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar",
+    "**Data retention / declassification**: None configured",
+    "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`)",
+    "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+    "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+    "### User-specific",
+    "**Primary use of Claude Code**: [describe your primary use case here — e.g. software development, framework maintenance, writing, research]",
+    "**Trusted repo**: `~/.claude` (the Claude Code installation), `$CLAUDE_BAUHOF_ROOT` (this framework's working copy), and the local clone of the public framework mirror — replace with YOUR OWN trusted repo(s)/remote(s) if this entry describes a different project",
+    "**Org-specific CLIs**: None configured",
+    "routine under `~/.claude/` prefix: this machine's Claude Code configuration follows the Bauhof/Haus split described in `~/.claude/CLAUDE.md` — `$CLAUDE_BAUHOF_ROOT` is the working copy, `~/.claude` is the installation that actually gets read"
+  ]
+}

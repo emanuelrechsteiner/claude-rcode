@@ -91,7 +91,7 @@ Walks up the directory tree from the **first file_path** in the session:
 - Falls back to `dirname(first_file_path)` if no marker found
 - Falls back to lossy project-dir-name decode if no file_path in session
 
-Beats the v1 prototype's pure project-name decode that mangled underscores (`Projekt H` → `/Projekt/H`).
+Beats the v1 prototype's pure project-name decode that mangled underscores (e.g. `Project_Name` → `/Project/Name`).
 
 ### R.Code detection
 

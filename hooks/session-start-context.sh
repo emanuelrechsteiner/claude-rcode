@@ -36,18 +36,45 @@ fi
 # (Bauhof = working copy, everything happens here; Haus = installation, what
 # Claude Code actually reads) plus two dead historical directory names the
 # agent sometimes reconstructs from memory instead of reading. Typical
-# fallout: "/Volumes/YourExternalVolume 1/PROJECTS/Development/5_AI-APPS/…" (space
+# fallout: "/Volumes/<VOLUME> 1/PROJECTS/Development/5_AI-APPS/…" (space
 # instead of hyphen, underscore instead of hyphen). Emitted ONLY when this
 # session's cwd is actually inside one of the two real roots — silent in
 # unrelated projects, so it never becomes noise there.
-# Overridable via env for regression tests (CLAUDE_BAUHOF_ROOT/CLAUDE_HAUS_ROOT)
-# so the suite doesn't depend on this machine's real absolute paths.
-BAUHOF_ROOT="${CLAUDE_BAUHOF_ROOT:-/Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS/claude-code-config}"
+#
+# Bauhof-root resolution (IMP-219 — no hardcoded machine path in source):
+#   1) CLAUDE_BAUHOF_ROOT already set in the environment (regression tests,
+#      session env) wins outright.
+#   2) else source ~/.claude/env.local.sh if present (machine-local,
+#      gitignored — see templates/env.local.sh.template) and re-check.
+#   3) still unset -> BAUHOF_RESOLVED=0. Print "Bauhof: unbekannt" instead
+#      of guessing — never fall back to a hardcoded default path
+#      (rules/fail-loud.md).
+# CLAUDE_HAUS_ROOT stays overridable via env for regression tests so the
+# suite doesn't depend on this machine's real absolute paths.
+BAUHOF_RESOLVED=1
+if [[ -z "${CLAUDE_BAUHOF_ROOT:-}" ]]; then
+    # shellcheck disable=SC1091
+    [[ -f "$HOME/.claude/env.local.sh" ]] && . "$HOME/.claude/env.local.sh"
+fi
+[[ -n "${CLAUDE_BAUHOF_ROOT:-}" ]] || BAUHOF_RESOLVED=0
+BAUHOF_ROOT="${CLAUDE_BAUHOF_ROOT:-}"
 HAUS_ROOT="${CLAUDE_HAUS_ROOT:-$HOME/.claude}"
-if [[ "$CWD" == "$BAUHOF_ROOT" || "$CWD" == "$BAUHOF_ROOT"/* || "$CWD" == "$HAUS_ROOT" || "$CWD" == "$HAUS_ROOT"/* ]]; then
+
+IN_HAUS=0
+[[ "$CWD" == "$HAUS_ROOT" || "$CWD" == "$HAUS_ROOT"/* ]] && IN_HAUS=1
+IN_BAUHOF=0
+if [[ "$BAUHOF_RESOLVED" == "1" ]]; then
+    [[ "$CWD" == "$BAUHOF_ROOT" || "$CWD" == "$BAUHOF_ROOT"/* ]] && IN_BAUHOF=1
+fi
+
+if [[ "$IN_HAUS" == "1" || "$IN_BAUHOF" == "1" ]]; then
     echo ""
     echo "📌 Pfad-Kanon (Zwei-Orte-Steuer, IMP-162 — 66 File-does-not-exist-Fehler/37 Sessions im Aug. 2026):"
-    echo "   Bauhof (Arbeitskopie, hier committen):  $BAUHOF_ROOT"
+    if [[ "$BAUHOF_RESOLVED" == "1" ]]; then
+        echo "   Bauhof (Arbeitskopie, hier committen):  $BAUHOF_ROOT"
+    else
+        echo "   Bauhof: unbekannt — ~/.claude/env.local.sh anlegen (Vorlage: templates/env.local.sh.template)"
+    fi
     echo "   Haus (Installation, NICHT von Hand ändern): $HAUS_ROOT"
     echo "   Historische Namen (vor dem Rebrand) — existieren NICHT mehr."
 fi

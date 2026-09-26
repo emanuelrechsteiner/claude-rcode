@@ -125,7 +125,7 @@ assert $EAG BLOCK "rm -rf /private/tmp/x/.env"                        # ditto �
 # ran UNBLOCKED. CP's env-assignment tolerance used \S* for the value, which stops
 # at the first space INSIDE $(…)/${…}/`…` — the assignment loop then dies on the
 # next word and the real command head is never reached → AUTO instead of ESCALATE.
-assert $EAG BLOCK 'GH_TOKEN=$(gh auth token --user emanuelrechsteiner) gh release create v1.0.2'  # the live finding
+assert $EAG BLOCK 'GH_TOKEN=$(gh auth token --user example-maintainer) gh release create v1.0.2'  # the live finding
 assert $EAG BLOCK 'FOO=1 BAR=$(cmd with spaces) gh pr merge 1'        # multi-prefix, spaced subst
 assert $EAG BLOCK 'FOO=1 BAR=$(cmd) gh pr merge 1'                    # space-free subst (already worked — pin)
 assert $EAG BLOCK 'A="x y" B=$(c d) gh workflow disable ci.yml'       # quoted + subst value mix
@@ -153,7 +153,7 @@ assert $EAG BLOCK 'V=$(rm -rf /etc) true'                             # subst-an
 # to another op re-blocks (ack-mismatch).
 GATE_TEST_SESS="acktest-$$"; export GATE_TEST_SESS
 rm -f "/tmp/agency-ack-consumed-$GATE_TEST_SESS" 2>/dev/null
-ACK_CMD='GH_TOKEN=$(gh auth token --user emanuelrechsteiner) gh release create v1.0.2'
+ACK_CMD='GH_TOKEN=$(gh auth token --user example-maintainer) gh release create v1.0.2'
 ACK_SIG=$(json_cmd "$ACK_CMD" | HOME="$TESTHOME" bash "$HOOKS_DIR/$EAG" 2>&1 >/dev/null \
           | grep -oE 'CLAUDE_AGENCY_ACK_ONCE=[A-Fa-f0-9]{64}' | head -1 | cut -d= -f2)
 if [ -n "$ACK_SIG" ]; then
@@ -167,13 +167,13 @@ fi
 unset GATE_TEST_SESS
 
 # ── excessive-agency-gate: global machine/account-identity changes ESCALATE
-# (IMP-163, 2026-08-24). `gh auth switch --user example-org-account` ran without
+# (IMP-163, 2026-08-24). `gh auth switch --user <account>` ran once without
 # a y/n and was reported only afterward; 3 documented wrong-repo/wrong-deploy-
 # account incidents trace to exactly this class. Repo-local / read-only forms
 # must stay AUTO — that distinction is the whole point of the fix.
-assert $EAG BLOCK "gh auth switch --user example-org-account"
+assert $EAG BLOCK "gh auth switch --user someuser"
 assert $EAG BLOCK "vercel switch someteam"
-assert $EAG BLOCK "git config --global user.email 'x@y.com'"
+assert $EAG BLOCK "git config --global user.email 'user@example.com'"
 assert $EAG BLOCK "npm config set registry https://registry.npmjs.org -g"
 assert $EAG BLOCK "npm config set registry https://registry.npmjs.org --global"
 # IMP-163-followup (2026-09-09): --location=global / --location global are npm's
@@ -189,7 +189,7 @@ assert $EAG BLOCK "npm config set registry https://registry.npmjs.org -L global"
 assert $EAG BLOCK "gcloud config set account someone@example.com"
 assert $EAG BLOCK "aws configure"
 assert $EAG BLOCK "aws configure --profile prod"
-assert $EAG ALLOW "git config user.email 'x@y.com'"                  # local (repo-scoped) — everyday, must NOT block
+assert $EAG ALLOW "git config user.email 'user@example.com'"                  # local (repo-scoped) — everyday, must NOT block
 assert $EAG ALLOW "gh auth status"                                    # read-only
 assert $EAG ALLOW "git config --global --get user.email"             # global READ stays AUTO
 assert $EAG ALLOW "git config --global -l"                            # global list stays AUTO
@@ -226,7 +226,7 @@ assert $EAG BLOCK "npm --global config set registry https://registry.npmjs.org" 
 assert $EAG BLOCK "aws --profile default configure set aws_access_key_id AKIAEXAMPLE"        # (b) intervening --profile
 assert $EAG BLOCK "gcloud --verbosity=none config set account attacker@example.com"           # (b) intervening --verbosity=…
 assert $EAG BLOCK "vercel --debug switch other-team"                                          # (b) intervening --debug
-assert $EAG BLOCK "git config --file ~/.gitconfig user.email attacker@evil.com"               # (c) --file to an outside-repo path
+assert $EAG BLOCK "git config --file ~/.gitconfig user.email attacker@example.com"               # (c) --file to an outside-repo path
 assert $EAG BLOCK "git config -f ~/.gitconfig user.email x"                                   # (c) -f short form
 assert $EAG BLOCK "git config --system user.email x"                                          # (c) machine-wide /etc/gitconfig
 

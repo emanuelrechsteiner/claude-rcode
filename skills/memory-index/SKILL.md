@@ -39,7 +39,7 @@ Compare against `mcp__memory__search_nodes({ query: "Project indexedAt" })`.
 ls ~/.claude/projects/ 2>/dev/null
 ```
 
-For each directory name (it encodes the cwd, e.g. `-Users-<username>-ProjectHub-<your-ios-project>-<your-ios-project>`):
+For each directory name (it encodes the cwd, e.g. `-Users-<username>-Cowork-<your-ios-project>-<your-ios-project>`):
 - Decode the project path (replace `-` with `/`, handle leading `-`)
 - Sample the most recent session transcript (last file, last ~200 lines)
 - Extract: project name, apparent tech stack (package.json / Package.swift / requirements.txt signals), recent topics

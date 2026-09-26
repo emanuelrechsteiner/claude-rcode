@@ -3,7 +3,7 @@ name: weekly-improve
 description: Weekly pattern extraction — reads 7 days of signals, extracts recurring patterns, and writes IMP proposals to ~/.claude/plans/ for human review.
 ---
 
-<!-- Erwartetes cwd: ~/.claude · Zeitgeber: launchd com.your-username.claude-routine-weekly-improve (seit 2026-08-22, IMP-135; davor unversionierte Cloud-Bindung an ein 2026-08-02 umbenanntes Verzeichnis — 20 Tage stiller Ausfall). -->
+<!-- Erwartetes cwd: ~/.claude · Zeitgeber: launchd com.claude-code.routine-weekly-improve (seit 2026-08-22, IMP-135; Label generisch seit IMP-219, 2026-09-25; davor unversionierte Cloud-Bindung an ein 2026-08-02 umbenanntes Verzeichnis — 20 Tage stiller Ausfall). -->
 
 Run the meta-observer skill in weekly aggregation mode.
 
@@ -15,7 +15,7 @@ Wochenanalyse liest **primär die Session-Transkripte** des Fensters
 unten) nur **sekundär** zur Häufigkeitsbestimmung. `git log`/Commits dienen **nie** als
 Herleitungsbasis eines Findings, nur als Korroboration des Ergebnisses. Jedes Finding
 (F-001, F-002, …) braucht einen Transkript-Beleg (Pfad + Zitat/Ereignis) oder eine
-explizite Begründung, warum keiner existiert. **Scope:** nur Coding-Projekte — Projekt A
+explizite Begründung, warum keiner existiert. **Scope:** nur Coding-Projekte — proj-f5739a
 und andere reine Schreibprojekte sind als Quelle ausgenommen, unabhängig vom
 Signalvolumen.
 
@@ -104,6 +104,12 @@ One JSON object per line, fields: `finding` (F-001), `title`, `category`, `riskL
 dedups on `<proposal>#<finding>` (so a re-run appends nothing), and gates on valid
 JSON + unique ids.
 
+**Pseudonymisierung (IMP-219):** Was in versionierte Dateien geht, trägt Tokens statt
+echter Namen/Pfade — `ledger-append-proposed.sh` tokenisiert jedes Textfeld als Netz
+(`scripts/vault/vault.sh`) und verweigert das Schreiben bei einem verbleibenden
+strukturellen Fund. Lokale Arbeitsdateien unter `~/.claude/plans/` (gitignoriert)
+dürfen echte Namen tragen — nur der Ledger-Schreibpfad ist betroffen.
+
 **Trust boundary — do not widen it:** the script writes `proposed` and nothing else.
 It never promotes to `implemented`, never applies a change. Observation data must not
 write framework governance; a human triages `proposed` → `implemented`.
@@ -114,7 +120,10 @@ loop that reads but never writes back is indistinguishable from no loop at all.
 
 ## Posting
 After writing the file, post a Notion comment on the Claude Code Logbuch page
-(id: <your-notion-page-id>) with the file path and 3-line summary.
+(id: `${CLAUDE_LOGBOOK_NOTION_PAGE_ID}` — read it the same way daily-docs/SKILL.md
+does: `[ -n "${CLAUDE_LOGBOOK_NOTION_PAGE_ID:-}" ] || { [ -f "$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }`,
+fail loud if still empty — see `templates/env.local.sh.template`) with the file
+path and 3-line summary.
 
 ## Run log — MANDATORY, even on failure (IMP-075)
 As the FINAL step of every run — including "quiet week" and error runs — append one line to

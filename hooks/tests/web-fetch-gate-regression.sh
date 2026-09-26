@@ -1,4 +1,5 @@
 #!/bin/bash
+# vault-check: fixtures (synthetic test domains/URL-credential shapes for the red-team cases below, none of them real)
 # web-fetch-gate-regression.sh — IMP-088 (+ red-team hardening batch)
 # Regression suite for web-fetch-safety-gate.sh. Feeds crafted tool-call
 # JSON on stdin and asserts ASK (danger) vs ALLOW (clean/no-URL).

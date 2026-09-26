@@ -66,7 +66,7 @@ existing ID):
   comes straight from the checkbox: `[x]` → closed, `[ ]` → open.
 - **`P-NNN` table row:** a markdown table whose row's first cell matches
   `P-NNN` (e.g. `| P-001 | [Phase 1] <Title> | <Type> | ... |`).
-- **Local `#N` table row** (older projects — e.g. Projekt N's 81-unit
+- **Local `#N` table row** (older projects — e.g. proj-47cf29's 81-unit
   BRAINSTORM.md, which predates the `P-NNN` convention): a markdown table
   whose FIRST header cell is one of `#`, `ID`, `Nr`, `Nr.`, and whose row's
   first cell is an integer or `#`+integer. The unit ID is written `#N`.

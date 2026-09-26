@@ -309,7 +309,7 @@ fi
 # ═══════════════════════════════════════════════════════════════════════════
 # Reminder 5: Marathon-session warning (IMP-095)
 # ═══════════════════════════════════════════════════════════════════════════
-# A2/A1 evidence: session aaaa0002 ran ~38h wall-clock (2026-07-12T06:52:24Z
+# A2/A1 evidence: a session ran ~38h wall-clock (2026-07-12T06:52:24Z
 # to 2026-07-13T20:50:51Z) across 3 branches without a visible /clear, and
 # drove that day's refactor=228 / fix=310 intent spikes. Wall-clock alone is
 # a NOISY context-rot proxy — idle gaps burn no tokens (gap analysis found

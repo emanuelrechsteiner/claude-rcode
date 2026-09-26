@@ -22,8 +22,9 @@
 #   2 — script-level error (missing deps, clone failed)
 #
 # Env overrides:
-#   CLAUDE_RESTORE_REPO_URL  default: origin URL of $HOME/.claude (fallback:
-#                            https://github.com/YOUR-GITHUB-ACCOUNT/YOUR-PRIVATE-CLAUDE-CONFIG-REPO.git)
+#   CLAUDE_RESTORE_REPO_URL  default: origin URL of $HOME/.claude. No built-in
+#                            fallback — if neither resolves, the script exits
+#                            2 with a loud error (fail-loud, not fail-silent).
 #   CLAUDE_RESTORE_KEEP=1    keep the temp clone for inspection (prints path)
 #
 # Usage: bash ~/.claude/scripts/restore-drill.sh
@@ -47,10 +48,14 @@ for cmd in git jq bash mktemp; do
   fi
 done
 
-# ── Resolve repo URL (prefer the live repo's own origin) ─────────────────────
-DEFAULT_URL="https://github.com/YOUR-GITHUB-ACCOUNT/YOUR-PRIVATE-CLAUDE-CONFIG-REPO.git"
+# ── Resolve repo URL (prefer the live repo's own origin; no hardcoded fallback) ──
 LIVE_ORIGIN=$(git -C "$HOME/.claude" remote get-url origin 2>/dev/null || true)
-REPO_URL="${CLAUDE_RESTORE_REPO_URL:-${LIVE_ORIGIN:-$DEFAULT_URL}}"
+REPO_URL="${CLAUDE_RESTORE_REPO_URL:-$LIVE_ORIGIN}"
+if [ -z "$REPO_URL" ]; then
+  log "FATAL: no repo URL to clone. Set CLAUDE_RESTORE_REPO_URL, or ensure"
+  log "       \$HOME/.claude has a git remote named 'origin'. Drill aborted."
+  exit 2
+fi
 
 # ── STEP 1: CLONE into a throwaway dir ────────────────────────────────────────
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/claude-restore-drill.XXXXXX") || exit 2
@@ -159,8 +164,9 @@ cat <<'EOF'
   [ ] MCP re-auth — every OAuth-backed server needs a fresh login:
       claude.ai connectors via connector settings; local servers via
       `claude mcp` / `/mcp` in an interactive session.
-  [ ] launchd jobs — copy launchd/*.plist (e.g. com.your-username.claude-audit.plist)
-      to ~/Library/LaunchAgents/ and `launchctl load` them; verify with
+  [ ] launchd jobs — copy launchd/*.plist (e.g. com.user.claude-audit.plist,
+      per scripts/com.user.claude-audit.plist.template) to
+      ~/Library/LaunchAgents/ and `launchctl load` them; verify with
       `launchctl list | grep claude`.
   [ ] Plugins — plugins/marketplaces/ is gitignored (external repos);
       reinstall plugins from their marketplaces on first run.

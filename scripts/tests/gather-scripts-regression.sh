@@ -9,8 +9,8 @@
 #
 # Warum es diese Suite gibt: vor M14 war GitHub eine harte Voraussetzung in
 # allen drei Verbrauchsskripten, obwohl 2 von 5 realen R.Code-Projekten
-# keinen Issue-Tracker haben (Projekt N: 0/28 Commits referenzieren
-# irgendetwas, kein Remote). Die Fixtures unten decken BEIDE Tabellenformen
+# keinen Issue-Tracker haben (eines davon gemessen bei 0/28 Commits, die
+# irgendetwas referenzieren, kein Remote). Die Fixtures unten decken BEIDE Tabellenformen
 # aus A2 ab (Checkbox- und Tabellenform, mit UND ohne Status-Spalte), den
 # Nie-fabrizieren-Fall (keine IDs gefunden), die p-NNN-Branch-Konvention und
 # den github-Pfad ueber eine Stub-`gh`-Binary — alles ohne Netzwerk.
@@ -168,7 +168,7 @@ rm -rf "$REPO_B"
 # ─────────────────────────────────────────────────────────────────────────
 # C) Plan-Tracker, Tabellenform OHNE Status-Spalte — "unknown", niemals
 #    ein erfundenes offen/geschlossen (fail-loud.md). Genau die Form, die
-#    Projekt M/BRAINSTORM.md real verwendet (312 Einheiten, siehe §0).
+#    eine echte BRAINSTORM.md real verwendet (dort gemessen: 312 Einheiten).
 # ─────────────────────────────────────────────────────────────────────────
 REPO_C=$(mktemp -d)
 G -C "$REPO_C" init -q -b main
@@ -210,8 +210,8 @@ check "table-nostatus/pgc-issues-unknown" 2 "$(jq -r '.counts.issues_unknown' <<
 rm -rf "$REPO_C"
 
 # ─────────────────────────────────────────────────────────────────────────
-# D) Plan-Tracker, KEINE P-NNN-IDs ueberhaupt (Projekt N-Fall) — total:0 +
-#    Fund, niemals eine still-leere Antwort.
+# D) Plan-Tracker, KEINE P-NNN-IDs ueberhaupt (real beobachteter Fall) —
+#    total:0 + Fund, niemals eine still-leere Antwort.
 # ─────────────────────────────────────────────────────────────────────────
 REPO_D=$(mktemp -d)
 G -C "$REPO_D" init -q -b main
@@ -425,7 +425,7 @@ rm -rf "$ISOLATED" "$REPO_I"
 
 # ─────────────────────────────────────────────────────────────────────────
 # K) K-A (C14) — LOCAL-NUMBER table grammar: header's first cell is "#",
-#    row's first cell a bare integer (the Projekt N shape). No Status
+#    row's first cell a bare integer (a real project's shape). No Status
 #    column -> "unknown" completion, never a fabricated open/closed. A
 #    P-NNN row inside the SAME table still wins (checked first).
 # ─────────────────────────────────────────────────────────────────────────

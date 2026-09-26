@@ -1,15 +1,134 @@
 # Changelog
 
-This project ships as a generated public artifact — see `docs/PUBLISHING.md`
-for the publish model. The detailed, dated improvement history of the
-private source-of-truth configuration is not published here.
+All notable changes to this project are documented in this file.
 
-Release notes for each version are published as
-[GitHub Releases](../../releases) at publish time. Each release corresponds
-to one squashed commit produced by `scripts/publish.sh` from a specific
-private-repo commit.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-For the current state of any file, read the file itself — this repo has no
-git history prior to each release's single commit, so there is nothing to
-diff `CHANGELOG.md` against locally. Use the GitHub Releases page for
-version-to-version deltas going forward.
+This repository is a generated public artifact: each version is one commit
+produced by `scripts/publish.sh` from the private source-of-truth repository
+(see `docs/PUBLISHING.md`). This file is maintained by hand in that source
+repository and published with every release.
+
+## [Unreleased]
+
+## [1.3.0] - 2026-09-26
+
+Pseudonymized by design: real names, machine paths and personal identifiers
+never enter the framework. They live only in a local vault on the
+developer's machine; the framework carries tokens. Decision record:
+`docs/adr/0003-tresor-und-tor.md`.
+
+### Added
+
+- Local vault `~/.claude/vault/` (git-ignored, secret `0600`) as the single
+  source of real values, with `scripts/vault/vault.sh`
+  (`init | add | check | tokenize | resolve | token | status | doctor | prune-public`).
+  Tokens are keyed HMAC-SHA256 prefixes (`proj-…`, `acct-…`, `id-…`) or fixed
+  role tokens (`<dir>`, `<email>`, `<private-repo-url>`, `<BAUHOF>`).
+- One matcher for every consumer: `scripts/vault/lib.sh`.
+- Write gate `hooks/vault-write-gate.sh`: refuses real values in Write, Edit,
+  MultiEdit and Serena writes to tracked files of a framework repo.
+- Commit gate `scripts/git-hooks/pre-commit`, also run as `pre-merge-commit`;
+  install with `bash scripts/install-git-hooks.sh --only pre-commit`. Blocks
+  staged real values and force-added ignored files.
+- Vault gate on the improvement-ledger write path (`scripts/ledger-append-vault-gate.sh`).
+- Contribution path for third parties: `templates/imp-submission.template.md`
+  and `scripts/imp-submit.sh` (validates a submission against the vault, no
+  network access). See `CONTRIBUTING.md`.
+- Templates: `templates/env.local.sh.template` (machine-specific runtime
+  values), `templates/reminders.local.md.template`,
+  `templates/automode-environment.template.json`.
+- `scripts/vault/public-names.txt`: names that are public by decision and
+  never treated as vault terms.
+
+### Changed
+
+- Machine paths and personal names in prose, rules, skills, hooks, scripts and
+  scheduled tasks replaced by role tokens or environment variables; runtime
+  values come from `~/.claude/env.local.sh`, `git remote`, or the system.
+- `autoMode` is an installation-only settings key; it is no longer shipped in
+  `settings.json` and survives `claude-deploy`.
+- Routine timers use generic launchd labels (`com.claude-code.routine-<task>`);
+  `scripts/install-routine-timers.sh` migrates the previous per-user labels.
+- `scripts/scrub-check.sh` uses the vault matcher for every PII finding and
+  redacts values in CI (`GITHUB_ACTIONS`, `CI`, or `--redact`).
+- In commit mode (`--staged`) the rebrand check only counts added lines, so
+  touching a file with accepted historical mentions no longer blocks a commit.
+- Publish transforms `30-placeholder-scan` and `50-pseudonymize` are no-ops on
+  the now-clean tree.
+- This changelog replaces the previous stub that pointed to GitHub Releases.
+
+### Removed
+
+- Publish transforms `60-declaw-scrub-check-pii` and
+  `65-generalize-reminders-section`.
+- Hard-coded detection literals in `scripts/scrub-check.sh`.
+
+### Fixed
+
+- `publish-manifest.txt` excluded every directory named `vault/`, which also
+  dropped the vault tool `scripts/vault/` from the published tree; the pattern
+  is now anchored to the root (`/vault/`).
+- Renamed files were skipped by the staged scan (`--diff-filter=AMRC`).
+- The HMAC secret is never passed on a command line.
+
+### Security
+
+- CI output of `scrub-check.sh` never prints a matched value.
+
+### Upgrade notes
+
+1. `bash scripts/vault/vault.sh init`, then add your own private terms with
+   `vault.sh add`.
+2. Copy `templates/env.local.sh.template` to `~/.claude/env.local.sh` and fill
+   in your values.
+3. `bash scripts/install-git-hooks.sh --only pre-commit` in your working copy.
+4. `bash ~/.claude/scripts/install-routine-timers.sh` if you use the routines.
+
+## [1.2.0] - 2026-09-25
+
+### Changed
+
+- `CLAUDE.md` is a signpost instead of a logbook (about 57,000 to about 15,000
+  characters); the full inventory moved to `docs/FRAMEWORK-REFERENCE.md`.
+- Evidence and incident history moved verbatim out of the always-loaded rules
+  into `docs/archive/rules-evidence/`.
+- `release-cli-discipline` and `cloud-cli-discipline` are on-demand skills
+  instead of always-loaded rules.
+- Always-loaded instructions stay under Claude Code's 150,000-character limit.
+
+## [1.1.1] - 2026-09-24
+
+### Fixed
+
+- The cockpit handover re-syncs its dependencies after deploy.
+
+### Changed
+
+- README: cockpit showcase.
+
+## [1.1.0] - 2026-09-23
+
+### Changed
+
+- Public history restarted with a single commit; it replaces 1.0.0 and 1.0.1.
+- R.Code "plan follows practice" rework (`docs/adr/0002-rcode-plan-folgt-praxis.md`):
+  `/team-lead` is the main entrance, `.rcode/config.json` gains a `tracker`
+  field (`github` or `plan`), binding glossary, two-tier ADRs.
+
+### Security
+
+- Publish pipeline hardened: the gate runs against the unmodified private copy
+  of `scrub-check.sh`, private hook registrations are stripped from the
+  published `settings.json`, and a cached auto-mode snapshot is removed.
+
+## [1.0.1] and [1.0.0]
+
+Superseded. Their history was replaced by 1.1.0 and is no longer available.
+
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/emanuelrechsteiner/claude-rcode/releases/tag/v1.1.0

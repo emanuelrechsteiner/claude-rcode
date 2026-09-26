@@ -44,7 +44,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "claude-fable-5-1[1m]",
+  "model": "claude-opus-5-5[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -188,6 +188,10 @@
           },
           {
             "type": "command",
+            "command": "~/.claude/hooks/vault-write-gate.sh"
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/controller-first-mutation-gate.sh"
           },
           {
@@ -197,6 +201,15 @@
           {
             "type": "command",
             "command": "if [ -d .rcode ] && [ -f .rcode/scope-manifest.json ]; then BRANCH=$(git branch --show-current 2>/dev/null); if echo \"$BRANCH\" | grep -q 'issue-'; then echo 'R.Code: Scope guard active. Ensure changes are within issue scope.'; fi; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/vault-write-gate.sh"
           }
         ]
       }
@@ -413,7 +426,7 @@
       "effortLevel": "medium"
     },
     "claude-sonnet-5": {
-      "effortLevel": "low"
+      "effortLevel": "high"
     },
     "claude-opus-5-5": {
       "effortLevel": "medium"

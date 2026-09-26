@@ -133,12 +133,12 @@ excluded_tools:
 # --- Block B: Worktree-Kopien global aus dem Symbol-Index halten ---------------
 #
 # WARUM GLOBAL: `.claude/worktrees/` ist eine Claude-Code-KONVENTION, kein
-# Projekt-Spezifikum — jedes Projekt kann dort Worktrees anlegen (belegt: Projekt B,
-# Projekt G, ExampleOrg_Productions_Shop). Ein projektlokaler Ausschluss
+# Projekt-Spezifikum — jedes Projekt kann dort Worktrees anlegen (belegt: proj-1df43a,
+# proj-1b199b, ein Shop-Projekt unter acct-e26b40). Ein projektlokaler Ausschluss
 # haette 1 von 16 Projekten geloest.
 #
 # DAS PROBLEM: Worktrees enthalten vollstaendige, oft DIVERGENTE Kopien des
-# Quellcodes. In Projekt B lieferte find_symbol("lintLens") DREI Treffer — einer davon
+# Quellcodes. In proj-1df43a lieferte find_symbol("lintLens") DREI Treffer — einer davon
 # eine veraltete Fassung (217 statt 244 Zeilen). Ein Edit haette in der falschen
 # Kopie auf einem fremden Branch landen koennen: unsichtbar fuer den aktiven Branch,
 # Tests dort weiterhin gruen. 872 veraltete Quell-Duplikate gegen 458 echte Dateien
@@ -268,7 +268,7 @@ web_dashboard_open_on_launch: false
 # ```json
 # {
 #   "name_path_pattern": "myMethod",
-#   "relative_path": "/Users/name/project/src/file.ts"  // ❌ Absolute path
+#   "relative_path": "/Users/<user>/project/src/file.ts"  // ❌ Absolute path
 # }
 # ```
 #

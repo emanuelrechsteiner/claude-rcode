@@ -120,7 +120,7 @@ Before a bulk file operation (move/copy/mass-create across many files), state th
 
 Prefer passing the full absolute path to each command over `cd`-ing into a directory first. `cd` is not forbidden, but it should not be the reflex.
 
-**Why:** every `cd` forces the agent to recompute the next command's path relative to wherever the chain left it, and the two-roots split (Bauhof `/Volumes/YourExternalVolume/.../claude-code-config` vs. Haus `~/.claude`) is exactly the kind of mental path arithmetic that goes wrong under that pressure (IMP-162).
+**Why:** every `cd` forces the agent to recompute the next command's path relative to wherever the chain left it, and the two-roots split (Bauhof `<BAUHOF>` vs. Haus `~/.claude`) is exactly the kind of mental path arithmetic that goes wrong under that pressure (IMP-162).
 
 **How to apply:**
 - Default: `git -C /abs/path/to/repo status`, `Read(file_path="/abs/path/...")`, `python3 /abs/path/script.py` — carry the absolute path as an argument, not as an ambient `cd`.

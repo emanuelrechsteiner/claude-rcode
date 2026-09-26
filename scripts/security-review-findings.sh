@@ -16,33 +16,37 @@
 # Lead measurement (2026-09-09), full corpus (not a time-windowed sample):
 #   grep -rl 'Review this change for security vulnerabilities'
 #        ~/.claude/projects --include='*.jsonl'
-#   -> 191 files across 8 projects + 2 worktree copies; Projekt A 61,
-#      Projekt J 56, claude-code-config 44 (29 top-level + 11 + 5
-#      subagent-path false-positive matches — see classifier note below),
-#      Projekt I 23, Projekt O 2, PHASE-I "Projekt N" 1,
-#      PHASE-II Projekt P 1, plus 2 hits in an old-name worktree copy of
-#      Projekt J.
+#   -> 191 files across 8 projects + 2 worktree copies. claude-code-config
+#      alone contributed 44 (29 top-level + 11 + 5 subagent-path
+#      false-positive matches — see classifier note below); the remaining
+#      147 were spread across the other 7 projects and 2 worktree copies of
+#      one of them, one project alone accounting for 61 of those — this is
+#      a volume problem across the whole projects/ tree, not specific to
+#      any single project (per-project breakdown omitted here by design,
+#      IMP-219 — see the durable JSONL feed this script produces for the
+#      live, per-machine numbers).
 #
-# RESULT SHAPE (empirically confirmed across Projekt A / Projekt I /
-# Projekt J / claude-code-config — identical field names in every
-# project, so this is the plugin's fixed schema, not per-project drift):
+# RESULT SHAPE (empirically confirmed across multiple projects, including
+# claude-code-config — identical field names in every project, so this is
+# the plugin's fixed schema, not per-project drift):
 #   The session's final answer is a `StructuredOutput` tool_use call:
 #     {"name":"StructuredOutput","input":{"findings":[
 #       {"filePath":"...", "category":"...", "severity":"high|medium|...",
 #        "confidence":0.95, "vulnerableCode":"...", "explanation":"...",
 #        "fix":"..."}
 #     ]}}
-#   A session can carry >1 StructuredOutput call — observed live (Projekt A
-#   aaaa0004): the FIRST call failed native schema validation
-#   ("Output does not match required schema: /findings: must be array",
-#   is_error:true) and got auto-retried; the retry's tool_result was
+#   A session can carry >1 StructuredOutput call — observed live (a real
+#   session, id fragment aaaa0004): the FIRST call failed native schema
+#   validation ("Output does not match required schema: /findings: must be
+#   array", is_error:true) and got auto-retried; the retry's tool_result was
 #   "Structured output provided successfully". Taking the first call, or
 #   summing all calls, would have misreported that specific session's real
 #   answer (1 finding -> corrected to 0). This script always takes the LAST
 #   StructuredOutput call whose matching tool_result is NOT is_error:true.
 #   A session with zero accepted calls (still running, or aborted mid-review
-#   — observed live, aaaa0005) is reported as "incomplete", never as "clean"
-#   (0 findings) — conflating the two would silently hide unfinished reviews.
+#   — observed live, id fragment aaaa0005) is reported as "incomplete",
+#   never as "clean" (0 findings) — conflating the two would silently hide
+#   unfinished reviews.
 #
 # CLASSIFIER — why grep -l alone is not enough: this very task's own prompt
 # quotes the marker string "Review this change for security vulnerabilities",
@@ -124,6 +128,9 @@ Env overrides:
   CLAUDE_SEC_FINDINGS_ACK              default: ~/.claude/global-observation/security-review-findings-ack.txt
   CLAUDE_SEC_FINDINGS_LEDGER_PROJECT   default: claude-code-config (substring match against the project slug)
   CLAUDE_LEDGER_APPEND_SCRIPT          default: ~/.claude/scripts/ledger-append-proposed.sh
+  CLAUDE_VAULT_SCRIPT                  default: ~/.claude/scripts/vault/vault.sh (IMP-219; derives the
+                                        --to-ledger sourceProposal id — no vault/secret means that
+                                        session's ledger write is skipped, never a raw session id)
 EOF
 }
 
@@ -145,6 +152,12 @@ SEEN="${CLAUDE_SEC_FINDINGS_SEEN:-$HOME_DIR/.claude/global-observation/security-
 ACK="${CLAUDE_SEC_FINDINGS_ACK:-$HOME_DIR/.claude/global-observation/security-review-findings-ack.txt}"
 LEDGER_PROJECT="${CLAUDE_SEC_FINDINGS_LEDGER_PROJECT:-claude-code-config}"
 LEDGER_APPEND="${CLAUDE_LEDGER_APPEND_SCRIPT:-$HOME_DIR/.claude/scripts/ledger-append-proposed.sh}"
+# IMP-219: the real session id must never reach the ledger's sourceProposal
+# key as plaintext (it is a personal/machine identifier, same class as the
+# paths/names the vault exists for) — `vault.sh token id` derives a stable,
+# secret-keyed, non-reversible stand-in WITHOUT storing the session id
+# itself anywhere (see --to-ledger below).
+VAULT_SH="${CLAUDE_VAULT_SCRIPT:-$HOME_DIR/.claude/scripts/vault/vault.sh}"
 MARKER='Review this change for security vulnerabilities'
 
 SINCE=""
@@ -432,6 +445,7 @@ if [[ "$TO_LEDGER" -eq 1 ]]; then
   else
     log "--to-ledger: $N_TOSEND unacked finding(s) for project substring '$LEDGER_PROJECT'"
     SESSIONS="$(printf '%s\n' "$TO_SEND" | jq -r '.session_id' | sort -u)"
+    N_SID_SKIPPED=0
     while IFS= read -r sid; do
       [[ -n "$sid" ]] || continue
       GROUP="$(printf '%s\n' "$TO_SEND" | jq -c --arg sid "$sid" '
@@ -445,11 +459,27 @@ if [[ "$TO_LEDGER" -eq 1 ]]; then
             evidence: (.summary // "")
           }
       ')"
-      LEDGER_ARGS=(--proposal "security-review-$sid")
+      sid_token=""
+      if [[ -f "$VAULT_SH" ]]; then
+        sid_token="$(bash "$VAULT_SH" token id "$sid" 2>/dev/null || true)"
+      fi
+      if [[ -z "$sid_token" ]]; then
+        # IMP-219: never name the real session id here, not even in a WARN
+        # — same "kind-only reporting" convention as the vault gate's own
+        # BLOCKED messages (never print the value the vault exists to
+        # protect). Aggregated below into ONE summary line instead of one
+        # per skipped session.
+        N_SID_SKIPPED=$((N_SID_SKIPPED + 1))
+        continue
+      fi
+      LEDGER_ARGS=(--proposal "security-review-$sid_token")
       [[ "$DRY_RUN" -eq 1 ]] && LEDGER_ARGS+=(--dry-run)
       printf '%s\n' "$GROUP" | "$LEDGER_APPEND" "${LEDGER_ARGS[@]}" \
         | while IFS= read -r line; do log "  ledger: $line"; done
     done <<< "$SESSIONS"
+    if [[ "$N_SID_SKIPPED" -gt 0 ]]; then
+      log "WARN: $N_SID_SKIPPED session(s) skipped — no vault/secret available to derive a token (run: scripts/vault/vault.sh init); fail-loud, no raw-session-id fallback"
+    fi
   fi
 fi
 

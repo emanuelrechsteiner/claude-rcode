@@ -71,7 +71,7 @@ tracker, and the branch name the lead has already created for the wave
 
 Practice basis (A1): under `/team-lead`, 16 sub-agents across 4 waves
 committed to ONE shared branch (`overnight/2026-09-21-foundation`,
-Projekt M) — `/issue` standalone mode was never invoked for any of them.
+proj-292e7a) — `/issue` standalone mode was never invoked for any of them.
 Worker mode formalizes what already happens in practice instead of pretending
 every dispatched worker runs the full standalone protocol.
 
@@ -152,8 +152,8 @@ report the blocker back to the lead instead of stopping the whole session.)
    are readable: the checkbox form (`- [ ] P-012 — <Title> ...`, with an
    optional indented body below it), the `P-NNN` table-row form whose FIRST
    cell is the ID (`| P-001 | [Phase 1] <Title> | <Type> | <Area> | ... |`,
-   used by e.g. Projekt M's 312 units), and a LOCAL `#N` table form whose
-   first HEADER cell is `#`/`ID`/`Nr`/`Nr.` (K-A — the Projekt N practice;
+   used by e.g. proj-292e7a's 312 units), and a LOCAL `#N` table form whose
+   first HEADER cell is `#`/`ID`/`Nr`/`Nr.` (K-A — the practice in project proj-47cf29;
    the `plan` tracker field disambiguates it from a GitHub issue, not the ID
    shape) — see `~/.claude/rcode/README.md` §Tracker Modes for the full
    grammar.

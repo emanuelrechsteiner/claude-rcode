@@ -11,8 +11,9 @@
 #
 # TRACKER-AGNOSTIC (M14, 2026-09-23): a project's units live in GitHub issues
 # (tracker "github") or in BRAINSTORM.md (tracker "plan", for projects with
-# no issue tracker — e.g. Projekt N: 0/28 commits reference anything, no
-# remote). This script now calls `rcode-units.sh` (the ONE tracker-agnostic
+# no issue tracker — a real project was measured at 0/28 commits
+# referencing any unit, with no git remote at all). This script now calls
+# `rcode-units.sh` (the ONE tracker-agnostic
 # parser — see its header) to learn which tracker is active, and to source
 # ALL plan-mode unit data — deliberately never re-implementing BRAINSTORM.md
 # parsing here (rules/testing-quality.md "Verify via the same code path, not

@@ -67,13 +67,13 @@ assert_eq() {  # description, expected, actual
 # A) NOTE mode never blocks — in ANY state
 # ═══════════════════════════════════════════════════════════════════════════
 S1=$(sid 1); mark_substantial "$S1"
-assert_eq "note/substantial/no-flag/Write" 0 "$(run_gate note "$(j_write "$S1" /Users/x/project/src/foo.ts)")"
+assert_eq "note/substantial/no-flag/Write" 0 "$(run_gate note "$(j_write "$S1" /Users/example/project/src/foo.ts)")"
 
 S2=$(sid 2); mark_substantial "$S2"
 assert_eq "note/substantial/no-flag/Bash-mutation" 0 "$(run_gate note "$(j_bash "$S2" "git commit -m x")")"
 
 S3=$(sid 3)
-assert_eq "note/no-state/Edit" 0 "$(run_gate note "$(j_edit "$S3" /Users/x/project/src/foo.ts)")"
+assert_eq "note/no-state/Edit" 0 "$(run_gate note "$(j_edit "$S3" /Users/example/project/src/foo.ts)")"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # B) ENFORCE mode
@@ -81,10 +81,10 @@ assert_eq "note/no-state/Edit" 0 "$(run_gate note "$(j_edit "$S3" /Users/x/proje
 
 # substantial + no controller-ran + non-exempt -> BLOCK
 S4=$(sid 4); mark_substantial "$S4"
-assert_eq "enforce/substantial/no-flag/Write/nonexempt" 2 "$(run_gate enforce "$(j_write "$S4" /Users/x/project/src/foo.ts)")"
+assert_eq "enforce/substantial/no-flag/Write/nonexempt" 2 "$(run_gate enforce "$(j_write "$S4" /Users/example/project/src/foo.ts)")"
 
 S5=$(sid 5); mark_substantial "$S5"
-assert_eq "enforce/substantial/no-flag/Edit/nonexempt" 2 "$(run_gate enforce "$(j_edit "$S5" /Users/x/project/src/foo.ts)")"
+assert_eq "enforce/substantial/no-flag/Edit/nonexempt" 2 "$(run_gate enforce "$(j_edit "$S5" /Users/example/project/src/foo.ts)")"
 
 S6=$(sid 6); mark_substantial "$S6"
 assert_eq "enforce/substantial/no-flag/Bash-mutation" 2 "$(run_gate enforce "$(j_bash "$S6" "git commit -m x")")"
@@ -95,11 +95,11 @@ assert_eq "enforce/substantial/no-flag/Bash-readonly" 0 "$(run_gate enforce "$(j
 
 # substantial + controller-ran -> ALLOW
 S8=$(sid 8); mark_substantial "$S8"; mark_controller_ran "$S8"
-assert_eq "enforce/substantial/controller-ran/Write" 0 "$(run_gate enforce "$(j_write "$S8" /Users/x/project/src/foo.ts)")"
+assert_eq "enforce/substantial/controller-ran/Write" 0 "$(run_gate enforce "$(j_write "$S8" /Users/example/project/src/foo.ts)")"
 
 # no substantial flag at all -> ALLOW (gate doesn't apply pre-substance)
 S9=$(sid 9)
-assert_eq "enforce/no-substantial-flag/Write" 0 "$(run_gate enforce "$(j_write "$S9" /Users/x/project/src/foo.ts)")"
+assert_eq "enforce/no-substantial-flag/Write" 0 "$(run_gate enforce "$(j_write "$S9" /Users/example/project/src/foo.ts)")"
 
 # exempt paths -> ALLOW even substantial+no-flag
 S10=$(sid 10); mark_substantial "$S10"
@@ -112,14 +112,14 @@ S12=$(sid 12); mark_substantial "$S12"
 assert_eq "enforce/exempt-project-status" 0 "$(run_gate enforce "$(j_write "$S12" /repo/PROJECT-STATUS.md)")"
 
 S13=$(sid 13); mark_substantial "$S13"
-assert_eq "enforce/exempt-plans-dir" 0 "$(run_gate enforce "$(j_write "$S13" /Users/x/.claude/plans/proposal.md)")"
+assert_eq "enforce/exempt-plans-dir" 0 "$(run_gate enforce "$(j_write "$S13" /Users/example/.claude/plans/proposal.md)")"
 
 S13b=$(sid 13b); mark_substantial "$S13b"
 assert_eq "enforce/exempt-agent-log" 0 "$(run_gate enforce "$(j_write "$S13b" /repo/.rcode/agent-log.md)")"
 
 # CLAUDE_GATE_TESTMODE=1 -> ALLOW regardless of state/mode
 S14=$(sid 14); mark_substantial "$S14"
-assert_eq "enforce/testmode-exempt" 0 "$(run_gate_testmode "$(j_write "$S14" /Users/x/project/src/foo.ts)")"
+assert_eq "enforce/testmode-exempt" 0 "$(run_gate_testmode "$(j_write "$S14" /Users/example/project/src/foo.ts)")"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # C) ACK token: single-use, op-bound (Bash — the reliable delivery path)

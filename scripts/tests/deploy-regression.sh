@@ -174,18 +174,21 @@ check "permissions-nachbarn-geschuetzt/nennt-den-grund"  1 "$(echo "$OUT" | grep
 check "permissions-nachbarn-geschuetzt/nichts-verworfen" 1 "$(jq '[.permissions.allow[] | select(. == "Bash(rm *)")] | length' "$LIVE/settings.json")"
 teardown
 
-# ── J) Haus hat einen neuen autoMode-Block → Rueckzug (Pfad existiert im Bauhof
-#      vorher gar nicht — prueft das Anlegen neuer Pfade per setpath) ──────────
+# ── J) Haus hat einen autoMode-Block → bleibt Haus-only (IMP-219, vault-by-
+#      design): wandert NIE in den Bauhof, loest KEINEN Abbruch aus, UND
+#      ueberlebt Reset+Fast-Forward (ohne extract_haus_only/restore_haus_only
+#      wuerde `git checkout -- .` den unversionierten Block loeschen, bevor
+#      der Fast-Forward einen Bauhof-Stand ohne autoMode einzieht) ─────────────
 setup
 jq '.autoMode = {"environment": ["FOO=bar"]}' "$LIVE/settings.json" > "$LIVE/s.tmp" && mv "$LIVE/s.tmp" "$LIVE/settings.json"
 echo "Regel J" > "$WS/rules-j.md"
 G -C "$WS" add -A && G -C "$WS" commit -q -m "Regel J"
 run_deploy; RC=$?
-check "automode/exit0"              0 "$RC"
-check "automode/haus-behaelt-block"  '{"environment":["FOO=bar"]}' "$(jq -cS .autoMode "$LIVE/settings.json")"
-check "automode/bauhof-nachgezogen"  '{"environment":["FOO=bar"]}' "$(jq -cS .autoMode "$WS/settings.json")"
-check "automode/eigener-commit"      1 "$(G -C "$WS" log --oneline -1 | grep -c 'Laufzeitpräferenzen')"
-check "automode/regel-angekommen"    1 "$([ -f "$LIVE/rules-j.md" ] && echo 1 || echo 0)"
+check "automode/exit0"                 0 "$RC"
+check "automode/haus-behaelt-block"    '{"environment":["FOO=bar"]}' "$(jq -cS .autoMode "$LIVE/settings.json")"
+check "automode/bauhof-bekommt-nichts" "null" "$(jq -c '.autoMode // null' "$WS/settings.json")"
+check "automode/kein-praeferenzen-commit" 0 "$(G -C "$WS" log --oneline -1 | grep -c 'Laufzeitpräferenzen')"
+check "automode/regel-angekommen"      1 "$([ -f "$LIVE/rules-j.md" ] && echo 1 || echo 0)"
 teardown
 
 # ── K) Bestandsschutz-Pin: Haus weicht in einem NICHT gelisteten Schluessel ab
@@ -241,6 +244,68 @@ check "modelsettings/haus-behaelt-block" '{"claude-sonnet-5":{"effortLevel":"xhi
 check "modelsettings/bauhof-nachgezogen" '{"claude-sonnet-5":{"effortLevel":"xhigh"}}' "$(jq -cS .modelSettings "$WS/settings.json")"
 check "modelsettings/eigener-commit"     1 "$(G -C "$WS" log --oneline -1 | grep -c 'Laufzeitpräferenzen')"
 check "modelsettings/regel-angekommen"   1 "$([ -f "$LIVE/rules-n.md" ] && echo 1 || echo 0)"
+teardown
+
+# ── O) Weder Umgebungsvariable noch ~/.claude/env.local.sh kennen die Bauhof-
+#      Wurzel (HOME zeigt auf ein frisches Temp-Verzeichnis ohne .claude/) →
+#      Abbruch, der die Vorlage nennt statt einen Pfad zu raten (IMP-219) ──────
+FAKE_HOME=$(mktemp -d)
+OUT=$(env -u CLAUDE_WORKSHOP_ROOT -u CLAUDE_BAUHOF_ROOT -u CLAUDE_LIVE_CONFIG -u CLAUDE_LIVE_COCKPIT \
+      HOME="$FAKE_HOME" bash "$DEPLOY" config 2>&1); RC=$?
+check "keine-maschinenpfade/bricht-ab"     1 "$RC"
+check "keine-maschinenpfade/nennt-vorlage" 1 "$(echo "$OUT" | grep -c 'env.local.sh.template')"
+rm -rf "$FAKE_HOME"
+
+# ── P) restore_haus_only scheitert (jq-Fehler NUR fuer den restore-Aufruf
+#      simuliert, per PATH-Shim, der alle anderen jq-Aufrufe unveraendert an
+#      das echte jq durchreicht) → die Sicherungsdatei bleibt mit dem Wert
+#      erhalten UND die Fehlermeldung nennt ihren Pfad, statt den Wert
+#      ersatzlos zu verlieren (Befund 2026-09-25, vor diesem Fix: das Skript
+#      brach unter set -e ab, ohne dass irgendwo ein Pfad zum zuletzt
+#      gesicherten Wert stand) ──────────────────────────────────────────────
+setup
+jq '.autoMode = {"environment": ["FOO=bar"]}' "$LIVE/settings.json" > "$LIVE/s.tmp" && mv "$LIVE/s.tmp" "$LIVE/settings.json"
+echo "Regel P" > "$WS/rules-p.md"
+G -C "$WS" add -A && G -C "$WS" commit -q -m "Regel P"
+BACKUP_TMPDIR="$ROOT/backup-tmp"; mkdir -p "$BACKUP_TMPDIR"
+JQFAIL_SHIM="$ROOT/bin-jqfail"; mkdir -p "$JQFAIL_SHIM"
+REALJQ="$(command -v jq)"
+cat > "$JQFAIL_SHIM/jq" <<SHIMEOF
+#!/bin/sh
+case "\$*" in
+  *'setpath(\$e.path; \$e.value)'*) echo "jq: simulated restore failure (test)" >&2; exit 5 ;;
+esac
+exec "$REALJQ" "\$@"
+SHIMEOF
+chmod +x "$JQFAIL_SHIM/jq"
+OUT=$(TMPDIR="$BACKUP_TMPDIR" PATH="$JQFAIL_SHIM:$PATH" CLAUDE_WORKSHOP_ROOT="$ROOT/workshop" CLAUDE_LIVE_CONFIG="$LIVE" \
+      bash "$DEPLOY" config 2>&1); RC=$?
+check "restore-scheitert/bricht-ab" 1 "$([ "$RC" -ne 0 ] && echo 1 || echo 0)"
+BACKUP_FILES=("$BACKUP_TMPDIR"/deploy-haus-only-backup.*)
+check "restore-scheitert/datei-bleibt-erhalten" 1 "$([ -f "${BACKUP_FILES[0]}" ] && echo 1 || echo 0)"
+check "restore-scheitert/datei-enthaelt-den-wert" 1 "$(grep -c 'FOO=bar' "${BACKUP_FILES[0]}" 2>/dev/null || echo 0)"
+check "restore-scheitert/meldung-nennt-den-pfad" 1 \
+      "$(echo "$OUT" | grep -qF -- "${BACKUP_FILES[0]}" && echo 1 || echo 0)"
+check "restore-scheitert/datei-ist-0600" "600" \
+      "$(stat -f '%Lp' "${BACKUP_FILES[0]}" 2>/dev/null || stat -c '%a' "${BACKUP_FILES[0]}" 2>/dev/null)"
+teardown
+
+# ── Q) Erfolgsfall mit einem Haus-only-Wert (autoMode) → die Sicherungsdatei
+#      aus P existiert am Ende NICHT mehr (derselbe TMPDIR, diesmal ohne
+#      Fehler-Shim: das echte jq laeuft durch) ────────────────────────────────
+setup
+jq '.autoMode = {"environment": ["FOO=bar"]}' "$LIVE/settings.json" > "$LIVE/s.tmp" && mv "$LIVE/s.tmp" "$LIVE/settings.json"
+echo "Regel Q" > "$WS/rules-q.md"
+G -C "$WS" add -A && G -C "$WS" commit -q -m "Regel Q"
+BACKUP_TMPDIR_Q="$ROOT/backup-tmp-q"; mkdir -p "$BACKUP_TMPDIR_Q"
+OUT=$(TMPDIR="$BACKUP_TMPDIR_Q" CLAUDE_WORKSHOP_ROOT="$ROOT/workshop" CLAUDE_LIVE_CONFIG="$LIVE" \
+      bash "$DEPLOY" config 2>&1); RC=$?
+check "restore-erfolg/exit0" 0 "$RC"
+check "restore-erfolg/haus-behaelt-automode" '{"environment":["FOO=bar"]}' "$(jq -cS .autoMode "$LIVE/settings.json")"
+shopt -s nullglob
+LEFTOVER_Q=("$BACKUP_TMPDIR_Q"/deploy-haus-only-backup.*)
+shopt -u nullglob
+check "restore-erfolg/keine-sicherungsdatei-uebrig" 0 "${#LEFTOVER_Q[@]}"
 teardown
 
 # ── Cockpit mit neuen Commits: die Abhaengigkeiten muessen nachgezogen werden ──

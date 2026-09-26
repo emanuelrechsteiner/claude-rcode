@@ -62,7 +62,7 @@ Check presence **by name only** — never read or print a value:
 
 List missing keys **once**, with a recommendation, before any dependent unit
 is dispatched — never silently, and never mid-wave (evidence: IMP-169,
-Projekt E 2026-08-09 — missing env keys/secrets blocked 7 of 12 units
+proj-af832e 2026-08-09 — missing env keys/secrets blocked 7 of 12 units
 transitively because no preflight existed). `~/.claude/commands/issue.md`
 runs this same section for its own unit at its own Step 0 — in BOTH
 Standalone mode and Worker mode — by reference, never as a second copy of

@@ -3,7 +3,7 @@ name: daily-docs
 description: Daily logbook entry — Item-Zählung läuft ausschliesslich über ein Referenzskript (nie manuell/aus dem Gefühl), aggregiert Signals/Git/Memory für die Prosa, schreibt Markdown + synced zu Notion.
 ---
 
-<!-- Erwartetes cwd: ~/.claude · Zeitgeber: launchd com.your-username.claude-routine-daily-docs (seit 2026-08-22, IMP-135; davor unversionierte Cloud-Bindung an ein 2026-08-02 umbenanntes Verzeichnis — 20 Tage stiller Ausfall). -->
+<!-- Erwartetes cwd: ~/.claude · Zeitgeber: launchd com.claude-code.routine-daily-docs (seit 2026-08-22, IMP-135; Label generisch seit IMP-219, 2026-09-25; davor unversionierte Cloud-Bindung an ein 2026-08-02 umbenanntes Verzeichnis — 20 Tage stiller Ausfall). -->
 
 Run the documentation-agent in Mode B (Daily-Docs Routine).
 
@@ -123,6 +123,7 @@ das Skript lässt die Zahlenfelder weg, statt sie auf `null` zu setzen.
 | 3 | Suchwurzel fehlt oder Sentinel unlesbar (Volume nicht gemountet) |
 | 4 | 0 Transkripte gefunden — Messfehler, kein Leertag |
 | 5 | signals fehlt oder abgeschnitten |
+| 6 | Zeitzone nicht ermittelbar (IMP-219: weder `$TZ` noch `$CLAUDE_LOGBOOK_TZ` gesetzt, Systemzeitzone nicht lesbar) |
 | 7 | `items_total=0`, obwohl andere Quellen liefern |
 | 9 | Ausgabe nicht geschrieben oder leer trotz Eingabe |
 | 10 | Arbeitsverzeichnis nicht frisch |
@@ -161,7 +162,20 @@ nichts.
 1. **Commit-Messages** (Kontext, keine Zählquelle):
    ```bash
    yesterday=$(date -v-1d +%Y-%m-%d)
-   ROOTS=("/Volumes/YourExternalVolume/ProjectHub" "/Volumes/YourExternalVolume/1-PROJECTS" "$HOME/ProjectHub" "$HOME/.claude")
+   # Weitere Suchwurzeln kommen aus der Umgebung (IMP-219, korrigiert
+   # 2026-09-25 — vorher eine feste Verzeichnistiefe zwischen Bauhof und
+   # einer Elternebene, das war eine Annahme ueber die Ordnerstruktur eines
+   # einzelnen Rechners im versionierten Code). Optionale, ":"-getrennte
+   # Variable CLAUDE_EXTRA_SEARCH_ROOTS (siehe templates/env.local.sh.template).
+   # Fehlt sie, werden NUR die beiden $HOME-Wurzeln durchsucht — die Schleife
+   # unten WARNt ohnehin pro fehlender Wurzel und arbeitet mit den
+   # vorhandenen weiter (siehe "Failure modes"), keine Logikänderung.
+   [ -n "${CLAUDE_EXTRA_SEARCH_ROOTS:-}" ] || { [ -f "$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }
+   ROOTS=("$HOME/Cowork" "$HOME/.claude")
+   if [ -n "${CLAUDE_EXTRA_SEARCH_ROOTS:-}" ]; then
+     IFS=':' read -ra EXTRA_ROOTS <<< "$CLAUDE_EXTRA_SEARCH_ROOTS"
+     ROOTS+=("${EXTRA_ROOTS[@]}")
+   fi
    for r in "${ROOTS[@]}"; do
      [ -d "$r" ] || { echo "WARN: root missing (drive unmounted?): $r" >&2; continue; }
      find "$r" -maxdepth 5 -type d -name .git -not -path '*/node_modules/*' 2>/dev/null
@@ -178,7 +192,7 @@ nichts.
    `claude/*`-Worktree-Branches); author-date ODER committer-date (ein reiner
    `--since/--until`-Filter auf Committer-Date verpasst Commits nach einem nächtlichen
    Rebase); SHA-Dedupe (zwei Klone desselben Remotes — z.B.
-   `ProjectHub/config-repo` und `$HOME/.claude` — emittieren jeden Commit
+   `COWORK/proj-6964a0` und `$HOME/.claude` — emittieren jeden Commit
    doppelt; am 2026-07-17 real beobachtet: 2 Commits erschienen als 4 Zeilen).
 2. **Signals:** `~/.claude/global-observation/signals.jsonl` (aktuell) +
    `~/.claude/global-observation/archives/signals-<yesterday>.jsonl.gz` (rotiert) —
@@ -190,10 +204,14 @@ nichts.
    Prozess fasst Dateien in diesem Baum an, ohne den Inhalt zu ändern — 99 von 603
    Transkriptdateien trugen im Lauf vom 2026-09-09 exakt `10:30` als mtime bei
    wochenaltem Inhalt. Gleiches Muster wie `logbook-count.sh` § S1a, "nie mtime").
-   Prüfe je Datei in `~/.claude/projects/-Users-your-username/memory/*.md` das
-   Frontmatter-Feld `modified:` gegen `$yesterday`:
+   Prüfe je Datei in `~/.claude/projects/$(echo "$HOME" | tr '/' '-')/memory/*.md`
+   (Claude Codes eigene Verzeichniskodierung: jedes `/` im cwd-Pfad wird zu `-` —
+   für eine Session mit cwd `$HOME` ergibt das genau diesen Ordnernamen, IMP-219:
+   kein hartcodierter Benutzername mehr) das Frontmatter-Feld `modified:` gegen
+   `$yesterday`:
    ```bash
-   grep -l "modified: ${yesterday}" ~/.claude/projects/-Users-your-username/memory/*.md 2>/dev/null
+   HOME_PROJECT_DIR="$(echo "$HOME" | tr '/' '-')"
+   grep -l "modified: ${yesterday}" ~/.claude/projects/${HOME_PROJECT_DIR}/memory/*.md 2>/dev/null
    ```
    Nicht jede Memory-Datei trägt `modified:` im Frontmatter (ältere Dateien fehlt das
    Feld ganz). Eine Datei ohne dieses Feld ist eine PROSA-QUELLE OHNE DATUMSBELEG — sie
@@ -214,20 +232,25 @@ Ausschmücken:
 ## Outputs
 
 ### A) Local Markdown logbook
-Path: `/Users/your-username/.claude/logbook/YYYY-MM-DD.md` (YYYY-MM-DD = gestern)
+Path: `~/.claude/logbook/YYYY-MM-DD.md` (YYYY-MM-DD = gestern)
 
-**Hardcoded mit Absicht (2026-07-18) — hier keine Variable wieder einführen.** Der
-alte Pfad las `${LOGBOOK_DIR}`, nie in `settings.json`/`settings.local.json` gesetzt.
-Unset expandierte er zu leer → der Pfad wurde `/YYYY-MM-DD.md` (Filesystem-Root). Läufe
-reparierten sich still, indem sie das Verzeichnis aus einer früheren Zeile in
-`daily-docs-log.jsonl` erschlossen — ein stiller Fallback (`rules/fail-loud.md`
-verboten), der wochenlang den unset-Bug maskierte. `settings.local.json` wäre KEINE
-dauerhafte Lösung (gitignored, `*.local.json`) — der Pfad ist maschinenstabil und
-nicht geheim, er gehört in die Spec selbst.
+**Hardcoded mit Absicht (2026-07-18) — hier keine APP-SPEZIFISCHE Variable wieder
+einführen.** Der alte Pfad las `${LOGBOOK_DIR}`, nie in `settings.json`/
+`settings.local.json` gesetzt. Unset expandierte er zu leer → der Pfad wurde
+`/YYYY-MM-DD.md` (Filesystem-Root). Läufe reparierten sich still, indem sie das
+Verzeichnis aus einer früheren Zeile in `daily-docs-log.jsonl` erschlossen — ein
+stiller Fallback (`rules/fail-loud.md` verboten), der wochenlang den unset-Bug
+maskierte. `settings.local.json` wäre KEINE dauerhafte Lösung (gitignored,
+`*.local.json`) — der Pfad ist maschinenstabil und nicht geheim, er gehört in die
+Spec selbst. `$HOME` (IMP-219, statt eines literalen Benutzerpfads) fällt NICHT
+in dieselbe Gefahrenklasse wie das alte `${LOGBOOK_DIR}`: `$HOME` ist keine
+app-spezifische Konfigurationsvariable, die erst irgendwo verdrahtet werden muss
+— jeder Prozess (Login-Shell, launchd) bekommt sie vom Betriebssystem gesetzt, und
+der Pre-Flight-Guard unten prüft ohnehin `-d` auf das Ergebnis, bevor geschrieben wird.
 
 **Pre-flight-Guard — fail loud, kein Workaround:**
 ```bash
-LOGBOOK_DIR_RESOLVED="/Users/your-username/.claude/logbook"
+LOGBOOK_DIR_RESOLVED="$HOME/.claude/logbook"
 [ -n "$LOGBOOK_DIR_RESOLVED" ] && [ -d "$LOGBOOK_DIR_RESOLVED" ] || {
   echo "FAIL: logbook dir empty or missing: '${LOGBOOK_DIR_RESOLVED:-<empty>}'" >&2
   exit 1
@@ -269,10 +292,10 @@ enthalten"; bei 0 Operationen: "keine"]
 ```
 
 ### B) Notion sync
-- Parent page: `<your-notion-page-id>` — die "📔 Claude Code
-  Logbuch"-Page.
+- Parent page: `${CLAUDE_LOGBOOK_NOTION_PAGE_ID}` (siehe `~/.claude/env.local.sh`,
+  Vorlage `templates/env.local.sh.template`) — die "📔 Claude Code Logbuch"-Page.
 
-**Hardcoded mit Absicht (2026-08-04) — hier keine Variable wieder einführen.**
+**Hardcoded mit Absicht (2026-08-04), seit IMP-219 (2026-09-25) aus der Umgebung.**
 Dieselbe Lehre wie beim Logbuch-Pfad in §A, nur eine Runde später gezogen: Der Wert
 stand als `${NOTION_PARENT_PAGE_ID}` in `~/.claude/settings.local.json` — einer Datei,
 die Claude Code auf Nutzerebene **nicht liest** (die lokale Einstellungsebene existiert
@@ -280,14 +303,20 @@ nur pro Projekt). Die Variable war also nie gesetzt, der Notion-Schritt fiel jed
 still aus, und der Lauf meldete `status:partial`. Das Ledger verbuchte den Punkt am
 2026-07-03 als „RESOLUTION: set in settings.local.json" — gelöst war er nicht, nur
 unsichtbar geworden. Der Wert ist maschinenstabil und **kein Zugangsmittel** (der
-Zugriff kommt aus der Notion-Anmeldung, nicht aus der Seiten-Kennung), er gehört
-deshalb in die Spec selbst.
+Zugriff kommt aus der Notion-Anmeldung, nicht aus der Seiten-Kennung) — er stand
+deshalb bis IMP-219 direkt in dieser Spec. **Warum das jetzt nicht derselbe Fehler
+ist:** `~/.claude/env.local.sh` ist keine Claude-Code-Konfigurationsebene, die die
+Engine selbst einliest (wie `settings.local.json` es wäre) — es ist eine gewöhnliche
+Shell-Datei, die der AUSFÜHRENDE AGENT per `source`/`.` im Bash-Tool selbst liest
+(Pre-flight-Guard unten); der Engine-liest-Nutzerebene-nicht-Mechanismus, der den
+ursprünglichen Versuch scheitern liess, greift hier nicht.
 
 **Pre-flight-Guard — fail loud, kein Workaround:**
 ```bash
-NOTION_PARENT_RESOLVED="<your-notion-page-id>"
+[ -n "${CLAUDE_LOGBOOK_NOTION_PAGE_ID:-}" ] || { [ -f "$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }
+NOTION_PARENT_RESOLVED="${CLAUDE_LOGBOOK_NOTION_PAGE_ID:-}"
 [ -n "$NOTION_PARENT_RESOLVED" ] || {
-  echo "FAIL: Notion parent page id empty" >&2
+  echo "FAIL: CLAUDE_LOGBOOK_NOTION_PAGE_ID nicht konfiguriert (siehe templates/env.local.sh.template)" >&2
   exit 1
 }
 ```
@@ -318,7 +347,7 @@ schreibt `{"date":…,"ts":…,"status":"partial","phase":"begonnen","reason":�
 ```bash
 bash ~/.claude/scheduled-tasks/daily-docs/bin/run-log.sh finish "$yesterday" \
   --count-json "$J" \
-  --logbook "/Users/your-username/.claude/logbook/$yesterday.md" \
+  --logbook "$HOME/.claude/logbook/$yesterday.md" \
   --notion-page-id "<id>" --notion-modus "<neue_subpage|update_bestehende_subpage>"
 ```
 Bei Skript-ABORT statt `finish`:

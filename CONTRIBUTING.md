@@ -62,6 +62,33 @@ Stays personal (use your own `.local.*` overlay):
 - Machine-specific paths or env vars
 - Personal CLAUDE.md additions
 
+## Submitting an improvement (IMP) without your private data
+
+Working in your own projects with R.Code naturally produces local
+observations — findings your `weekly-improve` routine writes into your
+personal ledger (`~/.claude/global-observation/improvement-ledger.json`).
+Real project names, paths, and account identifiers may legitimately appear
+there; they belong on your machine, never in this framework.
+
+To share a finding upstream without any of that leaving your machine:
+
+1. Create your local vault once (idempotent): `bash scripts/vault/vault.sh init`.
+   Register any of your own recurring private terms with `vault.sh add`.
+2. Get a submission form: copy `templates/imp-submission.template.md` and
+   fill it in by hand, or pre-fill it from a local ledger entry —
+   `bash scripts/imp-submit.sh --from-ledger IMP-042 > my-submission.md`
+   (every value taken from the ledger is tokenized before it is written).
+3. Have it checked: `bash scripts/imp-submit.sh my-submission.md`. A clean
+   run prints ready-to-paste issue/PR text on stdout; a finding blocks with
+   exit 2 and names only the kind/token, never the real value.
+4. Open the printed text as a GitHub issue or PR — see "How this repo is
+   generated" above for the back-port flow that gets it into the private
+   source repo.
+
+`scripts/install-git-hooks.sh` also installs a `pre-commit` hook that runs
+the same vault check on every commit's staged content, on top of the
+existing pre-push `scrub-check.sh`.
+
 ## Commit conventions
 
 Use Conventional Commits:

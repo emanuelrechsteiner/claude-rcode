@@ -45,7 +45,7 @@ global-observation/token-counter.json
 # --- Personal automation config: machine-specific mount points / usernames
 # roots.txt / git-roots.txt are the REAL (gitignored, untracked today)
 # config a user generates locally; the *.example siblings are tracked and
-# ship literal personal paths (/Users/your-username, /Volumes/YourExternalVolume)
+# ship literal personal paths (~, /Volumes/<VOLUME>)
 # as "examples" — excluding rather than transforming because a scrubbed
 # example is not obviously more useful than no example (the point of an
 # .example file is a copy-edit target, not documentation prose).
@@ -63,9 +63,10 @@ bin/roots.txt
 scheduled-tasks/daily-docs/bin/_referenz-artefakte/
 
 # --- Personal meta-intelligence tools — hardcoded to this maintainer's
-# specific external-volume layout (ProjectHub, ~49 named projects, a Notion-
-# adjacent ledger tree under /Volumes/YourExternalVolume). Not a generic
-# capability once scrubbed — the paths and project registry ARE the tool.
+# specific external-volume layout (a named top-level project directory,
+# ~49 named projects, a Notion-adjacent ledger tree under
+# /Volumes/<VOLUME>). Not a generic capability once scrubbed — the paths
+# and project registry ARE the tool.
 skills/ledger-entry/
 skills/meta-intelligence/
 
@@ -79,6 +80,28 @@ skills/meta-intelligence/
 # name so a user can copy-rename them). Removed 2026-08-13 (F1) — keep this
 # section to explicit, non-glob exclusions only.
 settings.local.json
+
+# --- Vault + machine-path config (IMP-219, 2026-09-25) --------------------
+# The vault line MUST stay anchored to the repo root ("/vault/", never the
+# bare "vault/"): per rsync --exclude-from semantics, a pattern with no
+# internal slash is matched against the basename at ANY depth, so the
+# unanchored form doesn't just hide the runtime vault DATA dir — it also
+# swallows scripts/vault/ (vault.sh, lib.sh, public-names.txt), the tracked,
+# publishable vault TOOL. Confirmed empirically with `rsync -a --dry-run
+# --itemize-changes`: "vault/" drops scripts/vault/ from the transfer
+# entirely; "/vault/" excludes only the root-level dir and ships
+# scripts/vault/ untouched. .gitignore already anchors its own vault entry
+# the same way ("/vault/") — this line now matches that convention instead
+# of contradicting it.
+# Both lines below are already untracked/gitignored (vault/ per .gitignore's
+# anchored entry; env.local.sh per the pre-existing "*.local.sh" glob) and so
+# structurally cannot survive a `git archive HEAD` — these lines are
+# belt-and-braces only, matching the same defensive stance as
+# settings.local.json above, in case CLAUDE_VAULT_DIR or the env-local
+# template ever get pointed inside the repo by mistake. See scripts/vault/
+# and templates/env.local.sh.template.
+/vault/
+env.local.sh
 
 # --- Plugin install-state — machine-specific absolute cache paths --------
 plugins/installed_plugins.json
@@ -94,13 +117,15 @@ docs/superpowers/specs/
 # identities, machines, and repo internals; never part of a public artifact.
 docs/HANDOFF-*
 
-# --- Private IMP history — replaced by a public stub (see transforms) ----
+# --- Private IMP history — replaced by the curated public changelog ----
 # The full CHANGELOG.md narrates internal improvement-cycle history (IMP-*
 # numbers, rebrand-in-progress commentary, the pre-rebrand project's old
 # codename used throughout) that predates the public artifact model itself.
-# publish-transforms.d/20-changelog.sh generates a minimal public
-# CHANGELOG.md pointing at GitHub Releases instead.
-CHANGELOG.md
+# publish-transforms.d/20-changelog.sh publishes public/CHANGELOG.md
+# (Keep a Changelog, hand-maintained) as the root CHANGELOG.md instead.
+# Anchored with a leading "/": unanchored, this pattern would also exclude
+# public/CHANGELOG.md (same bug class as the former "vault/" line below).
+/CHANGELOG.md
 
 # --- Maintainer-specific publish transforms — excludes the FILE, not the
 # EFFECT -----------------------------------------------------------------
@@ -113,9 +138,18 @@ CHANGELOG.md
 # their own source and comments, so their source is not publishable.
 # 10-ledger-stub.sh, 20-changelog.sh, 40-strip-private-hooks.sh and
 # 50-pseudonymize.sh are generic mechanisms and stay shipped. Added
-# 2026-09-23.
+# 2026-09-23. 60-declaw-scrub-check-pii.sh was removed 2026-09-25 (IMP-219,
+# vault-by-design): it existed only to neutralize maintainer-specific
+# literals scripts/scrub-check.sh used to hardcode in its own source —
+# those literals now live in the vault (scripts/vault/, gitignored,
+# never versioned), so scrub-check.sh's shipped source has nothing left
+# for a staging-time declaw transform to remove. 65-generalize-reminders-
+# section.sh was removed the same day for the same reason: the personal
+# Reminders section it used to rewrite in staging no longer exists in
+# CLAUDE.md at all — it moved to the gitignored local overlay
+# rules/reminders.local.md (see templates/reminders.local.md.template) —
+# so there is nothing left in the tracked source for a staging-time
+# transform to generalize.
 publish-transforms.d/30-placeholder-scan.sh
 publish-transforms.d/45-strip-automode-cache.sh
-publish-transforms.d/60-declaw-scrub-check-pii.sh
-publish-transforms.d/65-generalize-reminders-section.sh
 publish-transforms.d/70-neutralize-private-layer-prose.sh

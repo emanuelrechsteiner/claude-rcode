@@ -36,7 +36,7 @@ Commit zeigt nur, was am Ende herauskam — nicht den Weg dorthin.
 KEIN Aktivitätssignal — ein nicht identifizierter Prozess (keiner der drei
 `claude-routine`-launchd-Jobs, die 02:05/07:10/22:06 laufen) fasst Transkripte an, ohne
 sie inhaltlich zu ändern: im Lauf vom 2026-09-09 trugen 99 von 603 Dateien exakt `10:30`
-als mtime, während ihr letzter Eintrag Wochen zurücklag (Beispiel: Projekt B `aaaa0002`,
+als mtime, während ihr letzter Eintrag Wochen zurücklag (Beispiel: proj-1df43a `aaaa0002`,
 mtime 2026-08-31 10:30:45, letzter Eintrag 2026-07-13T20:51Z). Eine mtime-Fensterung
 zählte in diesem Lauf 11 statt real 5 aktive Coding-Projekte.
 
@@ -80,9 +80,9 @@ in den Kontext laden — arbeite mit `jq` über `type=="user"`-Turns, sortiere
 Wiederholungen, Ablehnungen, explizites Lob/Tadel), und lade nur für die Top-Funde den
 engen Kontext um die Fundstelle.
 
-**Projekt-Scope (Nachtrag, Nutzer-Direktive 2026-08-23):** „Alles mit Projekt A kannst Du
+**Projekt-Scope (Nachtrag, Nutzer-Direktive 2026-08-23):** „Alles mit proj-f5739a kannst Du
 ignorieren. Es zählen nur Coding-Projekte." Die IMP-Ableitung liest ausschliesslich
-Transkripte aus Coding-Projekten. Nicht-Coding-Arbeit (Prosa-Manuskripte wie Projekt A,
+Transkripte aus Coding-Projekten. Nicht-Coding-Arbeit (Prosa-Manuskripte wie proj-f5739a,
 reine Schreibprojekte ohne Code-Artefakte) ist als Quelle ausgenommen — unabhängig von
 ihrem Signalvolumen. Diese Ausnahme gilt nur für die Verbesserungs-Ableitung, nicht für
 andere Auswertungen (z. B. `daily-docs` dokumentiert weiterhin alle Projekte).
@@ -175,6 +175,13 @@ Write to `~/.claude/plans/meta-proposal-YYYY-MM-DD.md` with sections:
 ### Step 6 — Append ledger entry (optional, status: proposed)
 If the user explicitly requests immediate ledger entry (rare), append a `proposed` IMP-XXX to `improvement-ledger.json` with a `sourceProposal` field pointing to the proposal file.
 
+**Pseudonymisierung (IMP-219):** Was in versionierte Dateien geht, trägt Tokens statt
+echter Namen/Pfade — pipe findings through `ledger-append-proposed.sh`, das jedes
+Textfeld als Netz tokenisiert (`scripts/vault/vault.sh`) und bei einem verbleibenden
+strukturellen Fund das Schreiben verweigert. Lokale Arbeitsdateien unter
+`~/.claude/plans/` (gitignoriert, incl. this skill's own proposal `.md` files)
+dürfen echte Namen tragen — nur der Ledger-Schreibpfad ist betroffen.
+
 **HARD RULE for whoever IMPLEMENTS a proposal (IMP-074, 2026-07-03):** An IMP counts as *implemented* ONLY once its ledger entry exists (with `implementedAt` + `filesCreated`/`filesModified`). Recording in the ledger is the TERMINAL step of every implementation batch — never a deferrable one. A proposal file's Implementation Log marking something ✅ without a matching ledger id is a process failure (this exact deferral silently lost IMP-047..069 for 13 days; backfilled 2026-07-03). Also recompute the header counters (`totalImprovements` etc.) from the entries via jq/script — never hand-edit them.
 
 **VERIFICATION MANDATE (IMP-075, 2026-07-03):** every new `implemented` entry MUST carry a `verification` block: `{kpi, baseline, target, measured, measuredAt}` — a measurable KPI with its pre-change baseline and the post-change measurement. `measured` may initially be the ship-time check (e.g. "28/28 regression suite"), but the KPI must be re-measurable later from real data (signals/logs/test-suite), because `/meta --verify` re-reads these blocks and reports effective/regressed/unmeasurable per IMP. An implemented entry without a verification block is an incomplete implementation.
@@ -195,7 +202,7 @@ alarming): `date -u +%Y-%m-%dT%H:%M:%SZ > ~/.claude/global-observation/.last-run
 - ❌ Extract secrets, credentials, or user data from signal stream
 - ❌ Einen IMP-Kandidaten allein aus `git log`/Commit-Historie herleiten — Commits sind
   Korroboration, nie Herleitungsbasis (Quellen-Doktrin)
-- ❌ Nicht-Coding-Projekte (Prosa-/Schreibprojekte wie Projekt A) als Quelle für die
+- ❌ Nicht-Coding-Projekte (Prosa-/Schreibprojekte wie proj-f5739a) als Quelle für die
   IMP-Ableitung heranziehen, unabhängig vom Signalvolumen (Quellen-Doktrin, Projekt-Scope)
 
 ## Integration with Other Framework Components

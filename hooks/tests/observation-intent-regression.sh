@@ -4,13 +4,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Finding: the classifier matched intent on a bare keyword PREFIX
 # ("^fix", "^refactor", ...) with no requirement that the rest of the subject
-# be actual Conventional Commits shape. In one repo (working name "Projekt A"),
-# a German prose commit "Fix-Runde: 9 Arbeitspakete umgesetzt" sat at HEAD
-# while 297 unrelated Edit/Write events fired — every one of them was stamped
+# be actual Conventional Commits shape. In one repository, a German prose
+# commit "Fix-Runde: 9 Arbeitspakete umgesetzt" sat at HEAD while 297
+# unrelated Edit/Write events fired — every one of them was stamped
 # intent:"fix" (65% of all fix-signals in that window), because "Fix-Runde"
-# starts with "Fix". A second repo (working name "Projekt C") uses real
-# Conventional Commits subjects throughout and must keep classifying
-# correctly after the fix.
+# starts with "Fix". A second, unrelated repository uses real Conventional
+# Commits subjects throughout and must keep classifying correctly after the
+# fix.
 #
 # The fix requires the type token to be followed immediately by an optional
 # "(scope)", an optional "!", and a mandatory ":" before falling back to
@@ -92,7 +92,7 @@ echo "── Intent classifier regression (IMP-136) ──"
 echo ""
 echo "── The finding: German prose starting with a type keyword ──"
 
-# The exact reported case (Projekt A): must NOT be stamped fix.
+# The exact reported case: must NOT be stamped fix.
 check "German prose 'Fix-Runde: ...' is NOT fix" \
     "Fix-Runde: 9 Arbeitspakete umgesetzt" "edit"
 # Same class on a different type keyword, proving the fix isn't fix-only.
@@ -100,7 +100,7 @@ check "German prose 'Refactor-Runde: ...' is NOT refactor" \
     "Refactor-Runde: mehrere Module überarbeitet" "edit"
 
 echo ""
-echo "── Real Conventional Commits subjects (Projekt C-style) still classify ──"
+echo "── Real Conventional Commits subjects (second repo) still classify ──"
 
 check "'fix: typo' is fix"                      "fix: typo"                          "fix"
 check "'fix(auth): token refresh' is fix"       "fix(auth): token refresh"           "fix"

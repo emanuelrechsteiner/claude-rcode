@@ -294,13 +294,14 @@ if [[ "$COMMAND" =~ (https?://|//)(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|::1
     CURL_LOCAL=1
 fi
 
-# User-authorized generation APIs (approved 2026-07-28 for the an approved generation art
-# pipeline). Same shape and rationale as the CURL_LOCAL carve-out above: these
-# are explicitly provisioned endpoints, with keys the user created and stored in
-# a chmod-600 gitignored .env, whose entire purpose is to receive image payloads
-# (base64 sprite frames as conditioning input) and return generated art. Sending
-# data there is the intended function, not exfiltration. Scope is deliberately
-# two exact hosts — every other destination still hits the arms below.
+# User-authorized generation APIs (approved 2026-07-28 for a specific
+# art-generation pipeline). Same shape and rationale as the CURL_LOCAL
+# carve-out above: these are explicitly provisioned endpoints, with keys the
+# user created and stored in a chmod-600 gitignored .env, whose entire purpose
+# is to receive image payloads (base64 sprite frames as conditioning input)
+# and return generated art. Sending data there is the intended function, not
+# exfiltration. Scope is deliberately two exact hosts — every other
+# destination still hits the arms below.
 # Remove this block to revert to the previous behavior.
 CURL_ALLOWED_API=0
 if [[ "$COMMAND" =~ (https?://|//)(api\.retrodiffusion\.ai|api\.x\.ai)([:/[:space:]\"\']|$) ]]; then

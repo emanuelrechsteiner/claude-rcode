@@ -166,5 +166,120 @@ rm -rf "$CDIR"
 
 rm -rf "$ROOT"
 
+# ═══════════════════════════════════════════════════════════════════════════
+# G) install-routine-timers.sh — Render-/Migrations-Faelle (IMP-219)
+#
+# Diese Gruppe testet scripts/install-routine-timers.sh, nicht routine-run.sh
+# selbst — sie lebt in dieser Datei, weil scripts/tests/routine-run-regression.sh
+# das im Vault-Bauplan (P1) benannte Ziel fuer die Render-/Migrations-Faelle ist.
+#
+# launchctl wird NIE echt aufgerufen: ein Stub in PATH zeichnet jeden Aufruf
+# in eine Log-Datei auf und antwortet immer mit Exit 0 (bzw. leerer Liste bei
+# "list"). --dry-run darf launchctl UEBERHAUPT NICHT aufrufen — ein "Gift"-
+# Stub prueft das durch einen Abbruch, falls er doch aufgerufen wird.
+# ═══════════════════════════════════════════════════════════════════════════
+INSTALLER="$SCRIPT_DIR/../install-routine-timers.sh"
+[ -f "$INSTALLER" ] || { echo "install-routine-timers.sh nicht gefunden: $INSTALLER" >&2; exit 1; }
+
+GROOT=$(mktemp -d)
+
+# ── G1: --dry-run zeigt die 3 gerenderten Zielpfade, ruft launchctl NICHT
+#    auf (Gift-Stub bricht ab und hinterlaesst einen Marker, falls doch). ────
+G1_HOME="$GROOT/home1"
+mkdir -p "$G1_HOME"
+POISON_BIN="$GROOT/poison-bin"
+mkdir -p "$POISON_BIN"
+POISON_MARKER="$GROOT/poison-called"
+cat > "$POISON_BIN/launchctl" <<EOF
+#!/bin/bash
+echo "\$@" >> "$POISON_MARKER"
+exit 0
+EOF
+chmod +x "$POISON_BIN/launchctl"
+DRYOUT_G1=$(HOME="$G1_HOME" PATH="$POISON_BIN:$PATH" bash "$INSTALLER" --dry-run 2>&1)
+RC_G1=$?
+check "install/dryrun-exit0" 0 "$RC_G1"
+for t in daily-docs nightly-observation weekly-improve; do
+  check "install/dryrun-zeigt-zielpfad-$t" 1 \
+    "$(printf '%s\n' "$DRYOUT_G1" | grep -c "would write:   $G1_HOME/Library/LaunchAgents/com.claude-code.routine-$t.plist")"
+done
+check "install/dryrun-ruft-launchctl-nie-auf" 0 "$([ -f "$POISON_MARKER" ] && echo 1 || echo 0)"
+
+# ── G2: echte Installation (Stub-launchctl) — Praezedenz erfuellt (dummy
+#    routine-run.sh vorhanden), rendert alle 3 Plists mit echtem HOME +
+#    generischem Label, bootet historisches Label aus, bootstrapt das neue. ──
+G2_HOME="$GROOT/home2"
+mkdir -p "$G2_HOME/.claude/scripts"
+cat > "$G2_HOME/.claude/scripts/routine-run.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+chmod +x "$G2_HOME/.claude/scripts/routine-run.sh"
+
+STUB_BIN="$GROOT/stub-bin"
+mkdir -p "$STUB_BIN"
+LAUNCHCTL_LOG="$GROOT/launchctl.log"
+: > "$LAUNCHCTL_LOG"
+cat > "$STUB_BIN/launchctl" <<EOF
+#!/bin/bash
+echo "\$@" >> "$LAUNCHCTL_LOG"
+if [ "\$1" = "list" ]; then
+  exit 0
+fi
+exit 0
+EOF
+chmod +x "$STUB_BIN/launchctl"
+
+OUT_G2=$(HOME="$G2_HOME" PATH="$STUB_BIN:$PATH" bash "$INSTALLER" 2>&1)
+RC_G2=$?
+check "install/real-exit0" 0 "$RC_G2"
+for t in daily-docs nightly-observation weekly-improve; do
+  DEST="$G2_HOME/Library/LaunchAgents/com.claude-code.routine-$t.plist"
+  if [ -f "$DEST" ] && grep -q "$G2_HOME" "$DEST" && grep -q "com.claude-code.routine-$t" "$DEST" \
+     && ! grep -q "__HOME__\|__LABEL__" "$DEST"; then
+    ok
+  else
+    bad "install/rendered-plist-korrekt-$t" "Datei fehlt oder enthaelt noch Platzhalter: $DEST"
+  fi
+  check "install/bootstrap-aufgerufen-$t" 1 \
+    "$(grep -c "bootstrap gui/$(id -u) $DEST" "$LAUNCHCTL_LOG")"
+  check "install/historisches-label-ausgebootet-$t" 1 \
+    "$(grep -c "bootout gui/$(id -u)/com.${USER:-$(id -un)}.claude-routine-$t" "$LAUNCHCTL_LOG")"
+done
+
+# ── G3: Migration — ein vorinstalliertes Plist unter dem historischen
+#    Pro-User-Label wird beim Install entfernt. ─────────────────────────────
+G3_HOME="$GROOT/home3"
+mkdir -p "$G3_HOME/.claude/scripts" "$G3_HOME/Library/LaunchAgents"
+cp "$G2_HOME/.claude/scripts/routine-run.sh" "$G3_HOME/.claude/scripts/routine-run.sh"
+chmod +x "$G3_HOME/.claude/scripts/routine-run.sh"
+OLD_LABEL="com.${USER:-$(id -un)}.claude-routine-daily-docs"
+OLD_PLIST="$G3_HOME/Library/LaunchAgents/${OLD_LABEL}.plist"
+echo "<plist/>" > "$OLD_PLIST"
+: > "$LAUNCHCTL_LOG"
+bash -c "HOME='$G3_HOME' PATH='$STUB_BIN:$PATH' bash '$INSTALLER'" >/dev/null 2>&1
+check "install/migration-entfernt-altes-plist" 0 "$([ -f "$OLD_PLIST" ] && echo 1 || echo 0)"
+check "install/migration-neues-plist-vorhanden" 1 \
+  "$([ -f "$G3_HOME/Library/LaunchAgents/com.claude-code.routine-daily-docs.plist" ] && echo 1 || echo 0)"
+
+# ── G4: --uninstall (Stub-launchctl) entfernt neues UND historisches Label,
+#    ruft launchctl nie echt auf. ───────────────────────────────────────────
+G4_HOME="$GROOT/home4"
+mkdir -p "$G4_HOME/Library/LaunchAgents"
+touch "$G4_HOME/Library/LaunchAgents/com.claude-code.routine-daily-docs.plist"
+touch "$G4_HOME/Library/LaunchAgents/com.${USER:-$(id -un)}.claude-routine-daily-docs.plist"
+: > "$LAUNCHCTL_LOG"
+OUT_G4=$(HOME="$G4_HOME" PATH="$STUB_BIN:$PATH" bash "$INSTALLER" --uninstall 2>&1)
+RC_G4=$?
+check "install/uninstall-exit0" 0 "$RC_G4"
+check "install/uninstall-entfernt-neues-plist" 0 \
+  "$([ -f "$G4_HOME/Library/LaunchAgents/com.claude-code.routine-daily-docs.plist" ] && echo 1 || echo 0)"
+check "install/uninstall-entfernt-altes-plist" 0 \
+  "$([ -f "$G4_HOME/Library/LaunchAgents/com.${USER:-$(id -un)}.claude-routine-daily-docs.plist" ] && echo 1 || echo 0)"
+check "install/uninstall-nur-ueber-stub" 1 \
+  "$([ -s "$LAUNCHCTL_LOG" ] && echo 1 || echo 0)"
+
+rm -rf "$GROOT"
+
 printf '── routine-run-regression: %d bestanden, %d fehlgeschlagen ──\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

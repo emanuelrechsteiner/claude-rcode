@@ -736,7 +736,7 @@ else
   # C16 fix: no package.json at the project root — probe exactly ONE level
   # of subdirectories (a shallow monorepo probe) before giving up, so a
   # genuine npm/TS monorepo (e.g. web/package.json + worker/pyproject.toml
-  # — the real shape of the Projekt L reference project) is not
+  # — the real shape of a reference project encountered live) is not
   # silently reported as "not an npm project".
   while IFS= read -r d; do
     [[ -z "$d" ]] && continue

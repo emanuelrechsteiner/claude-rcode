@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+# pre-commit — vault gate for STAGED content (IMP-219, Welle 2 unit B,
+# plans/vault-by-design-2026-09-25.md §4.3).
+#
+# Installed via a THIN .git/hooks/pre-commit wrapper that scripts/
+# install-git-hooks.sh writes and calls this file by its repo-relative path
+# (corrected 2026-09-25: an earlier draft of this task used
+# `git config core.hooksPath` instead — abandoned because it would make git
+# ignore .git/hooks/ ENTIRELY, silently disabling the pre-existing pre-push
+# scrub-check gate and any other tool's hooks; see install-git-hooks.sh's
+# own header for the full reasoning). The logic lives HERE, in a versioned
+# file, so a future change reaches every clone on its next `git pull` with
+# no re-run of the installer — only the thin wrapper is regenerated.
+# Never invoked directly by a person.
+#
+# WHY A SEPARATE LAYER FROM hooks/vault-write-gate.sh: that hook only sees
+# writes made THROUGH Claude Code's own Write/Edit/MultiEdit tools. Anything
+# that lands in the git INDEX another way — sed -i, a heredoc, jq --in-place,
+# a human's own editor, an unrelated script — never passes through it. This
+# hook is the second, independent layer the plan calls for (§3: "drei
+# Schichten, weil der Schreiber ein Sprachmodell ist" — and a human or an
+# unrelated tool is exactly the case the PreToolUse layer cannot cover).
+#
+# STAGED, not working-tree: reads `git show ":$f"` (the INDEX blob) for each
+# staged file, never the file on disk — a further, UNSTAGED edit sitting on
+# top of a staged leak must not make this hook check the wrong bytes.
+#
+# --as "$f" (scripts/vault/vault.sh, IMP-219 Gewerk A3): labels each
+# per-file `check --stdin` call with the file's own repo-relative path, so
+# vault.sh's allowlist (scripts/scrub-allowlist.txt) and the
+# "*/tests/* + vault-check: fixtures" marker apply correctly — unlike a bare
+# `--stdin` call, which always labels its input "-" and so cannot resolve
+# path-scoped allowlist/fixture entries. Confirmed end-to-end (see this
+# task's handback report): the fixture marker still exempts STRUCTURAL
+# findings for a */tests/* path, but per the narrowed policy no longer
+# exempts vault-sourced (Tresor) terms — a real name is reported even in a
+# marked test fixture.
+#
+# GITIGNORE POLICY (corrected 2026-09-25, IMP-219 M3 — plan §"Auftrag" item 1):
+# an earlier version of this hook skipped EVERY staged path that
+# `git check-ignore` matched, unconditionally — including one that reached
+# the index only via `git add -f` (force-add). Git already refuses a plain
+# `git add` on a path its own ignore rules cover, so a force-added ignored
+# path in the diff is BY CONSTRUCTION a deliberate override of that refusal,
+# and skipping its content check let it through completely unreviewed (e.g.
+# a private `*.local.md` overlay could have been force-committed with no
+# vault/structural check at all). The two cases are no longer treated alike:
+#   (a) ignored AND absent from HEAD (a NEW path — can only have been
+#       force-added) → BLOCK outright, content is not even inspected; the
+#       fix is either "don't force-add it" or "narrow the .gitignore pattern
+#       first", not a silent pass-through.
+#   (b) ignored AND already present in HEAD (an existing tracked path that a
+#       LATER .gitignore edit happens to now match — git's ignore rules do
+#       not stop matching a path just because it is already tracked) → still
+#       fully content-checked below, exactly like a non-ignored path. What is
+#       staged is what gets committed, regardless of what .gitignore says
+#       about it after the fact.
+#
+# `--no-index` is NOT optional on the check-ignore call below (confirmed
+# empirically, this task): git's own manual states plainly, "By default,
+# tracked files are not shown at all since they are not subject to exclude
+# rules" — and EVERY path this loop iterates over came from `git diff
+# --cached`, i.e. is by definition already in the index. Without --no-index,
+# `git check-ignore` would silently report "not ignored" for 100% of staged
+# paths, force-added or not, and the two-case policy above would never fire
+# at all. `git check-ignore`'s own --no-index doc names this exact scenario:
+# "a path previously added with git add -f".
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+VAULT_SH="$REPO_ROOT/scripts/vault/vault.sh"
+
+FOUND=0
+FINDINGS_TXT=""
+IGNORE_FOUND=0
+IGNORE_TXT=""
+
+VAULT_OK=0
+if [ -x "$VAULT_SH" ]; then
+    VAULT_OK=1
+    ERR_TMP="$(mktemp "${TMPDIR:-/tmp}/pre-commit-vault-err.XXXXXX")"
+else
+    echo "pre-commit: NOTE — scripts/vault/vault.sh not found/executable at $VAULT_SH; vault check skipped (fail-open, hygiene gate)." >&2
+fi
+
+# The gitignore-vs-HEAD classification below runs UNCONDITIONALLY (it needs
+# only git plumbing, never vault.sh) — only the content check that follows it
+# is gated on $VAULT_OK. A missing vault.sh must not also reopen the M3 gap.
+#
+# --diff-filter=AMRC (not just AM, corrected 2026-09-25): git's default rename
+# detection (on since git >=2.9, confirmed empirically on this repo's git — no
+# diff.renames override at any config scope) classifies a `git mv old new`
+# plus an edit to `new` as status R, not A/M — a plain AM filter silently
+# skipped that path, so injected content survived a rename undetected. C is
+# added too for the copy case, though in practice a copy that keeps its
+# source untouched is already reported as plain A (git needs an explicit
+# -C/--find-copies to ever emit "C", which no config here requests) — kept in
+# the filter for defense-in-depth/explicitness, not because it closes a
+# second gap on top of R.
+while IFS= read -r -d '' f; do
+    if git check-ignore --no-index -q -- "$f"; then
+        if git cat-file -e "HEAD:${f}" 2>/dev/null; then
+            : # case (b): already tracked in HEAD; a LATER .gitignore edit now
+              # matches it — fall through, still fully checked below.
+        else
+            # case (a): ignored and absent from HEAD — a new, force-added path.
+            IGNORE_FOUND=1
+            IGNORE_TXT="${IGNORE_TXT}  ${f}
+"
+            continue
+        fi
+    fi
+    [ "$VAULT_OK" -eq 1 ] || continue
+    CONTENT="$(git show ":${f}" 2>/dev/null || true)"
+    [ -z "$CONTENT" ] && continue
+    set +e
+    OUT=$(printf '%s\n' "$CONTENT" | "$VAULT_SH" check --stdin --as "$f" 2>"$ERR_TMP")
+    RC=$?
+    set -e
+    ERRTXT="$(cat "$ERR_TMP" 2>/dev/null || true)"
+    if [ "$RC" -eq 2 ]; then
+        FOUND=1
+        while IFS=$'\t' read -r _lbl ln kind term token; do
+            [ -z "$kind" ] && continue
+            if [ -n "$token" ]; then
+                FINDINGS_TXT="${FINDINGS_TXT}  [${kind}] ${f}:${ln}: ${term} → ${token}
+"
+            else
+                FINDINGS_TXT="${FINDINGS_TXT}  [${kind}] ${f}:${ln}: ${term} → Platzhalter verwenden
+"
+            fi
+        done <<<"$OUT"
+    elif [ "$RC" -ne 0 ]; then
+        echo "pre-commit: NOTE — vault.sh check reported an internal error ($RC) for $f; skipping the vault check for this file (fail-open, hygiene gate). $ERRTXT" >&2
+    fi
+done < <(git diff --cached --name-only --diff-filter=AMRC -z)
+[ "$VAULT_OK" -eq 1 ] && rm -f "$ERR_TMP"
+
+if [ "$IGNORE_FOUND" -eq 1 ]; then
+    echo "pre-commit: BLOCKED — a gitignored path is staged for the first time (likely 'git add -f'):" >&2
+    printf '%s' "$IGNORE_TXT" >&2
+    echo "" >&2
+    echo "pre-commit: is this deliberate? Then adjust the .gitignore pattern first so the" >&2
+    echo "  path is no longer covered, and commit again — or if you really mean to commit" >&2
+    echo "  it as-is: git commit --no-verify" >&2
+    exit 1
+fi
+
+if [ "$FOUND" -eq 1 ]; then
+    echo "pre-commit: BLOCKED — real value(s) detected in staged content:" >&2
+    printf '%s' "$FINDINGS_TXT" >&2
+    echo "" >&2
+    echo "pre-commit: use a placeholder/vault token, or add a reviewed exemption to scripts/scrub-allowlist.txt." >&2
+    echo "pre-commit: deliberate bypass for this commit: git commit --no-verify" >&2
+    exit 1
+fi
+
+# Second, independent scan (plan §4.3): catches secret-shaped strings,
+# maintainer PII fragments, and the pre-rebrand name — a different pattern
+# set than vault.sh's own project/account/path/user/email/id/phrase kinds.
+if [ -x "$REPO_ROOT/scripts/scrub-check.sh" ]; then
+    if ! "$REPO_ROOT/scripts/scrub-check.sh" --staged; then
+        echo "" >&2
+        echo "pre-commit: BLOCKED by scripts/scrub-check.sh --staged — fix the findings above, or" >&2
+        echo "  add a reviewed exemption to scripts/scrub-allowlist.txt, then commit again." >&2
+        echo "  Deliberate bypass: git commit --no-verify" >&2
+        exit 1
+    fi
+fi
+
+exit 0

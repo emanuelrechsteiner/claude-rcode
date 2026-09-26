@@ -79,7 +79,7 @@ assert_chain "BLOCK@excessive-agency-gate.sh" \
   'gh release create v1.0.2 --title t' \
   "chain: plain release create"
 assert_chain "BLOCK@excessive-agency-gate.sh" \
-  'GH_TOKEN=$(gh auth token --user emanuelrechsteiner) gh release create v1.0.2 --title t' \
+  'GH_TOKEN=$(gh auth token --user example-maintainer) gh release create v1.0.2 --title t' \
   "chain: env-subst prefix (the live bypass)"
 assert_chain "BLOCK@excessive-agency-gate.sh" \
   'FOO=1 BAR=$(cmd with spaces) gh pr merge 1' \
@@ -92,7 +92,7 @@ assert_chain "ALLOW" \
   "chain: benign git commit"
 
 # ── ACK flow through the chain: harvest sig, approved re-run, replay ──────────
-ACK_CMD='GH_TOKEN=$(gh auth token --user emanuelrechsteiner) gh release create v1.0.2 --title t'
+ACK_CMD='GH_TOKEN=$(gh auth token --user example-maintainer) gh release create v1.0.2 --title t'
 ACK_SIG=$(json_cmd "$ACK_CMD" \
   | HOME="$TESTHOME" bash "$HOOKS_DIR/excessive-agency-gate.sh" 2>&1 >/dev/null \
   | grep -oE 'CLAUDE_AGENCY_ACK_ONCE=[A-Fa-f0-9]{64}' | head -1 | cut -d= -f2)

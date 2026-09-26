@@ -41,7 +41,7 @@ historical session archives from other locations, set `CLAUDE_HISTORICAL_SOURCES
 (colon-separated list of directories):
 
 ```bash
-export CLAUDE_HISTORICAL_SOURCES="$HOME/archive/claude-jsonl:/Volumes/External/old-sessions"
+export CLAUDE_HISTORICAL_SOURCES="$HOME/archive/claude-jsonl:/Volumes/<VOLUME>/old-sessions"
 bash ~/.claude/skills/historical-signals-v2/scripts/batch-ingest.sh
 ```
 

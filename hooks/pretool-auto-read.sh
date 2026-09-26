@@ -36,7 +36,7 @@ fi
 # IMP-096: diagnose retry-loops. A SECOND block on the SAME file within
 # <2min in the SAME session means the previous block wasn't actually fixed —
 # the agent is retrying blindly instead of Reading the exact blocked path.
-# Evidence: A1 found a 5-block/90s loop on one file in session aaaa0003.
+# Evidence: A1 found a 5-block/90s loop on one file in session <session-id>.
 # Surface the session's recently-tracked paths so the agent can see whether
 # it Read a DIFFERENT path (relative vs. absolute, symlink, typo) instead of
 # this exact one. BLOCK_LOG is a per-session /tmp file (same privacy/lifetime

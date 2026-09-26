@@ -94,7 +94,7 @@ EOF
 
 # write_retry SESSIONFILE TS — first StructuredOutput call rejected by
 # schema validation (is_error:true), second (different finding count)
-# accepted. Mirrors the real Projekt A aaaa0004 case: 1 finding -> corrected 0.
+# accepted. Mirrors a real observed case: 1 finding -> corrected 0.
 write_retry() {
     local f="$1" ts="$2"
     cat > "$f" <<EOF
@@ -239,12 +239,12 @@ rm -rf "$D"
 #    in-window finding — names the count, file, severity, and an --ack hint
 #    naming the right session_id. ──
 fresh_env
-mkdir -p "$ROOT/-Volumes-Test-myproj"
+mkdir -p "$ROOT/-Volumes-example-myproj"
 recent_ts=$(date -u -v-2d +"%Y-%m-%dT%H:%M:%S.000Z" 2>/dev/null || date -u -d '-2 days' +"%Y-%m-%dT%H:%M:%S.000Z")
-write_review "$ROOT/-Volumes-Test-myproj/sess-recent.jsonl" "$recent_ts" \
+write_review "$ROOT/-Volumes-example-myproj/sess-recent.jsonl" "$recent_ts" \
   '[{"filePath":"hooks/risky.sh","category":"cat-g","severity":"high","confidence":0.9,"vulnerableCode":"v","explanation":"a risky pattern was found here","fix":"fix it"}]'
 run_extractor >/dev/null
-out=$(run_hook "/Volumes/Test/myproj")
+out=$(run_hook "/Volumes/example/myproj")
 if printf '%s' "$out" | grep -q "^🔐 1 ungesichtete Sicherheitsbefunde" \
    && printf '%s' "$out" | grep -q "hooks/risky.sh" \
    && printf '%s' "$out" | grep -q "\[high\]" \

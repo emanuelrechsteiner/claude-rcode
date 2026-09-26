@@ -13,9 +13,10 @@ public repo's maintainer must configure once.
 
 ## Architecture
 
-- **`claude-code-config`** (this repo, private, `github.com/<owner>/<private-source-repo> (placeholder — this repo is never public)`)
-  is the **single source of truth**. It contains real names, real machine
-  paths, and personal settings — it is never meant to be public.
+- **`claude-code-config`** (this repo, private — the maintainer's private
+  source repo) is the **single source of truth**. It contains real names,
+  real machine paths, and personal settings — it is never meant to be
+  public.
 - **`claude-rcode`** (`github.com/emanuelrechsteiner/claude-rcode`) is a
   **generated artifact**. It has no shared git history with the private
   repo — every publish produces exactly **one squashed release commit**.
@@ -50,6 +51,11 @@ Prerequisites: a local clone of `claude-rcode` somewhere on disk, `rsync`,
 ```bash
 cd ~/path/to/claude-code-config    # this repo
 
+# 0. Release notes: add the version entry to public/CHANGELOG.md
+#    (Keep a Changelog format; move items from [Unreleased], update the
+#    compare links at the bottom) and commit it. The publish aborts if the
+#    file is missing — scripts/publish-transforms.d/20-changelog.sh.
+
 # 1. Dry run first — always. Builds the staging tree, runs scrub-check
 #    against it, and prints a file manifest + diff summary. Publishes
 #    NOTHING.
@@ -70,8 +76,8 @@ git -C ~/path/to/claude-rcode push origin HEAD
 git -C ~/path/to/claude-rcode tag v1.5.0
 git -C ~/path/to/claude-rcode push origin v1.5.0
 
-# 5. Publish a GitHub Release from the tag (release notes go here, not in
-#    the public CHANGELOG.md — see scripts/publish-transforms.d/20-changelog.sh).
+# 5. Optional: publish a GitHub Release from the tag, pasting the version's
+#    section from CHANGELOG.md as its notes.
 ```
 
 ### Handling a scrub-check finding during publish
@@ -95,44 +101,63 @@ Re-run `scripts/publish.sh --dry-run ...` until scrub-check reports clean.
 
 ## Pseudonymization
 
-`publish-manifest.txt` and `publish-transforms.d/30-placeholder-scan.sh`
-handle the *stable, small* set of PII (machine username, volume name,
-retired identities, a couple of project codenames baked into public-facing
-prose). Real project and client names accumulate over time as evidence in
-rule prose, ledger history, and agent transcripts — a much longer-tailed
-category that would defeat its own purpose if hardcoded into a tracked
-transform script (the list of private names would itself ship in a public
-file).
+The vault (`scripts/vault/`, data at `${CLAUDE_VAULT_DIR:-~/.claude/vault}`,
+gitignored, machine-local) is the **single source of truth** for every real
+name, path, account, or identifier this repo's own tracked files must never
+contain in plain text. One matcher (`scripts/vault/lib.sh`'s
+`vault_matcher_run`) backs every consumer that touches this data: the
+write-gate hook, pre-commit, `scripts/scrub-check.sh`, and the publish
+transforms below — no second, independently-written matcher exists
+anywhere in this pipeline (see `rules/testing-quality.md` "Verify Via the
+Same Code Path" if you're tempted to add one).
 
-Instead:
+- **`scripts/vault/vault.sh init`** builds the vault. `--import-legacy
+  <tsv>` and `--from-registry <jsonl>` are one-time IMPORT sources (a
+  historical pseudonym list, and this maintainer's project registry) — not
+  a second enforcement mechanism that keeps running forever afterward.
+  Both are idempotent: re-running `init` against the same sources adds
+  nothing new. Add a term directly with `scripts/vault/vault.sh add <kind>
+  <term> --group <g>`; `<kind>` is one of `project | account | path | user
+  | volume | email | id | phrase`, and most kinds get a stable,
+  non-reversible HMAC token for free (an explicit `--token` is required
+  only for `id`/`phrase`, since those need a human-chosen, readable
+  placeholder that varies per instance).
+- **`scripts/vault/public-names.txt`** (tracked, NOT gitignored) is the
+  short, explicit exception list: names the framework publishes ITSELF
+  under (this repo's own public identity) and third-party product names
+  the framework legitimately works with by that exact name (tool-name
+  prefixes, standard folder names) — never vault terms, regardless of how
+  they entered an import source. `vault.sh prune-public` removes any such
+  name from an existing vault; every matcher consumer also filters them
+  out at read time, so even a hand-edited `map.tsv` can't reintroduce one
+  silently.
+- **`publish-transforms.d/50-pseudonymize.sh`** tokenizes the ENTIRE
+  staging tree in one pass, all vault kinds, longest-term-first, honoring
+  `scripts/scrub-allowlist.txt` (below) exactly the way `check` does — the
+  allowlist is the only exemption mechanism this transform has. A missing
+  vault is a hard, fatal error: publishing without tokenization must never
+  happen silently.
+- **`scripts/scrub-check.sh --require-pseudonym-list`** re-runs `vault.sh
+  check` against the staging tree and blocks it if any real vault term (or
+  the vault's own private-layer markers, if that group is unexpectedly
+  empty) is still present after the transform ran — this is the gate that
+  actually enforces the replacement, not just performs it.
+  `scripts/publish.sh`'s Step 5 always passes this switch. Without it (the
+  default — what public CI runs, since a contributor's checkout
+  structurally has no vault), a missing vault produces a loud "skipped"
+  line rather than either a silent no-op or a spurious failure on a
+  machine that was never supposed to have one.
+- **`scripts/scrub-allowlist.txt`** (`path:line:signature` triples) is the
+  ONE exemption mechanism across every matcher consumer — for example the
+  two intentional authorship-attribution lines (the MIT license holder,
+  one README credit line) that must keep a real name visible on purpose. A
+  finding is only suppressed while its exact file, line, and signature
+  substring still match; a moved or reworded line goes stale on purpose
+  and re-surfaces until the entry is updated.
 
-- **`publish-pseudonyms.local.tsv`** (repo root, git-ignored, never
-  versioned, never published) maps each real private name to a neutral
-  public placeholder — one `real name<TAB>placeholder` pair per line. This
-  file lives only on the maintainer's machine. If it does not exist,
-  create it yourself; there is no tracked template because a template
-  would need a real example to be useful, and a real example is exactly
-  what must never be committed.
-- **`publish-transforms.d/50-pseudonymize.sh`** reads that file and
-  replaces every real name with its placeholder across the staging tree,
-  longest name first (so a short name that happens to be a substring of a
-  longer one never corrupts an already-applied longer replacement). A
-  missing list file is a hard, fatal error for this transform — publishing
-  without pseudonymization must never happen silently.
-- **`scripts/scrub-check.sh --require-pseudonym-list`** re-reads the same
-  file and blocks the staging tree if any real name is still present after
-  the transform ran — this is the gate that actually enforces the
-  replacement, not just performs it. `scripts/publish.sh`'s Step 5 always
-  passes this switch. Without the switch (the default — this is what
-  public CI runs, since a contributor's checkout structurally has no
-  private list), a missing list produces a loud "skipped" line rather than
-  either a silent no-op or a spurious failure on a machine that was never
-  supposed to have the file.
-
-To add a new entry: find the real name in an actual scrub-check finding
-(never guess), append a line to `publish-pseudonyms.local.tsv` with a
-short, stable, readable placeholder (e.g. "Projekt A"), and re-run
-`scripts/publish.sh --dry-run ...`.
+To add a new entry: find the real term in an actual `scrub-check`/`vault.sh
+check` finding (never guess), add it to the vault with
+`scripts/vault/vault.sh add`, and re-run `scripts/publish.sh --dry-run ...`.
 
 ## How to handle a public PR (back-port flow)
 

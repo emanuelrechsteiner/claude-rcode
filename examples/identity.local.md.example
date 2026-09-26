@@ -9,16 +9,16 @@
 ### Identity 1: Work — Acme Corp
 
 - Git name: `Jane Doe`
-- Git email: `jane@acme.com`
+- Git email: `jane@example.com`
 - Path patterns:
   - `acme-corp/`
-  - `ProjectHub/acme-`
+  - `Cowork/acme-`
   - `~/code/work/`
 
 ### Identity 2: Personal projects
 
 - Git name: `Jane Doe`
-- Git email: `jane@janedoe.dev`
+- Git email: `jane@example.org`
 - Path patterns:
   - `~/code/personal/`
   - `personal-site/`

@@ -1,37 +1,29 @@
 #!/usr/bin/env bash
-# 20-changelog.sh — generate a public CHANGELOG.md stub.
+# 20-changelog.sh — publish the curated public CHANGELOG.md.
 #
-# Neutralizes: every [REBRAND] finding inside CHANGELOG.md (the private
-# file narrates internal improvement-cycle history using the pre-rebrand
-# project's old codename throughout — it predates this repo's own
-# public/private split) plus the IMP-history prose that isn't meant for
-# public consumption (see publish-manifest.txt for the exclusion).
+# The private CHANGELOG.md (root) narrates internal improvement-cycle history
+# and is excluded by publish-manifest.txt. The public changelog is a separate,
+# hand-maintained file in Keep-a-Changelog format: public/CHANGELOG.md. This
+# transform moves it to the root of the staging tree, so the public repo has
+# exactly one CHANGELOG.md.
 #
-# Idempotent: always regenerates the same fixed content (no external
-# state read), so re-running produces a byte-identical file.
+# Fail-loud: a missing public/CHANGELOG.md aborts the publish — a release
+# without release notes is a defect, not a fallback case.
+#
+# Idempotent: the output is a byte copy of a tracked file.
 #
 # Usage: 20-changelog.sh <staging-dir>
 set -euo pipefail
 
 STAGING="${1:?usage: $0 <staging-dir>}"
+SRC="$STAGING/public/CHANGELOG.md"
 OUT="$STAGING/CHANGELOG.md"
 
-cat > "$OUT" <<'EOF'
-# Changelog
+if [[ ! -f "$SRC" ]]; then
+  echo "20-changelog.sh: ABORT — public/CHANGELOG.md is missing from the staging tree." >&2
+  echo "  Fix: add the release entry to public/CHANGELOG.md in the private repo." >&2
+  exit 1
+fi
 
-This project ships as a generated public artifact — see `docs/PUBLISHING.md`
-for the publish model. The detailed, dated improvement history of the
-private source-of-truth configuration is not published here.
-
-Release notes for each version are published as
-[GitHub Releases](../../releases) at publish time. Each release corresponds
-to one squashed commit produced by `scripts/publish.sh` from a specific
-private-repo commit.
-
-For the current state of any file, read the file itself — this repo has no
-git history prior to each release's single commit, so there is nothing to
-diff `CHANGELOG.md` against locally. Use the GitHub Releases page for
-version-to-version deltas going forward.
-EOF
-
-echo "20-changelog.sh: OK — wrote public CHANGELOG.md stub"
+mv "$SRC" "$OUT"
+echo "20-changelog.sh: OK — published public/CHANGELOG.md as CHANGELOG.md"

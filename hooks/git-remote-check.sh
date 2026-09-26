@@ -1,8 +1,8 @@
 #!/bin/bash
 # git-remote-check.sh — SessionStart warning: local work with nowhere to go
 # ─────────────────────────────────────────────────────────────────────────────
-# IMP-122 (2026-08-01). Generalises a concrete near-miss: the Projekt B project sat
-# at 157 unpushed commits on a feature branch with ZERO git remotes and 12
+# IMP-122 (2026-08-01). Generalises a concrete near-miss: a project sat at 157
+# unpushed commits on a feature branch with ZERO git remotes and 12
 # uncommitted paths, some untouched for 11 days — while being the single most
 # active codebase in the observation window (769 signals, 53% of all activity).
 # One disk failure would have taken all of it. Nothing in the framework noticed,

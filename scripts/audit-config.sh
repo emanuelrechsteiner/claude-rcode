@@ -281,7 +281,9 @@ fi
 # Reminder 3, IMP-075/138) only fires INSIDE a Claude Code session — a routine
 # that dies while no session opens for weeks goes unnoticed until someone
 # happens to start one. This audit runs independently via launchd
-# (com.your-username.claude-audit, quarterly) and is the liveness backstop for
+# (com.user.claude-audit, quarterly — see the Label in
+# com.user.claude-audit.plist.template; IMP-219, generic since 2026-09-25)
+# and is the liveness backstop for
 # exactly that gap. Declared max-silence intervals per routine's own cadence
 # (see CLAUDE.md "Scheduled Tasks" table) plus a missed-run buffer:
 #   daily-docs (07:10 daily)        → 48h  (one missed day + margin)

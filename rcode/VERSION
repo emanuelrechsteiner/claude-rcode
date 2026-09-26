@@ -6,8 +6,8 @@ last changed on 2026-08-06 (commit 259e948 / c6a742a — the pre-rebrand -> R.Co
 rename, which changed rule names AND paths). A version stamp that does not move
 when the content moves turns every /rcode-upgrade version comparison into a
 false "already current", which is precisely the drift that command exists to
-catch. Measured on the same day across all 5 deployed projects (Projekt M,
-Projekt L, Projekt W, Projekt N, Projekt K): their three installed
+catch. Measured on the same day across all 5 deployed projects (proj-292e7a,
+proj-797f37, proj-671b6b, proj-47cf29, proj-4cfd39): their three installed
 rcode-*.md rules are byte-identical to these rails, so the consequence of the
 wrong stamp was bookkeeping, not content drift. Each project still carries
 framework_version 2026-07-03 and will now correctly report "behind" until

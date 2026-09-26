@@ -9,8 +9,8 @@ Der R.Code-Workflow wurde 2026-07-26 als Plan entworfen (5 Team-Commands je eine
 Projekt-Phase 1–5 zugeordnet, `/team-lead` als „phase-agnostic fallback",
 GitHub-Issues als durchgängige Grundannahme, ein 5-Schritt-Exit-Contract, der bei
 jedem Befehlsende lief). Gemessen an 471 Haupt-Transkripten + den 5 real
-laufenden R.Code-Projekten (Projekt L, Projekt W, Projekt N, Projekt K,
-Projekt M; gemessen 2026-09-23) driftete die Praxis früh und deutlich vom Plan
+laufenden R.Code-Projekten (proj-797f37, proj-671b6b, proj-47cf29, proj-4cfd39,
+proj-292e7a; gemessen 2026-09-23) driftete die Praxis früh und deutlich vom Plan
 weg:
 
 - `/team-lead` 67× genutzt (16 Projekte); `/plan-team` … `/launch-team` zusammen
@@ -21,13 +21,13 @@ weg:
   `/rcode-upgrade`, `/scope-check`, `/autonomous-overnight` je **0×**.
   `re-entry-brief.md` 0/5 Projekten, `phase-summaries/` leer in 3/5,
   `escalation-queue.md` in 2/5, `scope_changes[]` in 2/5 (nur dort genutzt, wo
-  es genutzt wurde: Projekt W 4×, Projekt N 7×). `agent-log.md` dagegen in 5/5
+  es genutzt wurde: proj-671b6b 4×, proj-47cf29 7×). `agent-log.md` dagegen in 5/5
   Projekten lebendig — das ist das Artefakt, das tatsächlich trägt.
-- Projekt N hat **keinen** Git-Remote (0/28 Commits referenzieren irgendetwas);
-  Projekt M nutzt eigene Plan-IDs `refs P-NNN` statt GitHub-Issues (IMP-150).
+- proj-47cf29 hat **keinen** Git-Remote (0/28 Commits referenzieren irgendetwas);
+  proj-292e7a nutzt eigene Plan-IDs `refs P-NNN` statt GitHub-Issues (IMP-150).
   GitHub war in Commands/Templates dennoch eine harte Voraussetzung.
 - Unter `/team-lead` committeten 16 Subagenten in 4 Wellen auf EINEN geteilten
-  Branch (`overnight/2026-09-21-foundation`, Projekt M) — `/issue` als
+  Branch (`overnight/2026-09-21-foundation`, proj-292e7a) — `/issue` als
   „bindendes Protokoll" für Worker wurde nie im dort dokumentierten Sinn
   aufgerufen (Branch pro Unit, PR pro Unit).
 - 24 weitere konkrete Defekte wurden mit Datei:Zeile-Beleg verifiziert (M1–M24,

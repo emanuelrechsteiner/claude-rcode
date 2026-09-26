@@ -18,10 +18,10 @@ pwd
 
 | Pfad | Ort | Regel |
 |---|---|---|
-| `/Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS/claude-code-config` | **Bauhof** | Hier ändern, testen, committen. |
-| `/Users/your-username/.claude` | **Haus** | Nicht von Hand ändern. Empfängt nur `claude-deploy`. |
+| `…/claude-code-config` | **Bauhof** | Hier ändern, testen, committen. |
+| `~/.claude` | **Haus** | Nicht von Hand ändern. Empfängt nur `claude-deploy`. |
 
-Dasselbe Muster gilt für das Cockpit: Bauhof `…/5-AI-APPS/cockpit`,
+Dasselbe Muster gilt für das Cockpit: Bauhof `…/cockpit` (Geschwisterordner),
 Haus `~/.claude/cockpit`.
 
 **Doppelladung im Bauhof (behoben 2026-09-24, IMP-217):** Eine Sitzung im Bauhof
@@ -33,7 +33,7 @@ vergleicht Inhalte nicht, nur Pfade. Der dokumentierte Schalter `claudeMdExclude
 
 ```json
 // .claude/settings.local.json im Bauhof (maschinenlokal, git-ignoriert)
-{ "claudeMdExcludes": ["/Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS/claude-code-config/CLAUDE.md"] }
+{ "claudeMdExcludes": ["<BAUHOF>/CLAUDE.md"] }
 ```
 
 Sichtbar beim nächsten Sitzungsstart: die Zeile „N instruction files add up to …"
@@ -135,10 +135,32 @@ Standardwerten — ohne Hooks, ohne Berechtigungen — und meldet das nur beilä
 Zahlen in Dokumenten **niemals von Hand** pflegen — sie sind dreimal gleichzeitig
 auseinandergelaufen (IMP-083).
 
+### Tresor-Prüfung
+
+Tresor (`~/.claude/vault/`, gitignoriert) hält echte Namen/Pfade/Kennungen —
+das Framework selbst darf keinen einzigen enthalten (`docs/adr/0003-tresor-und-tor.md`).
+
+```bash
+bash scripts/vault/vault.sh check <datei>                      # Exit 0 sauber, 2 Fund
+CLAUDE_VAULT_DIR=/nonexistent bash scripts/vault/vault.sh check --structural-only <datei>  # CI-Simulation ohne Tresor
+```
+
+Jeder Schreibzugriff läuft zusätzlich durch `hooks/vault-write-gate.sh`
+(PreToolUse Write|Edit|MultiEdit); Umgehung nur bewusst mit
+`CLAUDE_VAULT_GATE_OFF=1` (geloggt, nie der Wert). Im Bauhof gehört nur der
+pre-commit-Hook hin (`bash scripts/install-git-hooks.sh --only pre-commit`
+— der pre-push bleibt dem öffentlichen Beitragsweg vorbehalten).
+
+**Ersteinrichtung** (einmal je Rechner): `templates/env.local.sh.template`
+nach `~/.claude/env.local.sh` kopieren/ausfüllen, dann `vault.sh init`.
+
+**Grundregel:** Prosa → Token, Code → Env + fail-loud (nie ein Token als
+Rückfallwert), Tests → synthetische Werte.
+
 ### Cockpit (eigenes Repo, eigener Bauhof)
 
 ```bash
-cd /Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS/cockpit
+cd "${CLAUDE_WORKSHOP_ROOT}/cockpit"   # aus ~/.claude/env.local.sh
 npm test          # 25 Prüfungen
 npm run typecheck
 
@@ -201,6 +223,11 @@ Rücknahme: `cd ~/.claude && git reset --hard <commit-vor-der-Änderung>`
 
 Jeder Schritt muss ein **beobachtbares** Ergebnis nennen — eine Ausgabe, eine
 Datei, eine Zeile im Protokoll. „Sollte jetzt besser laufen" ist kein Prüfschritt.
+
+Führt die Übergabe einen neuen Tresor-Begriff ein (ein neues `kind`, eine
+neue Gruppe mit spürbarer Zahl), nennt die Abnahmeliste zusätzlich
+`bash scripts/vault/vault.sh status` (reine Zahlen, nie ein Wert) als
+Prüfschritt.
 
 ### Wichtige Feinheit: `/clear` reicht nicht
 

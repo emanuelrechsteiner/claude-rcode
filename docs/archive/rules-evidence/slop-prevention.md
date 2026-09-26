@@ -21,7 +21,7 @@ _Originalfassung des Absatzes „Describe what you see, then judge." (in der Reg
 
 **Describe what you see, then judge.** At every checkpoint, first write down what is *actually visible* in the artifact (which elements, which colors, which positions, which values), and only then state whether it matches the claim. Naming the observation before the verdict is the working defense against confirmation bias — the failure mode is literally *"Ich sah, was ich zu sehen erwartete"* (self-diagnosis, 2026-08-09). A verdict with no description behind it is not an inspection; it is a guess wearing an inspection's clothes.
 
-**Evidence:** Projekt C, 2026-08-09 — "Du hast sie 'gefixt' … beim Spielen sind sie EXAKT gleich … GAR NICHTS" — the same false "fixed" claim recurred **≥9 times across 5 sessions** (the atlas/asset declaration was checked, never the render). **The 09→12.08 lesson:** a testing discipline that was merely *agreed on in chat* on 2026-08-09 did not survive to 2026-08-12 — the identical failure recurred three days later. A discipline that lives only in chat history is not enforced; it has to live here, as a rule the agent re-reads every session, not as a one-time chat agreement.
+**Evidence:** proj-902a42, 2026-08-09 — "Du hast sie 'gefixt' … beim Spielen sind sie EXAKT gleich … GAR NICHTS" — the same false "fixed" claim recurred **≥9 times across 5 sessions** (the atlas/asset declaration was checked, never the render). **The 09→12.08 lesson:** a testing discipline that was merely *agreed on in chat* on 2026-08-09 did not survive to 2026-08-12 — the identical failure recurred three days later. A discipline that lives only in chat history is not enforced; it has to live here, as a rule the agent re-reads every session, not as a one-time chat agreement.
 
 _Originalfassung der Einleitung und Tabelle der vier Fehlertypen (in der Regel ohne Zählungen und Transkript-Zitate):_
 
@@ -36,7 +36,7 @@ _Originalfassung der Einleitung und Tabelle der vier Fehlertypen (in der Regel o
 
 ## Pattern: Adversarial counter-check (an agent that HUNTS for deviations)
 
-**Counter-evidence that this works:** Projekt B, 2026-07-13 — a dedicated deviation-hunting agent found **39 real deviations** that the implementing strand could not see itself. It is the only pattern in the August corpus demonstrated to surface errors the executing thread was structurally blind to.
+**Counter-evidence that this works:** proj-1df43a, 2026-07-13 — a dedicated deviation-hunting agent found **39 real deviations** that the implementing strand could not see itself. It is the only pattern in the August corpus demonstrated to surface errors the executing thread was structurally blind to.
 
 ## References
 
@@ -47,5 +47,5 @@ _Originalzeilen; in der Regel stehen nur noch die IMP-IDs und Dateipfade:_
 - Matt Pocock — "Full Walkthrough" — vertical slices + verification
 - Mario Zechner — "Building pi in a World of Slop"
 - Cluster source: see author's knowledge base (private)
-- Trigger 3: Projekt C chat-transcript evidence (2026-08-09 → 2026-08-12, ≥9 recurrences) — IMP-143, `plans/meta-proposal-2026-08-23-chat-analyse.md`; companion paragraph in `testing-quality.md` ("Rendered-Proof for Visual Claims")
-- Trigger 3 extension (source-not-paraphrase, describe-before-judging, four-error table) + the two patterns above: IMP-160/IMP-167 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §2 (13 incidents / 7 days, four self-diagnosed error types) and §3.4 (Projekt B 2026-07-13, 39 deviations found by a deviation-hunting agent)
+- Trigger 3: proj-902a42 chat-transcript evidence (2026-08-09 → 2026-08-12, ≥9 recurrences) — IMP-143, `plans/meta-proposal-2026-08-23-chat-analyse.md`; companion paragraph in `testing-quality.md` ("Rendered-Proof for Visual Claims")
+- Trigger 3 extension (source-not-paraphrase, describe-before-judging, four-error table) + the two patterns above: IMP-160/IMP-167 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §2 (13 incidents / 7 days, four self-diagnosed error types) and §3.4 (proj-1df43a 2026-07-13, 39 deviations found by a deviation-hunting agent)

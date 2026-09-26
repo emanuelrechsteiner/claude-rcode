@@ -22,10 +22,14 @@
 # der Zertifikatsfelder (historische Fehlerquelle: "85 Commits" statt 83).
 set -euo pipefail
 
-LOG_DEFAULT="/Users/your-username/.claude/global-observation/daily-docs-log.jsonl"
-# Hardcoded mit Absicht — dieselbe Begruendung wie beim Logbuch-Pfad in der SKILL.md:
-# eine Pflicht-Env-Variable, die der Scheduler nicht setzt, ist der Ur-Defekt in neuer
-# Gestalt (${LOGBOOK_DIR} expandierte still zu leer). Override nur fuer Tests/Backfill.
+LOG_DEFAULT="$HOME/.claude/global-observation/daily-docs-log.jsonl"
+# $HOME statt eines literalen Nutzerpfads (IMP-219) — dieselbe Begruendung wie
+# beim Logbuch-Pfad in der SKILL.md gilt weiterhin: eine Pflicht-Env-Variable,
+# die der Scheduler nicht setzt, ist der Ur-Defekt in neuer Gestalt (${LOGBOOK_DIR}
+# expandierte still zu leer). $HOME ist KEINE app-spezifische Konfigurationsvariable
+# wie die alte ${LOGBOOK_DIR} — jeder Prozess bekommt sie vom Login-Shell/launchd-
+# Environment gesetzt, ohne separate Verdrahtung in settings.json. Override nur
+# fuer Tests/Backfill.
 LOG="${DAILY_DOCS_LOG:-$LOG_DEFAULT}"
 
 die() { echo "ABORT: $*" >&2; exit 1; }

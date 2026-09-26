@@ -9,15 +9,15 @@
 ### Identity 1: [e.g., Work — Acme Corp]
 
 - Git name: `Your Name`
-- Git email: `you@acme.com`
+- Git email: `you@example.com`
 - Path patterns (case-insensitive substring match in cwd):
   - `acme-corp/`
-  - `ProjectHub/acme-`
+  - `Cowork/acme-`
 
 ### Identity 2: [e.g., Personal Brand]
 
 - Git name: `Your Name`
-- Git email: `you@personal.dev`
+- Git email: `you@example.org`
 - Path patterns:
   - `personal-brand/`
   - `Developer-Brand/`

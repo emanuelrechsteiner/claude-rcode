@@ -30,7 +30,23 @@ set -euo pipefail
 #    2026-07-18: `grep -c 'set' v32.sh` -> rc=1, 0 Treffer; `/usr/bin/grep -c` -> 19.
 #    Ein ignoriertes Verzeichnis macht den Positivscan STILL leer. Dasselbe gilt fuer
 #    `find` (bfs-Shim, abweichende Zyklus-Semantik). Beide werden absolut aufgerufen.
-export TZ=UTC
+# IMP-219 (2026-09-25): Zeitzone aus der Umgebung, nie hartcodiert. Prioritaet:
+# bereits gesetztes $TZ (z.B. eine Testsuite) > $CLAUDE_LOGBOOK_TZ (optional in
+# ~/.claude/env.local.sh) > Systemzeitzone (readlink /etc/localtime). NIE
+# `TZ=""` setzen (auf macOS ist eine leere TZ gleich UTC — eine stille
+# Fehlmessung, keine ehrliche "unbekannt"-Meldung, siehe ABORT(6) unten).
+if [ -z "${TZ:-}" ]; then
+  [ -n "${CLAUDE_LOGBOOK_TZ:-}" ] || { [ -f "$HOME/.claude/env.local.sh" ] && . "$HOME/.claude/env.local.sh"; }
+  TZ="${CLAUDE_LOGBOOK_TZ:-}"
+fi
+if [ -z "${TZ:-}" ]; then
+  LOCALTIME_LINK=$(readlink /etc/localtime 2>/dev/null || true)
+  case "$LOCALTIME_LINK" in
+    */zoneinfo/*) TZ="${LOCALTIME_LINK#*/zoneinfo/}" ;;
+  esac
+fi
+[ -n "${TZ:-}" ] || { echo "ABORT(6): Zeitzone nicht ermittelbar (weder \$TZ noch \$CLAUDE_LOGBOOK_TZ gesetzt, readlink /etc/localtime ohne zoneinfo-Pfad) — CLAUDE_LOGBOOK_TZ in ~/.claude/env.local.sh setzen" >&2; exit 6; }
+export TZ
 FINDBIN=/usr/bin/find
 GREPBIN=/usr/bin/grep
 for b in "$FINDBIN" "$GREPBIN"; do
@@ -125,10 +141,10 @@ w19() {
 # ============================== S0 Tagesfenster ==============================
 PREV=$(python3 -c "import sys,datetime;print(datetime.date.fromisoformat(sys.argv[1])-datetime.timedelta(days=1))" "$D")
 python3 - "$D" > "$WORK/win.txt" <<'PY'
-import sys
+import os, sys
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-d = datetime.fromisoformat(sys.argv[1]).replace(tzinfo=ZoneInfo('UTC'))
+d = datetime.fromisoformat(sys.argv[1]).replace(tzinfo=ZoneInfo(os.environ['TZ']))
 f = '%Y-%m-%dT%H:%M:%SZ'
 print(d.astimezone(ZoneInfo('UTC')).strftime(f))
 print((d + timedelta(days=1)).astimezone(ZoneInfo('UTC')).strftime(f))
@@ -141,7 +157,7 @@ if [ -z "$WSTART" ] || [ -z "$WEND" ]; then
 if ! [[ "$WSTART" =~ $RE ]] || ! [[ "$WEND" =~ $RE ]]; then
   echo "ABORT(2): Fensterformat ungueltig" >&2; exit 2; fi
 if ! [[ "$WSTART" < "$WEND" ]]; then echo "ABORT(2): Fenster nicht aufsteigend" >&2; exit 2; fi
-rcpt "S0 tz=UTC fenster=[$WSTART,$WEND)"
+rcpt "S0 tz=$TZ fenster=[$WSTART,$WEND)"
 
 # ============================== S1 Preflight ==============================
 # S1d Roots + Sentinels
@@ -771,7 +787,7 @@ for line in sys.stdin:
 PYEOF
 
 # ---- Pass 1: Q_T + Q_D (+ CANARY fuer S8) --------------------------------
-CANARY="/Volumes/__logbook_canary__/CANARY-$D.md"
+CANARY="/Volumes/<canary>/CANARY-$D.md"
 { awk '{print "T\t" $0}' "$WORK/qt_raw.txt"
   awk '{print "D\t" $0}' "$WORK/qd_raw.txt"
   if [ "$FAULT" != "f" ]; then echo -e "C\t$CANARY"; fi
@@ -940,7 +956,7 @@ from zoneinfo import ZoneInfo
 
 DAY = sys.argv[1]
 ROOTS = sys.argv[2]
-TZ = ZoneInfo("UTC")
+TZ = ZoneInfo(os.environ["TZ"])  # IMP-219: Systemzeitzone statt hartcodiertem Namen
 d = datetime.strptime(DAY, "%Y-%m-%d")
 LO = datetime(d.year, d.month, d.day, tzinfo=TZ)
 HI = LO + dt.timedelta(days=1)
@@ -1151,7 +1167,7 @@ for row in v2rows:
             kommando=row["kommando"], tool_use_id=row["tool_use_id"])
 
 out = {
- "tag": DAY, "tz": "UTC",
+ "tag": DAY, "tz": TZ.key,
  "fenster": [LO.isoformat(), HI.isoformat()],
  "arbeitskopien_gescannt": len(workcopies),
  "repos_gescannt": len(seen_repo),
@@ -1425,7 +1441,7 @@ print(json.dumps({
                "discovery_repos": $NDISC, "reflog_unabhaengig": True,
                "commit_auswahl": "autor_datum ODER committer_datum == Tag"},
  "git_ambiguous_nicht_gezaehlt": $(wc -l < "$WORK/git_ambiguous.txt" | tr -d ' '),
- "day": "$D", "tz": "UTC", "window": ["$WSTART", "$WEND"],
+ "day": "$D", "tz": "$TZ", "window": ["$WSTART", "$WEND"],
  "status": "$STATUS",
  "items_total": $ITEMS,
  "evidence_counts": {"T_transkript": $NQT_E, "D_desktop": $NQD_E, "G_git": $NQG_E,

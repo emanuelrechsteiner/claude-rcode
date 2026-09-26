@@ -221,27 +221,33 @@ echo "publish.sh: preparing staging tree for scrub-check (ephemeral git init)"
   git add -A
 )
 
-# WHICH COPY OF scrub-check.sh RUNS THE GATE — this is deliberate and load-
-# bearing (2026-09-23 review finding): publish-transforms.d/60-declaw-
-# scrub-check-pii.sh (step 4, already run by the time we get here) rewrites
-# the STAGING copy of scrub-check.sh, replacing its real detection literals
-# (§2 of that file: real name/email/project-codename/mirror-marker values)
-# with inert placeholder tokens — necessary so the PUBLISHED copy never
-# ships those literals, but it also means the staging copy is no longer
-# the same detector the private maintainer actually relies on. Gating a
-# release with THAT declawed copy would mean the detector inspects the
-# release with its own teeth already pulled — using the staging copy here
-# would silently WEAKEN the gate the moment 60-declaw runs, not strengthen
-# it. The fix: run the PRIVATE, untouched copy at $REPO_ROOT/scripts/
-# scrub-check.sh instead — no publish-transforms.d/*.sh ever writes outside
-# $STAGING, so this copy always carries every real pattern. `cd "$STAGING"`
-# below still makes `git rev-parse --show-toplevel` inside the script
-# resolve to the staging tree's ephemeral git-init, so only the DETECTOR is
-# private; the SCANNED TREE is still exactly the staging tree being
-# published. Two existence checks follow on purpose: the private copy is
-# what actually runs, and the staging copy is what the public repo ships
-# for contributors/CI to run their own (declawed-template) gate — losing
-# either one silently would be a distinct failure from losing the other.
+# WHICH COPY OF scrub-check.sh RUNS THE GATE.
+#
+# UPDATED 2026-09-25 (IMP-219, vault-by-design): scrub-check.sh's §2 used to
+# hardcode real detection literals (name/email/project-codename/mirror-
+# marker values), and publish-transforms.d/60-declaw-scrub-check-pii.sh
+# existed solely to rewrite the STAGING copy of that file, replacing those
+# literals with inert placeholders before anything shipped — running the
+# STAGING copy as the actual gate would then have meant gating a release
+# with a detector whose own teeth had already been pulled. Both the
+# literals and the declaw transform are gone now: real values live only in
+# the vault (scripts/vault/, gitignored, never versioned), so
+# scrub-check.sh's source is now IDENTICAL whether read from the private
+# repo or from the staging tree — there is no longer a "weaker, declawed"
+# staging copy to accidentally gate with.
+#
+# This script still runs the PRIVATE copy at $REPO_ROOT/scripts/
+# scrub-check.sh rather than the staging one, as defense-in-depth (a future
+# staging-only transform could in principle touch this file again without
+# this script's author noticing) — not because it currently produces a
+# different result. `cd "$STAGING"` below still makes `git rev-parse
+# --show-toplevel` inside the script resolve to the staging tree's
+# ephemeral git-init, so the SCANNED TREE is exactly the staging tree being
+# published regardless of which copy of the script executes. Two existence
+# checks follow on purpose: the private copy is what actually runs, and the
+# staging copy is what the public repo ships for contributors/CI to run
+# their own gate — losing either one silently would be a distinct failure
+# from losing the other.
 PRIVATE_SCRUB_SCRIPT="$REPO_ROOT/scripts/scrub-check.sh"
 STAGING_SCRUB_SCRIPT="$STAGING/scripts/scrub-check.sh"
 
@@ -261,9 +267,20 @@ if [[ ! -f "$STAGING_SCRUB_SCRIPT" ]]; then
 fi
 chmod +x "$PRIVATE_SCRUB_SCRIPT"
 
-echo "publish.sh: running scrub-check.sh (PRIVATE, undeclawed copy) against the staging tree"
+echo "publish.sh: running scrub-check.sh (PRIVATE copy) against the staging tree"
 SCRUB_OUTPUT="$WORKDIR/scrub-output.txt"
-if ! (cd "$STAGING" && CLAUDE_SCRUB_PSEUDONYM_LIST="$REPO_ROOT/publish-pseudonyms.local.tsv" bash "$PRIVATE_SCRUB_SCRIPT" --require-pseudonym-list) > "$SCRUB_OUTPUT" 2>&1; then
+# No CLAUDE_SCRUB_PSEUDONYM_LIST override needed here (removed 2026-09-25,
+# IMP-219): scrub-check.sh's §7 now defaults to reading the vault directly
+# (${CLAUDE_VAULT_DIR:-~/.claude/vault}), a fixed machine-global path that
+# does not depend on $REPO_ROOT — unlike the old repo-relative default
+# (publish-pseudonyms.local.tsv), which needed an explicit override here
+# specifically BECAUSE `cd "$STAGING"` makes $REPO_ROOT resolve to the
+# staging tree inside scrub-check.sh, not the private repo. The vault
+# default has no such location-sensitivity, so it works correctly here
+# without an override. The legacy list remains available as an explicit
+# CLAUDE_SCRUB_PSEUDONYM_LIST override for anyone who still wants to point
+# this at it (either format is auto-detected — see scrub-check.sh §7).
+if ! (cd "$STAGING" && bash "$PRIVATE_SCRUB_SCRIPT" --require-pseudonym-list) > "$SCRUB_OUTPUT" 2>&1; then
   echo "" >&2
   echo "publish.sh: ABORT — scrub-check found findings in the staging tree:" >&2
   echo "" >&2

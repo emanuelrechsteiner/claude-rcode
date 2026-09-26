@@ -138,6 +138,26 @@ t "replace_symbol_body in .ssh/id_rsa → block" block \
 t "create_text_file under secrets/ → block" block \
     "$(payload mcp__serena__create_text_file '{"relative_path":"secrets/prod.txt","content":"harmless"}')"
 
+# ── vault-write-gate.sh through the Serena door (IMP-219, Welle 2 unit B) ─
+# Proves the delegation chain actually REACHES vault-write-gate.sh, not just
+# security-audit.sh/file-protection.sh. create_text_file does not require an
+# existing target (unlike the six suffixes above), so this targets a
+# harmless, definitely-not-gitignored top-level filename inside THIS REAL
+# repo (RUNNING this suite's own checkout) — $HOOKS_DIR/.. always has
+# scripts/vault/lib.sh, satisfying the §7.6 framework-repo marker. The vault
+# term is synthetic and lives only in a throwaway CLAUDE_VAULT_DIR,
+# exported for this one call only — it is never registered in any real
+# ~/.claude/vault on any machine.
+SERENA_VAULT_T=$(mktemp -d)
+SERENA_SYNTH_TERM="SynthSerenaGateProbeTerm"
+CLAUDE_VAULT_DIR="$SERENA_VAULT_T" bash "$HOOKS_DIR/../scripts/vault/vault.sh" init >/dev/null 2>&1
+CLAUDE_VAULT_DIR="$SERENA_VAULT_T" bash "$HOOKS_DIR/../scripts/vault/vault.sh" add project "$SERENA_SYNTH_TERM" --group synthserenaprobe >/dev/null 2>&1
+REPO_ROOT_REAL="$(cd "$HOOKS_DIR/.." && pwd)"
+CLAUDE_VAULT_DIR="$SERENA_VAULT_T" t \
+    "create_text_file with a vault-registered synthetic term, inside THIS real framework repo → block (reaches vault-write-gate)" block \
+    "$(payload_cwd mcp__serena__create_text_file "$(jq -cn --arg s "$SERENA_SYNTH_TERM" '{relative_path:"VAULT-GATE-SERENA-PROBE.md",content:("owner: " + $s)}')" "$REPO_ROOT_REAL")"
+rm -rf "$SERENA_VAULT_T"
+
 # ── config-protection's recoverable ask is forwarded ─────────────────────
 printf '{"rules":{}}' > "$T/.eslintrc.json"
 t "replace_content on existing .eslintrc.json → ask (forwarded)" ask \

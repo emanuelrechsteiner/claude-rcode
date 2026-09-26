@@ -208,7 +208,7 @@ When agents report back:
    wave's output respected it. Any planned expansion **beyond** the original
    brief is held against that field **before** it is dispatched, not after —
    going ahead anyway is at minimum **SOFT-ACK** with a one-line note (what
-   expands, why). Evidence: Projekt I, 2026-08-29 — *"Es funktionert.
+   expands, why). Evidence: proj-a07272, 2026-08-29 — *"Es funktionert.
    Danke Dir, das ist toll"* (08:12), four hours later *"Ich finde das zu
    aufwendig … Du machst hier viel zu viel. MCP soll eine Brücke sein, mehr
    nicht"* (12:48) — the negative-list existed in the brief template but was
@@ -244,7 +244,7 @@ discarded + why resumption wasn't possible) — and **ESCALATE** (a real y/n),
 not a self-approved restart, when a literal user instruction forbade
 restarting.
 
-**Evidence:** Projekt N, 2026-09-03 — three workflow restarts against the
+**Evidence:** proj-47cf29, 2026-09-03 — three workflow restarts against the
 literal instruction *"Du sollst nicht neustarten. Funden war mit Opus 5.1
 schon durch, das soll nicht neu gemacht werden. Nur Bündeln Prüfen, Lücken
 Synthese soll mit Sonnet gemacht werden"* (session `aaaa0001`, 07:35)
@@ -296,7 +296,7 @@ When `/autonomous-overnight` is invoked, the control-agent operates under the pr
 
 **Pre-flight gate (do not skip):** Before dispatching any sub-agent work, verify all seven pre-flight checks pass and document each as ✅ in the overnight report header. Abort and report if any check fails.
 
-**Quota accounting before generation fan-outs (IMP-154):** Before adding work against a paid generation API to the scope, verify and post the current counter state + the requested amount (pre-flight check 5 in `commands/autonomous-overnight.md`) — a blanket approval ("as much as needed") does not substitute for this. Evidence: a Projekt C overnight run, 2026-08 — the Grok counter reached 69/70 plus the daily cap and only surfaced as a blocker mid-run.
+**Quota accounting before generation fan-outs (IMP-154):** Before adding work against a paid generation API to the scope, verify and post the current counter state + the requested amount (pre-flight check 5 in `commands/autonomous-overnight.md`) — a blanket approval ("as much as needed") does not substitute for this. Evidence: an overnight run in project proj-902a42, 2026-08 — the Grok counter reached 69/70 plus the daily cap and only surfaced as a blocker mid-run.
 
 **SOFT-ACK auto-proceed:** SOFT-ACK–band ops proceed automatically. Log each one (op + undo path) to the `## SOFT-ACK Log` section of `overnight-report.md` immediately after it executes.
 

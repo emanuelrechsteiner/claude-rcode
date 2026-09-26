@@ -1,0 +1,26 @@
+# Apple Reminders — Personal Configuration
+
+> Personal Apple Reminders configuration — describes how Claude should use
+> the Reminders app on this machine (which automation tool grants access,
+> which lists exist, when to set due dates). This file is .gitignored;
+> never committed. Copy it to `~/.claude/rules/reminders.local.md` and
+> replace the example content below with your own — the list names here
+> are examples for you to overwrite, not values to keep.
+
+## Apple Erinnerungen (Reminders) - zentrales Erinnerungstool
+
+Claude can have AppleScript access to the Apple Reminders app on macOS
+(e.g. via an automation MCP tool) once the user confirms it is available.
+Where available, treat Apple Reminders as the default place for
+reminders/to-dos rather than a one-off project note file.
+
+- If the user wants to be reminded of something, or asks for a reminder,
+  to-do, deadline, or follow-up: create it in Apple Reminders (in addition
+  to a project-specific note file where one is relevant).
+- Before creating an entry, list the existing Reminders lists and pick the
+  matching one; create a new list for a genuinely new topic.
+- Only set a due date when requested or clearly useful — otherwise leave
+  it open.
+- Do not assume a fixed set of list names: enumerate the user's actual
+  lists on their machine (they are personal and vary per user) rather
+  than hardcoding examples here.

@@ -149,7 +149,7 @@ Every dispatched subagent prompt MUST establish the working root explicitly so t
 **Required preamble in every subagent prompt:**
 
 ```
-PROJECT_ROOT=<absolute path to project root, e.g. /Volumes/YourExternalVolume/ProjectHub/MyApp>
+PROJECT_ROOT=<absolute path to project root, e.g. /Volumes/<VOLUME>/…/MyApp>
 # For git-worktree sessions also set:
 WORKTREE_ROOT=$(pwd)   # the agent should run this as its first Bash call
 
@@ -158,7 +158,7 @@ ls "$PROJECT_ROOT"
 
 RULES:
 - ALL file paths you Read, Edit, Write, or reference MUST start with $PROJECT_ROOT.
-- NEVER use foreign or hallucinated absolute paths (e.g. /home/user, /Users/<someone-else>,
+- NEVER use foreign or hallucinated absolute paths (e.g. /home/username, /Users/<someone-else>,
   /workspace, /app, or any path not under $PROJECT_ROOT).
 - Strip any trailing slash from $PROJECT_ROOT before joining path segments to avoid doubled
   segments (e.g. avoid "$PROJECT_ROOT/frontend/frontend" — use "$PROJECT_ROOT/frontend").

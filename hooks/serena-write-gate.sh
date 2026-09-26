@@ -210,7 +210,10 @@ WARNINGS=""
 
 # Order: hard blockers first, recoverable "ask" (config-protection) LAST —
 # an approved ask must not skip checks that would have run after it.
-for inspector in parallel-lock-check.sh file-protection.sh security-audit.sh config-protection.sh; do
+# vault-write-gate.sh (IMP-219) sits right after security-audit.sh: both are
+# hard content-pattern blockers, and vault-write-gate must run BEFORE the
+# recoverable config-protection ask for the same reason security-audit does.
+for inspector in parallel-lock-check.sh file-protection.sh security-audit.sh vault-write-gate.sh config-protection.sh; do
     SCRIPT="$HOOKS_DIR/$inspector"
     if [ ! -x "$SCRIPT" ]; then
         deny "serena-write-gate: inspector $inspector missing/not executable at $HOOKS_DIR — fail-closed (a gate that cannot check must not wave through)."

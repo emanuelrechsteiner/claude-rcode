@@ -238,7 +238,7 @@ paths:
       "Edit(./src/**/*.ts)"
     ],
     "additionalDirectories": [
-      "/Users/name/projects"
+      "/Users/<user>/projects"
     ]
   }
 }

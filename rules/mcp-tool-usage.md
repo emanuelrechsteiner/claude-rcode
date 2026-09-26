@@ -12,7 +12,7 @@ Serena (`mcp__serena__*`) and the MCP filesystem server (`mcp__filesystem__*`) u
 ```
 ✅ relative_path: "src/components/Button.tsx"
 ✅ relative_path: "./src/utils/helper.ts"
-❌ relative_path: "/Users/name/project/src/Button.tsx"  // WRONG - absolute path
+❌ relative_path: "/Users/<user>/project/src/Button.tsx"  // WRONG - absolute path
 ```
 
 ### Claude Native Tools (absolute paths)
@@ -20,7 +20,7 @@ Serena (`mcp__serena__*`) and the MCP filesystem server (`mcp__filesystem__*`) u
 Claude's built-in Read/Edit/Write tools use **absolute paths**:
 
 ```
-✅ file_path: "/Users/name/project/src/Button.tsx"
+✅ file_path: "/Users/<user>/project/src/Button.tsx"
 ❌ file_path: "src/Button.tsx"  // WRONG - relative path
 ```
 
@@ -126,7 +126,7 @@ Using the wrong parameter name throws a **-32602 invalid params** error. Before 
 { "libraryName": "react" }
 ```
 
-**Correct (your-context7-server-uuid server):**
+**Correct (the other server):**
 ```json
 { "query": "react" }
 ```

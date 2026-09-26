@@ -24,3 +24,26 @@
 
 LICENSE:3:Copyright (c) 2026
 README.md:238:Built and battle-tested by
+
+# Per §7.5 (plans/vault-by-design-2026-09-25.md): the vault's own matcher
+# pattern DEFINITIONS (regex source in scripts/vault/lib.sh, and any
+# equivalent in scripts/scrub-check.sh) legitimately contain path-/email-/
+# id-SHAPED literal text as part of the regex itself — that source text is
+# what the structural detector is BUILT FROM, not a real value it failed to
+# catch. Fragmenting the regex source the way §1's SECRET_PATTERN literals
+# are fragmented would make the regex itself harder to read and audit for
+# no security benefit (the vault matcher's whole job is already to catch
+# real occurrences of these shapes ELSEWHERE — this line is the detector,
+# not a leak). One entry per pattern-definition line that legitimately
+# looks like what it detects.
+#
+# SIGNATURE CHOICE (corrected 2026-09-25 rework round 3, finding #3): the
+# snippet below is the LINE'S OWN CODE PREFIX, up to before the path
+# pattern begins — never the flagged pattern text itself ("/Users/|/home/
+# |/Volumes/"). The earlier version of this entry used that pattern text
+# verbatim as its own signature, which meant scanning THIS allowlist file
+# re-triggered the very structural path-pattern the entry exists to
+# exempt in lib.sh — a self-inflicted finding on this file's own line 39.
+# A code-prefix signature uniquely identifies the target line without
+# itself being shaped like anything the matcher looks for.
+scripts/vault/lib.sh:421:['path',  qr~(?:

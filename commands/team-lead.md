@@ -192,7 +192,7 @@ if git remote get-url origin >/dev/null; then git pull --ff-only origin "${trunk
 git checkout -b "work/$(date +%Y-%m-%d)-<slug>"
 ```
 
-> Evidence (Projekt M, 2026-09-21): 16 sub-agents across 4 waves
+> Evidence (proj-292e7a, 2026-09-21): 16 sub-agents across 4 waves
 > committed to one shared branch (`overnight/2026-09-21-foundation`);
 > `/issue` was never invoked in its Standalone form. Worker mode formalizes
 > exactly that shape instead of treating it as a deviation.

@@ -4,10 +4,10 @@
 >
 > **Bevor du irgendetwas änderst, stelle mit `pwd` fest, wo du bist.**
 >
-> | `pwd` beginnt mit … | Du bist im … | Was hier gilt |
+> | `pwd` endet auf … | Du bist im … | Was hier gilt |
 > |---|---|---|
-> | `/Volumes/YourExternalVolume/…/5-AI-APPS/claude-code-config` | **BAUHOF** (Arbeitskopie) | Hier wird entwickelt und committet. Nichts wirkt live. **Das ist der richtige Ort für Änderungen.** |
-> | `/Users/your-username/.claude` | **HAUS** (Installation) | Was Claude Code tatsächlich liest. **Hier NICHT von Hand ändern** — nur `claude-deploy` schreibt hierher. |
+> | `…/claude-code-config` | **BAUHOF** (Arbeitskopie) | Hier wird entwickelt und committet. Nichts wirkt live. **Das ist der richtige Ort für Änderungen.** |
+> | `~/.claude` | **HAUS** (Installation) | Was Claude Code tatsächlich liest. **Hier NICHT von Hand ändern** — nur `claude-deploy` schreibt hierher. |
 >
 > **Die drei Regeln für Agenten:**
 > 1. **Änderungen ausschließlich im Bauhof.** Editierst du `~/.claude/...` direkt, geht die Änderung bei der nächsten Übergabe verloren (Fast-Forward-Konflikt) — und sie wird sofort scharf, mitten in der laufenden Sitzung.
@@ -21,13 +21,15 @@
 
 ## System Architecture
 
-Rules, commands, skills, agents, hooks, scheduled tasks. **Counts are GENERATED, never hand-maintained:** `scripts/framework-inventory.sh`. **Rules is the one count that differs by location — state both, never one:** Bauhof 21 tracked, Haus 23 after `claude-deploy` (+2 git-ignored `*.local.md`). Inventory/history: `docs/FRAMEWORK-REFERENCE.md`; architecture: `HARNESS.md`; changes: `global-observation/improvement-ledger.json`.
+Rules, commands, skills, agents, hooks, scheduled tasks. **Counts are GENERATED, never hand-maintained:** `scripts/framework-inventory.sh`. **Rules is the one count that differs by location — state both, never one:** Bauhof 21 tracked, Haus 24 after `claude-deploy` (+3 git-ignored `*.local.md`). Inventory/history: `docs/FRAMEWORK-REFERENCE.md`; architecture: `HARNESS.md`; changes: `global-observation/improvement-ledger.json`.
 
 ### Zwei Orte: Bauhof und bewohntes Haus
 
+`<BAUHOF>` = Arbeitskopie dieses Repos außerhalb von `~/.claude` (realer Pfad lokal in `~/.claude/env.local.sh`).
+
 | Ort | Rolle | Pfad |
 |---|---|---|
-| **Bauhof** (Arbeitskopie) | Hier wird entwickelt, geprüft, committet. Nichts wirkt live. | `/Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS/claude-code-config` |
+| **Bauhof** (Arbeitskopie) | Hier wird entwickelt, geprüft, committet. Nichts wirkt live. | `<BAUHOF>` |
 | **Haus** (Installation) | Was Claude Code tatsächlich liest. Empfängt nur fertige Übergaben. | `~/.claude` |
 
 Remotes: Bauhof `origin` + `live` (Haus); Haus `origin` + `workshop` (Bauhof). `claude-deploy [config|cockpit|all]`: nur mit sauberem Bauhof, nur Fast-Forward, wirkt ab nächster Sitzung; zieht Laufzeitschlüssel (`model`, `effortLevel`, `modelSettings`; IMP-127/194) in den Bauhof zurück. Laufzeitdaten nur im Haus. Umgebungswerte in die Shell (`~/.zshrc`); Werte, die auch ohne Shell-Profil ankommen müssen, in den `env`-Block von `settings.json` — **niemals Geheimnisse**, diese Datei ist öffentlich. Das Haus bleibt vollständig (kein Symlink auf die SSD), ebenso die Cockpit-Kopie `~/.claude/cockpit` (7 Hook-Einträge + Statuszeile zeigen dorthin) — sie muss lokal und vollständig sein. Mehr: `docs/WORKING-IN-THIS-REPO.md`, `docs/FRAMEWORK-REFERENCE.md`.
@@ -78,7 +80,7 @@ Archived: ux-agent (→ ux-design), improvement-agent (→ observation pipeline)
 
 ### Hooks (registered in `settings.json`)
 
-`settings.json` is the only complete registration truth (the non-`.sh` graphify hook-guard is invisible to `framework-inventory.sh`). Gates a session will meet: guard-unsafe, excessive-agency-gate, mcp-agency-gate, web-fetch-safety-gate, security-audit, file-protection, config-protection, pretool-auto-read, gateguard, serena-write-gate, dispatch-specialist-check, git-identity-enforce, git-state-check. Full annotated table, regression suites, blind spots: `docs/FRAMEWORK-REFERENCE.md` §Hooks.
+`settings.json` is the only complete registration truth (the non-`.sh` graphify hook-guard is invisible to `framework-inventory.sh`). Gates a session will meet: guard-unsafe, excessive-agency-gate, mcp-agency-gate, web-fetch-safety-gate, security-audit, vault-write-gate, file-protection, config-protection, pretool-auto-read, gateguard, serena-write-gate, dispatch-specialist-check, git-identity-enforce, git-state-check. Full table + suites: `docs/FRAMEWORK-REFERENCE.md` §Hooks.
 
 #### Bypass tokens (three distinct scopes — do not confuse)
 
@@ -142,24 +144,6 @@ Rails install per project. 22 commands (verify with `framework-inventory.sh`); /
 5. **Error recovery**: If an agent reports a blocker → assess → spawn resolution agent → resume.
 6. **Context hygiene**: `/clear` between unrelated tasks.
 7. **Routine awareness**: daily-docs writes a Notion scaffold, filled during the day.
-
-## Apple Erinnerungen (Reminders) - zentrales Erinnerungstool
-
-Claude can have AppleScript access to the Apple Reminders app on macOS
-(e.g. via an automation MCP tool) once the user confirms it is available.
-Where available, treat Apple Reminders as the default place for
-reminders/to-dos rather than a one-off project note file.
-
-- If the user wants to be reminded of something, or asks for a reminder,
-  to-do, deadline, or follow-up: create it in Apple Reminders (in addition
-  to a project-specific note file where one is relevant).
-- Before creating an entry, list the existing Reminders lists and pick the
-  matching one; create a new list for a genuinely new topic.
-- Only set a due date when requested or clearly useful — otherwise leave
-  it open.
-- Do not assume a fixed set of list names: enumerate the user's actual
-  lists on their machine (they are personal and vary per user) rather
-  than hardcoding examples here.
 
 ## Graphify — Knowledge-Graph Tool (external, installed 2026-07-31, IMP-109)
 

@@ -187,7 +187,7 @@ if cp_match(r"gh\s+workflow\s+disable"):
 # the shell's active gh account, vercel team, global git/npm config, or the
 # active gcloud/aws account/profile. Unlike a file edit this state persists
 # after the session ends and the NEXT, unaware run silently inherits it.
-# Evidence: `gh auth switch --user example-org-account` ran without a y/n and was
+# Evidence: `gh auth switch --user <account>` ran without a y/n and was
 # reported only afterward; 3 documented wrong-repo/wrong-deploy-account
 # incidents trace to exactly this (rules/agency-bands.md "Global Machine-State
 # Changes"). Read-only / repo-local forms stay AUTO — see each check below.

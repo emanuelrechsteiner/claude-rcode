@@ -11,12 +11,12 @@
 # bound: 100/230 in the coding corpus). Rule 3's own baseline was 25%, target
 # <5 unspecified per 30 days — the rate has RISEN since the rule was written.
 # control-agent itself was dispatched via subagent_type ZERO times across 123
-# framework sessions. Same-day comparison 2026-08-09: Projekt E dispatched
-# 14/16 to named specialists -> 12/12 issues closed, 101 green tests, no
-# escalation. Projekt C dispatched 11/11 to general-purpose with symptom-titled
-# prompts -> an escalation day, traced in the transcript to a subagent with no
-# defined acceptance criterion substituting its own judgment for an explicit
-# user instruction.
+# framework sessions. Same-day comparison 2026-08-09, two unrelated projects:
+# one dispatched 14/16 to named specialists -> 12/12 issues closed, 101 green
+# tests, no escalation. The other dispatched 11/11 to general-purpose with
+# symptom-titled prompts -> an escalation day, traced in the transcript to a
+# subagent with no defined acceptance criterion substituting its own judgment
+# for an explicit user instruction.
 #
 # WHY "ask", NOT "deny" (user's explicit instruction for IMP-159): a
 # general-purpose dispatch is sometimes the right call — level/asset work,

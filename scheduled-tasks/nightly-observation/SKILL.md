@@ -3,7 +3,7 @@ name: nightly-observation
 description: Nightly housekeeping — calls the safe rotate-signals.sh (archive-then-trim + pre-truncate backup + count-conservation abort), computes daily metrics, health check. Re-enabled 2026-06-21 after IMP-049 fix.
 ---
 
-<!-- Erwartetes cwd: ~/.claude · Zeitgeber: launchd com.your-username.claude-routine-nightly-observation (seit 2026-08-22, IMP-135; davor unversionierte Cloud-Bindung an ein 2026-08-02 umbenanntes Verzeichnis — 20 Tage stiller Ausfall). -->
+<!-- Erwartetes cwd: ~/.claude · Zeitgeber: launchd com.claude-code.routine-nightly-observation (seit 2026-08-22, IMP-135; Label generisch seit IMP-219, 2026-09-25; davor unversionierte Cloud-Bindung an ein 2026-08-02 umbenanntes Verzeichnis — 20 Tage stiller Ausfall). -->
 
 Run nightly observation pipeline housekeeping. Batch job — keep tool calls minimal, fail-soft.
 
@@ -42,3 +42,9 @@ If any step failed (including rotate-signals.sh exiting non-zero), append to ~/.
 - Pure scripting; no destructive manual operations on signals.jsonl.
 - Idempotent (re-running same day must not duplicate metrics or re-archive).
 - Fail-soft; finish under 60 seconds.
+- **Pseudonymisierung (IMP-219):** diese Routine schreibt heute nur nach
+  `~/.claude/global-observation/*` (Laufzeitdateien, nicht versioniert) — kein
+  Schritt hier erreicht eine versionierte Datei. Eine künftige Erweiterung, die
+  einen Ledger-Eintrag schreibt, geht über `ledger-append-proposed.sh`, das
+  jedes Textfeld als Netz tokenisiert (`scripts/vault/vault.sh`) und bei einem
+  verbleibenden strukturellen Fund das Schreiben verweigert.

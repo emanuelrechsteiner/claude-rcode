@@ -157,3 +157,11 @@ skills/composio-cli
 # docs/PUBLISHING.md "Pseudonymization" for the format and how to populate
 # it locally.
 publish-pseudonyms.local.tsv
+
+# Vault (IMP-219, 2026-09-25, plans/vault-by-design-2026-09-25.md). Real
+# names/paths/accounts live ONLY here (${CLAUDE_VAULT_DIR:-~/.claude/vault}
+# by default, outside this repo entirely) — this entry is defense-in-depth
+# in case CLAUDE_VAULT_DIR is ever pointed at a path inside this repo. Never
+# versioned: the whole design assumes real values never sit in a tracked
+# file, and a tracked vault/ directory would defeat that immediately.
+/vault/

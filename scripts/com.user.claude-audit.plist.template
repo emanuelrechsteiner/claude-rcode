@@ -7,7 +7,7 @@
        reverse-DNS identifier, e.g. `com.yourdomain.claude-audit`.
     2. Replace every `${HOME}` placeholder with your absolute home directory path.
        launchd does NOT expand `$HOME` or `~` — paths must be absolute.
-       Example: /Users/yourname/.claude/scripts/audit-config.sh
+       Example: /Users/username/.claude/scripts/audit-config.sh
     3. Rename this file to match your Label (e.g. `com.yourdomain.claude-audit.plist`)
        and save it to `~/Library/LaunchAgents/`.
     4. Load it: `launchctl load ~/Library/LaunchAgents/com.yourdomain.claude-audit.plist`

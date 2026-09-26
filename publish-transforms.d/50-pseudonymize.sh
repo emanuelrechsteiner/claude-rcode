@@ -1,82 +1,53 @@
 #!/usr/bin/env bash
-# 50-pseudonymize.sh — replace private project/location names with neutral
-# placeholders, driven by a PRIVATE, NEVER-VERSIONED name list.
+# 50-pseudonymize.sh — replace every real vault term with its token across
+# the staging tree, using the SAME matcher every other vault consumer uses
+# (scripts/vault/lib.sh's vault_matcher_run, "tokenize" mode —
+# rules/testing-quality.md "Verify Via the Same Code Path", no second,
+# independently-written substitution routine).
 #
-# WHY THIS IS SEPARATE FROM 30-placeholder-scan.sh: that script's rules are
-# a deliberately SHORT, HARDCODED list — each rule's real-value literal is
-# baked into the tracked source because the values it clears (a machine
-# username, a volume name, two retired identity fragments, one project
-# codename in a security comment) are few, stable, and safe to keep in a
-# public file BECAUSE `hooks/security-audit.sh`'s secret-shaped patterns
-# don't match plain names. This script covers a different, much longer-
-# tailed category: real project/client codenames that accumulate over time
-# as evidence in rule prose, ledger history, and agent transcripts (~85
-# occurrences across 34 files measured 2026-09-23; see the private list
-# file's header). Hardcoding THAT list here would defeat its own purpose —
-# the list of private names would itself ship in a tracked file. So the
-# names live in a git-ignored, never-published TSV
-# (publish-pseudonyms.local.tsv, repo root) and this script's OWN SOURCE
-# contains zero real private terms — only generic mechanics. Verify this
-# claim yourself: `grep -f <(cut -f1 publish-pseudonyms.local.tsv)
-# publish-transforms.d/50-pseudonymize.sh` must report nothing.
+# HISTORY (2026-09-25 rework round 5): this transform used to run TWO
+# passes — a vault-sourced "Pass 0", then a "second net" that re-read
+# publish-pseudonyms.local.tsv (a private, never-versioned TSV) and applied
+# its own separate literal-substring substitution. The second pass is
+# REMOVED here, not merely disabled: `vault.sh init --import-legacy` is now
+# the list's ONLY consumer (it was always meant to be an IMPORT source
+# feeding the vault, not a second parallel enforcement mechanism running
+# forever alongside it — see plans/vault-by-design-2026-09-25.md §2). Two
+# reasons this needed to actually happen, not just be tolerated:
+#   1. The second pass had NO allowlist and NO word-boundary awareness
+#      (plain `perl \Q...\E` substring match) — it rewrote D7's protected
+#      attribution lines (LICENSE:3, README.md:238) whenever the list
+#      happened to contain a term appearing there, independently of
+#      whatever the vault pass had already decided to protect.
+#   2. Once a legacy-list term becomes PUBLIC (e.g. a name the project
+#      later starts using in its own public identity/tooling), the vault
+#      import correctly excludes it (scripts/vault/public-names.txt), but
+#      the second pass had no such concept and kept rewriting it forever —
+#      measured live: 14 files including this repo's own
+#      scripts/vault/public-names.txt and scripts/tests/vault-regression.sh
+#      changed on a clean `git archive HEAD` specifically because of this.
+# A missing vault remains FATAL (unchanged from before): this transform's
+# whole job is neutralizing real values before they reach the public tree,
+# so silently skipping would ship whatever it alone would have caught,
+# unmasked, with no second net left to catch it.
 #
-# FAIL LOUD ON A MISSING LIST: this transform does NOT silently no-op when
-# the private list is absent — an empty pseudonymization pass would let
-# every name below sail through to the public tree with nobody the wiser.
-# Missing list -> hard FAIL (exit 1). If you genuinely want to publish
-# without pseudonymizing (e.g. a from-scratch fork with no private names
-# yet), create an empty (comments-only) list file explicitly — an
-# intentional empty list is not the same as a missing one, and this script
-# treats them differently on purpose.
-#
-# LIST FORMAT: see the header comment in publish-pseudonyms.local.tsv
-# itself (repo root) — "<real term>\t<placeholder>" per line, '#' comments,
-# blank lines ignored.
-#
-# MATCHING: every real term is a LITERAL substring match (perl \Q...\E, no
-# regex interpretation, no word-boundary) — same style as
-# 30-placeholder-scan.sh, for the same reason (a name can appear inside an
-# identifier, a path segment, or free prose, and word-boundary rules would
-# have to special-case all three). Rules are applied LONGEST-REAL-TERM-
-# FIRST regardless of the list file's own line order, so a short term that
-# happens to be a substring of a longer one (e.g. a bare project codename
-# that is itself a prefix of a longer "<codename>-Server" variant) can
-# never corrupt an already-applied longer replacement — the longer one is
-# always substituted first, leaving nothing for the shorter rule to
-# (mis)match inside it.
-#
-# SELF-EXCLUSION: scripts/scrub-check.sh and scripts/scrub-allowlist.txt
-# are skipped by this transform, mirroring scrub-check.sh's own SELF_EXCLUDE
-# for its PII/rebrand scan. scrub-check.sh's existing _proj_a.._proj_h
-# fragment-assembled literals are deliberately split so the file's raw
-# bytes never contain their own flagged substrings contiguously — but nothing
-# stops a SHORTER, unrelated real term below from landing inside one of those
-# splits by coincidence (this happened during this transform's own build:
-# a bare project-name term happened to be a byte-contiguous substring of an
-# existing fragment there). Rewriting that file's bytes here would corrupt a
-# security-relevant literal outside this transform's remit. This transform
-# itself (this file) is also excluded from its own run for the same reason
-# stated in the header above — it must never come to contain a real term.
+# D7 (LICENSE/README.md keep one real surname on purpose) no longer needs a
+# two-rules-file special case here either (removed — see git history before
+# 2026-09-25 for the prior mechanism): scripts/vault/lib.sh's `tokenize`
+# mode now consults the SAME allowlist `check` does directly (round 5,
+# finding #1) — the allowlist is the only exemption mechanism, applied
+# uniformly to every file through the one rules file below.
 #
 # Usage: 50-pseudonymize.sh <staging-dir>
 set -euo pipefail
 
 STAGING="${1:?usage: $0 <staging-dir>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LIST="$REPO_ROOT/publish-pseudonyms.local.tsv"
-
-if [[ ! -f "$LIST" ]]; then
-  echo "50-pseudonymize: FAIL — $LIST not found." >&2
-  echo "  This is fatal, not a skip: without this list, private project/" >&2
-  echo "  location names would ship into the public tree unmasked. Create" >&2
-  echo "  the file locally (see docs/PUBLISHING.md \"Pseudonymization\" for" >&2
-  echo "  the format) — or, if this fork genuinely has no private names yet," >&2
-  echo "  create an empty (comments-only) file to make that explicit." >&2
-  exit 1
-fi
 
 # Self-excluded files: relative to $STAGING, matched by exact suffix so this
-# works regardless of how $STAGING is rooted.
+# works regardless of how $STAGING is rooted. This transform's own source
+# is excluded for the same reason scrub-check.sh excludes itself: it
+# legitimately discusses what it does; that is not a leak.
 SELF_EXCLUDE_REL=(
   "scripts/scrub-check.sh"
   "scripts/scrub-allowlist.txt"
@@ -93,132 +64,73 @@ is_self_excluded() {
   return 1
 }
 
-# ---------------------------------------------------------------------------
-# Parse the list into two parallel arrays, skipping comments/blank lines.
-# Not using an associative array — bash 3.2 (stock macOS) doesn't have one.
-# ---------------------------------------------------------------------------
-TERMS=()
-PLACEHOLDERS=()
-while IFS=$'\t' read -r term placeholder; do
-  [[ -z "$term" || "$term" == \#* ]] && continue
-  if [[ -z "${placeholder:-}" ]]; then
-    echo "50-pseudonymize: FAIL — malformed line in $LIST (missing TAB or placeholder): '$term'" >&2
-    exit 1
-  fi
-  TERMS+=("$term")
-  PLACEHOLDERS+=("$placeholder")
-done < "$LIST"
-
-if [[ ${#TERMS[@]} -eq 0 ]]; then
-  echo "50-pseudonymize: OK — $LIST is present but empty (comments/blank only); nothing to pseudonymize (explicit, not a silent skip)"
-  exit 0
-fi
-
-# ---------------------------------------------------------------------------
-# Sort indices by descending term length (longest-first application) —
-# bash 3.2 has no native sort-by-key, so shell out to `sort` via a
-# length<TAB>index stream.
-# ---------------------------------------------------------------------------
-ORDER=()
-while IFS= read -r idx; do
-  [[ -n "$idx" ]] && ORDER+=("$idx")
-done < <(
-  i=0
-  while [[ $i -lt ${#TERMS[@]} ]]; do
-    printf '%d\t%d\n' "${#TERMS[$i]}" "$i"
-    i=$((i + 1))
-  done | sort -rn -k1,1 | cut -f2
-)
-
-# ---------------------------------------------------------------------------
 # is_text_file <path> — text/binary classifier, deliberately `git grep
 # --no-index -I`, NOT plain `grep -I` (found 2026-09-23 auditing
 # scheduled-tasks/daily-docs/bin/logbook-count.sh: that file embeds 5
-# literal NUL bytes on purpose, at byte offset ~20088, as field separators
-# inside a `python3 -c "...".join(...)` one-liner in its own source — it is
-# unambiguously a text/source file, and `git`'s binary heuristic samples
-# only a bounded prefix and agrees, but PLAIN `grep -I` scans the whole
-# file, hits the NUL, and calls the entire file binary). That mismatch
-# matters here specifically because scripts/scrub-check.sh's
-# --require-pseudonym-list gate (the check this transform exists to satisfy
-# — see the file header) scans the staging tree with `git grep -nIF`, i.e.
-# with GIT's classifier. If this transform used the plain-grep classifier
-# instead, it would silently skip rewriting a file the gate then reads as
-# text and flags as a leak — the writer and the reader disagreeing about
-# what counts as text is exactly the failure mode
-# rules/testing-quality.md's "Verify Via the Same Code Path, Not a
-# Reimplementation" warns about, so both sides now share one classifier.
-# `git -C "$(dirname ...)"` (not a bare `git grep --no-index` from whatever
-# the caller's cwd happens to be) is required: `--no-index` still refuses a
-# target outside the invoking process's OWN repository if the cwd sits
-# inside one (the staging tree is a plain extracted directory with no
-# `.git` at the point this transform runs, but the shell invoking this
-# script may itself be sitting inside THIS repo) — anchoring to the
-# target's own directory sidesteps that repo-boundary check entirely.
-# ---------------------------------------------------------------------------
+# literal NUL bytes on purpose, as field separators inside a python
+# one-liner in its own source — unambiguously a text/source file, but plain
+# `grep -I` samples the whole file, hits the NUL, and calls it binary,
+# while `git`'s classifier samples only a bounded prefix and agrees it's
+# text). scrub-check.sh's own leak checks scan with `git grep`, so both
+# sides must share one classifier (rules/testing-quality.md "Verify Via the
+# Same Code Path") or a file one side calls text and the other calls binary
+# would silently go unrewritten yet still get flagged, or vice versa.
+# `git -C "$(dirname ...)"` (not a bare `git grep --no-index` from the
+# caller's cwd) is required: `--no-index` still refuses a target outside
+# the invoking process's OWN repository if the cwd sits inside one, and the
+# staging tree has no `.git` of its own at the point this transform runs.
 is_text_file() {
   local f="$1"
   git -C "$(dirname -- "$f")" grep --no-index -Iq . -- "$(basename -- "$f")" 2>/dev/null
 }
 
-# ---------------------------------------------------------------------------
-# apply_rule <find> <replace> — same file-selection logic as
-# 30-placeholder-scan.sh (skip .git, skip binaries via `is_text_file`, skip
-# self-excluded files), literal substring match via perl \Q...\E.
-#
-# WHY THE PERL CALL GOES THROUGH $ENV, NOT SHELL INTERPOLATION (2026-09-23):
-# the previous form built the perl SOURCE by bash-interpolating $find/$replace
-# directly into the -e string ("s/\Q${find}\E/${replace}/g"). That makes any
-# character in a real term or its placeholder part of the perl CODE, not
-# data — a "/" in $find closes the s/// pattern early and corrupts or aborts
-# the substitution, and a "$"/"@" in $replace is interpolated by perl as a
-# variable/array sigil inside the replacement (which is itself a double-
-# quote-like context). Passing both as environment variables and reading
-# them back via \Q$ENV{...}\E (pattern) / $ENV{...} (replacement) fixes
-# this structurally: the perl SOURCE text is now the same fixed string on
-# every call ('s/\Q$ENV{PSEUDO_FIND}\E/$ENV{PSEUDO_REPLACE}/g'), compiled
-# once with "/" as delimiter regardless of what the terms contain; the
-# actual term/placeholder values are fetched at RUN TIME as plain data and
-# spliced in verbatim — \Q...\E still escapes regex metachars in the
-# pattern, and the replacement side is a hash lookup, not a re-parsed
-# string, so "$", "@", "\", "&" in the placeholder are inserted literally.
-# ---------------------------------------------------------------------------
-apply_rule() {
-  local find="$1" replace="$2"
-  local matches=0
-  local binary_hits=()
-  while IFS= read -r -d '' f; do
-    case "$f" in */.git/*) continue ;; esac
-    is_self_excluded "$f" && continue
-    if is_text_file "$f"; then
-      if grep -qF -- "$find" "$f" 2>/dev/null; then
-        PSEUDO_FIND="$find" PSEUDO_REPLACE="$replace" \
-          perl -pi -e 's/\Q$ENV{PSEUDO_FIND}\E/$ENV{PSEUDO_REPLACE}/g' "$f"
-        matches=$((matches + 1))
-      fi
-    else
-      # Binary file — never rewritten (perl -pi on binary content risks
-      # corrupting it), but a real term hit inside one must be reported
-      # LOUDLY, not silently dropped: a skipped check must never look like
-      # a clean one (rules/fail-loud.md).
-      if grep -qaF -- "$find" "$f" 2>/dev/null; then
-        binary_hits+=("$f")
-      fi
-    fi
-  done < <(find "$STAGING" -type f -print0)
-  echo "50-pseudonymize: '${find}' -> '${replace}': ${matches} file(s)"
-  if [[ ${#binary_hits[@]} -gt 0 ]]; then
-    echo "50-pseudonymize: WARNING — '${find}' also found inside ${#binary_hits[@]} BINARY file(s), left untouched (not text-safe to rewrite):" >&2
-    local bf
-    for bf in "${binary_hits[@]}"; do
-      echo "  $bf" >&2
-    done
-  fi
-}
+VAULT_LIB="$REPO_ROOT/scripts/vault/lib.sh"
+if [[ ! -f "$VAULT_LIB" ]]; then
+  echo "50-pseudonymize: FAIL — $VAULT_LIB not found." >&2
+  exit 1
+fi
+# shellcheck source=../scripts/vault/lib.sh
+. "$VAULT_LIB"
+if ! vault_exists; then
+  echo "50-pseudonymize: FAIL — no vault at $(vault_dir)." >&2
+  echo "  This is fatal, not a skip: without it, every real value this" >&2
+  echo "  transform is responsible for would ship into the public tree" >&2
+  echo "  unmasked, with no second net left to catch it. Run:" >&2
+  echo "  scripts/vault/vault.sh init" >&2
+  exit 1
+fi
 
-echo "50-pseudonymize: applying ${#TERMS[@]} rule(s) from $LIST (longest-term-first)"
-for idx in "${ORDER[@]}"; do
-  apply_rule "${TERMS[$idx]}" "${PLACEHOLDERS[$idx]}"
-done
+ALLOWLIST="$REPO_ROOT/scripts/scrub-allowlist.txt"
+[[ -f "$ALLOWLIST" ]] || ALLOWLIST=""
+
+_vault_rules="$(mktemp "${TMPDIR:-/tmp}/pseudonymize-vault-rules.XXXXXX")"
+vault_build_rules_file "$_vault_rules"
+
+_vault_tok_files=0
+while IFS= read -r -d '' f; do
+  case "$f" in */.git/*) continue ;; esac
+  is_self_excluded "$f" && continue
+  is_text_file "$f" || continue
+  _vault_tmp_out="$(mktemp "${TMPDIR:-/tmp}/pseudonymize-vault-out.XXXXXX")"
+  if vault_matcher_run tokenize 0 "${f#"$STAGING"/}" "$_vault_rules" "$ALLOWLIST" 0 < "$f" > "$_vault_tmp_out"; then
+    if cmp -s "$f" "$_vault_tmp_out"; then
+      rm -f "$_vault_tmp_out"
+    else
+      # Preserve the original file's mode across the swap — see
+      # scripts/vault/vault.sh's cmd_tokenize --in-place for the same fix
+      # and its rationale (round 5, finding #2): mktemp+mv unconditionally
+      # left mktemp's 0600 behind, silently stripping an executable
+      # script's bits.
+      _orig_mode="$(stat -f '%Lp' "$f" 2>/dev/null || stat -c '%a' "$f" 2>/dev/null)"
+      mv "$_vault_tmp_out" "$f"
+      [[ -n "$_orig_mode" ]] && chmod "$_orig_mode" "$f"
+      _vault_tok_files=$((_vault_tok_files + 1))
+    fi
+  else
+    rm -f "$_vault_tmp_out"
+  fi
+done < <(find "$STAGING" -type f -print0)
+rm -f "$_vault_rules"
+echo "50-pseudonymize: tokenized ${_vault_tok_files} file(s) (all vault kinds; allowlisted lines exempt)"
 
 echo "50-pseudonymize: OK"

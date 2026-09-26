@@ -17,7 +17,56 @@
 # Aufruf:  deploy-to-live.sh [config|cockpit|all]   (Vorgabe: all)
 set -euo pipefail
 
-WORKSHOP_ROOT="${CLAUDE_WORKSHOP_ROOT:-/Volumes/YourExternalVolume/1-PROJECTS/Development/5-AI-APPS}"
+fail() { printf '\033[31mABBRUCH: %s\033[0m\n' "$1" >&2; exit 1; }
+note() { printf '\033[36m▸ %s\033[0m\n' "$1"; }
+warn() { printf '\033[33m! %s\033[0m\n' "$1"; }
+
+# Durable backup of the Haus-only settings.json keys (HAUS_ONLY_KEYS_JSON,
+# z.B. autoMode) fuer das Fenster reset->pull->restore in deploy() (2026-09-25
+# ergaenzt): vorher lebte der gesicherte Wert NUR in einer Shell-Variable —
+# scheiterte restore_haus_only (z.B. unter set -e mitten in seinem eigenen
+# jq-Aufruf), brach das Skript ab UND der Wert war verloren, ohne dass
+# irgendwo ein Pfad zu ihm stand. Jetzt: der Wert landet zusaetzlich in einer
+# 0600-Datei, sobald er gelesen wird (vor dem Reset, siehe deploy());
+# haus_only_exit_guard (EXIT-Trap, unten registriert) nennt bei JEDEM
+# Abbruch, waehrend diese Datei noch existiert, ihren Pfad und den Weg zum
+# Wiedereinsetzen — auch wenn der Abbruch von einem unbeteiligten Befehl
+# kommt (z.B. `git pull`), nicht nur aus restore_haus_only selbst. Nach
+# erfolgreichem Restore loescht deploy() die Datei und leert diese Variable
+# wieder (Bestandsschutz-Pin: Erfolgsfall hinterlaesst NICHTS).
+HAUS_ONLY_BACKUP_FILE=""
+
+haus_only_exit_guard() {
+  if [ -n "$HAUS_ONLY_BACKUP_FILE" ] && [ -f "$HAUS_ONLY_BACKUP_FILE" ]; then
+    {
+      printf '\033[31mHAUS-ONLY-SICHERUNG NICHT VERLOREN: %s\033[0m\n' "$HAUS_ONLY_BACKUP_FILE"
+      printf 'Der zuletzt gesicherte Haus-only-Wert (z.B. autoMode) liegt unversehrt in dieser Datei.\n'
+      printf 'Von Hand zurueckspielen (ZIEL = die betroffene settings.json im Haus):\n'
+      printf '  jq --argjson entries "$(cat %s)" '"'"'reduce $entries[] as $e (.; setpath($e.path; $e.value))'"'"' ZIEL > /tmp/settings.restored.json && mv /tmp/settings.restored.json ZIEL\n' "$HAUS_ONLY_BACKUP_FILE"
+    } >&2
+  fi
+}
+trap haus_only_exit_guard EXIT
+
+command -v jq >/dev/null || fail "jq wird gebraucht, ist aber nicht installiert."
+
+# Maschinenpfade kommen aus der Umgebung, nie aus einem hart codierten Default
+# (IMP-219, vault-by-design — ein hart codierter Pfad in einem versionierten
+# Skript waere selbst ein Maschinenpfad im Framework). Vorrang haben bereits
+# gesetzte Variablen (Testsuiten setzen sie direkt); fehlen beide, wird
+# ~/.claude/env.local.sh gesourct (Vorlage: templates/env.local.sh.template).
+if [ -z "${CLAUDE_WORKSHOP_ROOT:-}" ] && [ -z "${CLAUDE_BAUHOF_ROOT:-}" ] \
+  && [ -f "${HOME}/.claude/env.local.sh" ]; then
+  # shellcheck disable=SC1091
+  . "${HOME}/.claude/env.local.sh"
+fi
+if [ -n "${CLAUDE_WORKSHOP_ROOT:-}" ]; then
+  WORKSHOP_ROOT="${CLAUDE_WORKSHOP_ROOT}"
+elif [ -n "${CLAUDE_BAUHOF_ROOT:-}" ]; then
+  WORKSHOP_ROOT="$(dirname "${CLAUDE_BAUHOF_ROOT}")"
+else
+  fail "Bauhof-Wurzel unbekannt: weder CLAUDE_WORKSHOP_ROOT noch CLAUDE_BAUHOF_ROOT ist gesetzt, und ${HOME}/.claude/env.local.sh existiert nicht. Vorlage anlegen: templates/env.local.sh.template"
+fi
 LIVE_CONFIG="${CLAUDE_LIVE_CONFIG:-$HOME/.claude}"
 LIVE_COCKPIT="${CLAUDE_LIVE_COCKPIT:-$LIVE_CONFIG/cockpit}"
 TARGET="${1:-all}"
@@ -30,7 +79,9 @@ TARGET="${1:-all}"
 # GENAU diesen Pfad ab; verschachtelte Geschwister (z.B. permissions.allow/deny/ask
 # neben permissions.defaultMode) bleiben geschuetzt. Weicht das Haus in einem NICHT
 # gelisteten Pfad ab, bricht die Uebergabe weiterhin ab (fail-loud.md). Erweitern
-# nur mit Beleg, dass Claude Code den Wert selbst schreibt.
+# nur mit Beleg, dass Claude Code den Wert selbst schreibt. Diese Liste wird
+# REGELMAESSIG in den Bauhof zurueckgezogen (sync_runtime_prefs unten) — anders
+# als HAUS_ONLY_KEYS_JSON gleich danach, deren Werte NIE in den Bauhof wandern.
 #
 #   ["model"]                      — /model-Umschalter (seit 2026-08-04, IMP-127)
 #   ["effortLevel"]                — /config-Effort-Umschalter (seit 2026-08-04, IMP-127)
@@ -43,32 +94,71 @@ TARGET="${1:-all}"
 #                                     ist Laufzeitschutt — permissions.allow/deny/ask
 #                                     bleiben geschuetzt und loesen bei Abweichung
 #                                     weiterhin ABBRUCH aus.
-#   ["autoMode"]                   — die Auto-Modus-Einrichtung legt einen neuen
-#                                     autoMode-Block mit environment-Array an.
-#                                     ACHTUNG VEROEFFENTLICHUNG: autoMode.environment
-#                                     kann private Projektangaben tragen. settings.json
-#                                     ist publish-gebunden — vor einer
-#                                     Publisher-Reaktivierung muss ein Transform in
-#                                     publish-transforms.d/ den autoMode-Block strippen;
-#                                     bis dahin faengt scrub-check die Pfad-Muster
-#                                     (fail-loud).
-RUNTIME_KEYS_JSON='[["model"],["effortLevel"],["theme"],["permissions","defaultMode"],["autoMode"],["modelSettings"]]'
+RUNTIME_KEYS_JSON='[["model"],["effortLevel"],["theme"],["permissions","defaultMode"],["modelSettings"]]'
+
+# Haus-only-Schluessel: existieren NUR im bewohnten Haus, wandern NIE in den
+# Bauhof (kein Rueckzug, kein Bauhof-Commit) und loesen NIE einen Abbruch aus,
+# wenn das Haus hier vom Bauhof-HEAD abweicht. Ueberleben Reset+Fast-Forward in
+# deploy() ueber extract_haus_only/restore_haus_only (Sicherung vor `git
+# checkout -- .`, Wiedereinsetzen nach dem Fast-Forward) statt ueber einen
+# Rueckzug in den Bauhof.
+#
+#   ["autoMode"] — die Auto-Modus-Einrichtung legt einen autoMode-Block mit
+#                  einem environment-Array an, das GENAU DAS beschreibt, was
+#                  vor IMP-219 (vault-by-design) das Problem war: private
+#                  Projekt-/Konto-/Pfadangaben. Ein Feld, das per Definition
+#                  maschinen- und sitzungsspezifisch ist, gehoert nicht in ein
+#                  versioniertes, oeffentliches Repo — auch nicht gefiltert
+#                  ueber einen Publish-Transform. Generische Vorlage fuer den
+#                  Inhalt: templates/automode-environment.template.json.
+HAUS_ONLY_KEYS_JSON='[["autoMode"]]'
+
+# Vereinigung beider Listen — fuer die Pruefung "weicht das Haus AUSSERHALB der
+# geschuetzten Pfade ab?" duerfen BEIDE Kategorien abweichen, ohne einen
+# Abbruch auszuloesen.
+PROTECTED_KEYS_JSON=$(jq -c -n --argjson a "$RUNTIME_KEYS_JSON" --argjson b "$HAUS_ONLY_KEYS_JSON" '$a + $b')
 
 # Reiner Betriebsschutt im Haus: von Claude Code staendig neu geschrieben, seit
 # 2026-08-04 nicht mehr versioniert. Wird ueber die Uebergabe hinweg gerettet.
 VOLATILE_FILES=(plugins/installed_plugins.json plugins/known_marketplaces.json)
 
-fail() { printf '\033[31mABBRUCH: %s\033[0m\n' "$1" >&2; exit 1; }
-note() { printf '\033[36m▸ %s\033[0m\n' "$1"; }
-warn() { printf '\033[33m! %s\033[0m\n' "$1"; }
-
 [ -d "$WORKSHOP_ROOT" ] || fail "Bauhof nicht erreichbar: $WORKSHOP_ROOT (SSD eingehängt?)"
-command -v jq >/dev/null || fail "jq wird gebraucht, ist aber nicht installiert."
 
-# Alles ausser den Laufzeitschluesseln — der Teil, der uebereinstimmen MUSS.
-# $k ist bereits eine Liste von Pfaden (Arrays), delpaths nimmt sie direkt.
-strip_runtime_keys() {
-  jq -S --argjson k "$RUNTIME_KEYS_JSON" 'delpaths($k)' "$1"
+# Entfernt eine Liste von jq-Pfaden (Arrays) aus einer settings.json — genutzt
+# fuer die "weicht das Haus AUSSERHALB der geschuetzten Pfade ab?"-Pruefung.
+strip_keys() { # strip_keys <keys-json> <datei>
+  jq -S --argjson k "$1" 'delpaths($k)' "$2"
+}
+
+# Liest die aktuellen Haus-only-Werte (HAUS_ONLY_KEYS_JSON) aus einer
+# settings.json — unabhaengig vom git-Status, denn der Block kann entweder
+# unversioniert im Arbeitsbaum liegen ODER schon im letzten Haus-Commit
+# stecken (Alt-Uebergaben haben ihn frueher in den Bauhof gezogen). Ausgabe:
+# kompaktes JSON-Array [{"path":[...],"value":...}, ...], leer wenn kein
+# Haus-only-Schluessel gesetzt ist.
+extract_haus_only() { # extract_haus_only <datei>
+  # $root VOR der Iteration ueber $k binden: sonst zeigt "." beim getpath-Aufruf
+  # auf das gerade durchlaufene Pfad-Array statt auf das Dokument, und getpath
+  # versucht, das Pfad-Array mit sich selbst zu indizieren.
+  jq -c --argjson k "$HAUS_ONLY_KEYS_JSON" \
+    '. as $root | [$k[] | . as $path | ($root | getpath($path)) as $v | select($v != null) | {path: $path, value: $v}]' "$1"
+}
+
+# Setzt zuvor mit extract_haus_only gesicherte Werte in eine settings.json
+# zurueck — Gegenstueck zu extract_haus_only, aufgerufen NACH Reset+Fast-
+# Forward. Ohne dieses Paar wuerde `git checkout -- .` einen unversionierten
+# autoMode-Block ersatzlos loeschen, und der anschliessende Fast-Forward auf
+# einen Bauhof-Stand ohne autoMode wuerde ihn auch aus einem bereits
+# committeten Haus-Stand entfernen (IMP-219: autoMode wandert nie in den
+# Bauhof, siehe HAUS_ONLY_KEYS_JSON oben).
+restore_haus_only() { # restore_haus_only <datei> <extract-haus-only-json>
+  local file="$1" entries="$2"
+  [ "$entries" = "[]" ] && return 0
+  local tmp; tmp=$(mktemp)
+  jq --argjson entries "$entries" \
+    'reduce $entries[] as $e (.; setpath($e.path; $e.value))' "$file" > "$tmp"
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
 }
 
 # Zieht die im Haus verstellten Laufzeitwerte in den Bauhof zurueck.
@@ -86,14 +176,15 @@ sync_runtime_prefs() {
   git -C "$live" show HEAD:settings.json > "$head_settings" 2>/dev/null \
     || fail "config: settings.json ist im Haus nicht versioniert — bitte von Hand klären."
 
-  if ! diff -q <(strip_runtime_keys "$head_settings") <(strip_runtime_keys "$live_settings") >/dev/null; then
+  if ! diff -q <(strip_keys "$PROTECTED_KEYS_JSON" "$head_settings") <(strip_keys "$PROTECTED_KEYS_JSON" "$live_settings") >/dev/null; then
     rm -f "$head_settings"
     git -C "$live" diff -- settings.json
-    fail "config: Das Haus weicht in settings.json AUSSERHALB der Laufzeitschlüssel ab ($(jq -r '[.[] | join(".")] | join(", ")' <<<"$RUNTIME_KEYS_JSON")).
+    fail "config: Das Haus weicht in settings.json AUSSERHALB der Laufzeitschlüssel ab ($(jq -r '[.[] | join(".")] | join(", ")' <<<"$PROTECTED_KEYS_JSON")).
       Das ist eine Änderung von Hand am bewohnten Haus — sie gehört in den Bauhof.
       Entweder dort nachbauen und hier verwerfen (git -C '$live' checkout -- settings.json),
       oder — wenn Claude Code den Wert nachweislich selbst schreibt — den Schlüssel in
-      RUNTIME_KEYS_JSON in diesem Skript ergänzen."
+      RUNTIME_KEYS_JSON (wandert in den Bauhof) oder HAUS_ONLY_KEYS_JSON (bleibt im
+      Haus) in diesem Skript ergänzen."
   fi
   rm -f "$head_settings"
 
@@ -194,10 +285,25 @@ deploy() {
   # Betriebsschutt über die Übergabe hinweg retten: der Fast-Forward entfernt die
   # Dateien aus der Versionierung, Claude Code soll sie danach unverändert vorfinden.
   local stash; stash=$(mktemp -d)
+  local haus_only_backup="[]"
   if [ "$name" = "config" ]; then
     for f in "${VOLATILE_FILES[@]}"; do
       [ -f "$live/$f" ] && { mkdir -p "$stash/$(dirname "$f")"; cp "$live/$f" "$stash/$f"; }
     done
+    # Haus-only-Schluessel (autoMode) VOR dem Reset sichern — der Bauhof-Stand
+    # traegt sie nie (HAUS_ONLY_KEYS_JSON oben), ein reiner Fast-Forward wuerde
+    # sie sonst ersatzlos entfernen. Zusaetzlich in eine 0600-Datei geschrieben
+    # (haus_only_exit_guard oben) — die Shell-Variable allein ueberlebt einen
+    # set -e-Abbruch zwischen hier und dem erfolgreichen restore_haus_only
+    # weiter unten nicht.
+    if [ -f "$live/settings.json" ]; then
+      haus_only_backup=$(extract_haus_only "$live/settings.json")
+      if [ "$haus_only_backup" != "[]" ]; then
+        HAUS_ONLY_BACKUP_FILE=$(mktemp "${TMPDIR:-/tmp}/deploy-haus-only-backup.XXXXXX")
+        chmod 0600 "$HAUS_ONLY_BACKUP_FILE"
+        printf '%s' "$haus_only_backup" > "$HAUS_ONLY_BACKUP_FILE"
+      fi
+    fi
   fi
 
   # Haus auf den Commit-Stand zurücksetzen — nur so ist ein Fast-Forward möglich.
@@ -219,6 +325,14 @@ deploy() {
         cp "$stash/$f" "$live/$f"
       fi
     done
+    [ -f "$live/settings.json" ] && restore_haus_only "$live/settings.json" "$haus_only_backup"
+    # Diese Zeile wird nur erreicht, wenn restore_haus_only (falls aufgerufen)
+    # unter set -e bereits erfolgreich durchgelaufen ist — die Sicherungsdatei
+    # ist ab hier ueberfluessig.
+    if [ -n "$HAUS_ONLY_BACKUP_FILE" ]; then
+      rm -f "$HAUS_ONLY_BACKUP_FILE"
+      HAUS_ONLY_BACKUP_FILE=""
+    fi
   fi
   rm -rf "$stash"
 

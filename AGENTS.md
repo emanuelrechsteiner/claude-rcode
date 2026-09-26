@@ -5,7 +5,7 @@ Dieses Repo ist die Konfiguration von Claude Code selbst und existiert an
 
 | Pfad | Ort | Regel |
 |---|---|---|
-| `…/5-AI-APPS/claude-code-config` | **Bauhof** | Hier ändern und committen. Nichts wirkt live. |
+| `…/claude-code-config` | **Bauhof** | Hier ändern und committen. Nichts wirkt live. |
 | `~/.claude` | **Haus** | Was Claude Code liest. **Nicht von Hand ändern** — nur `claude-deploy` schreibt hierher. |
 
 Drei Regeln:
