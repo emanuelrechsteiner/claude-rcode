@@ -122,7 +122,11 @@ fi
 # ── Line 2 (independent of Line 1): most recent abnormal stop in the last
 #    60 minutes for THIS session, named with its preview ─────────────────
 LINE2=""
-LATEST_ABNORMAL=$(printf '%s\n' "$STOPS_TAIL" | jq -R -c --arg sid "$SESSION_ID" '
+# KEEP IDENTICAL to ABNORMAL_MARKER_RE in hooks/subagent-watchdog.sh — the
+# rationale (IMP-229: bare 429/529 in a character count flagged a finished
+# troop abnormal) lives there. Applied to the lowercased preview.
+ABNORMAL_MARKER_RE='(^|[^a-z0-9_])rate[ _]limit(s|ed|_error|_exceeded)?([^a-z0-9_]|$)|(^|[^a-z0-9_])too many requests([^a-z0-9_]|$)|(^|[^a-z0-9_])overloaded(_error)?([^a-z0-9_]|$)|(^|[^a-z0-9_])quota[^a-z0-9]{0,3}(exceeded|exhausted|limit|reached)|(exceeded|exhausted)[a-z ]{0,25}quota|(^|[^a-z0-9_])api error[^a-z0-9]{0,3}([:(]|[45][0-9][0-9])|(error|status|http|code)[^a-z0-9]{0,15}(429|529)([^0-9]|$)|(^|[^0-9])(429|529)[^a-z0-9]{0,5}(too many|overloaded|rate[ _]limit)'
+LATEST_ABNORMAL=$(printf '%s\n' "$STOPS_TAIL" | jq -R -c --arg sid "$SESSION_ID" --arg re "$ABNORMAL_MARKER_RE" '
     def is_alarm_worthy:
         if has("status") then
             .status == "abnormal"
@@ -132,7 +136,7 @@ LATEST_ABNORMAL=$(printf '%s\n' "$STOPS_TAIL" | jq -R -c --arg sid "$SESSION_ID"
             (((.stop_reason // "") as $sr | ($sr != "" and $sr != "end_turn")))
             or
             (((.preview // "") | ascii_downcase
-                | test("rate_limit|rate limit|quota|overloaded|429|529|too many requests|api error")))
+                | test($re)))
         end;
     fromjson? | select(type=="object") | select(.session_id == $sid) | select(is_alarm_worthy)
 ' 2>/dev/null | tail -1)

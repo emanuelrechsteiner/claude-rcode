@@ -94,7 +94,31 @@ STOP_REASON_PRESENT=false
 [ -n "$STOP_REASON" ] && STOP_REASON_PRESENT=true
 
 LAST_MSG_LC=$(printf '%s' "$LAST_MSG" | tr '[:upper:]' '[:lower:]')
-ABNORMAL_MARKER_RE='rate_limit|rate limit|quota|overloaded|429|529|too many requests|api error'
+# ── Abnormal-marker expression (IMP-229, 2026-09-27) ───────────────────────
+# KEEP IDENTICAL to ABNORMAL_MARKER_RE in hooks/background-agent-check.sh
+# (it re-classifies pre-M22 rows with the same expression via jq `test`).
+# Applied to LOWERCASED text. Written in plain POSIX ERE with explicit
+# boundary classes instead of `\b`, so grep -E (BSD grep or ugrep, whichever
+# is on PATH) and jq's Oniguruma engine read it identically.
+#
+# Why narrowed: the old expression matched bare substrings, so a finished
+# troop's report was flagged abnormal whenever it merely CONTAINED 429/529
+# ("| 529 | 707 |" as a character count, "ledger entries 3010-3529", commit
+# "3529ad5") or an identifier like "rate_limit_configs". Measured on
+# subagent-stops.jsonl 2026-09-27: 3/3 status:"abnormal" rows were exactly
+# such numeric false positives. Now:
+#   - 429/529 count only with error context: after error|status|http|code
+#     (non-alphanumeric gap ≤15, no leading digit), or directly followed by
+#     too many|overloaded|rate limit.
+#   - rate limit / too many requests / overloaded: whole words only
+#     (rate_limit_error / overloaded_error, the API error types, still hit).
+#   - quota: only with exceeded|exhausted|limit|reached context — bare
+#     "quota" is ordinary prose (storage quotas, quota features).
+#   - api error: only as an error line ("api error:", "api error (",
+#     "api error 529"), not prose like "api error handling".
+# Every alternative is a strict subset of the old expression, so this can
+# only REMOVE alarms, never add one.
+ABNORMAL_MARKER_RE='(^|[^a-z0-9_])rate[ _]limit(s|ed|_error|_exceeded)?([^a-z0-9_]|$)|(^|[^a-z0-9_])too many requests([^a-z0-9_]|$)|(^|[^a-z0-9_])overloaded(_error)?([^a-z0-9_]|$)|(^|[^a-z0-9_])quota[^a-z0-9]{0,3}(exceeded|exhausted|limit|reached)|(exceeded|exhausted)[a-z ]{0,25}quota|(^|[^a-z0-9_])api error[^a-z0-9]{0,3}([:(]|[45][0-9][0-9])|(error|status|http|code)[^a-z0-9]{0,15}(429|529)([^0-9]|$)|(^|[^0-9])(429|529)[^a-z0-9]{0,5}(too many|overloaded|rate[ _]limit)'
 MARKER_HIT=false
 printf '%s' "$LAST_MSG_LC" | grep -qE "$ABNORMAL_MARKER_RE" && MARKER_HIT=true
 

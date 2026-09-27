@@ -12,6 +12,36 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-09-27
+
+Maintenance: three routine fixes, a model-era refresh, and verdict-first
+completion reports.
+
+### Changed
+
+- `rules/api-cost-optimization.md` covers the current model tiers (Haiku 4.5,
+  Sonnet 5, Opus 5.5, Fable 5.1); every claim was checked against the source
+  (`docs/model-era-review-2026-09-27.md`).
+- Completion reports start with `Done: yes` or `Done: no — missing: …`,
+  scoped per visible surface (`rules/slop-prevention.md`).
+- A correction about how you work with the agent (not about one codebase) is
+  stored once, user-global, in `~/.claude/rules/preferences.local.md`
+  (`rules/domain-docs-convention.md`, template
+  `templates/preferences.local.md.template`).
+- `scripts/ledger-append-proposed.sh` recomputes the ledger's header counters
+  on every write and offers `--recompute-only` / `--check`.
+
+### Fixed
+
+- The subagent watchdog no longer reads a bare number such as a character
+  count of 529 as an overload error; it needs error context around 429/529.
+- Daily docs: the desktop scan counts unparseable lines instead of aborting,
+  and file symlinks inside the scanned tree are tolerated without double
+  counting (`docs/adr/0004-desktop-audit-lone-surrogate-tolerance.md`).
+- Signal rotation writes an explicit empty shard for days without signals,
+  merges late entries instead of overwriting them, and exits loudly when
+  continuity cannot be proven; daily metrics book such days as verified empty.
+
 ## [1.6.0] - 2026-09-26
 
 English throughout, and self-improvement front and center.
@@ -242,7 +272,8 @@ developer's machine; the framework carries tokens. Decision record:
 
 Superseded. Their history was replaced by 1.1.0 and is no longer available.
 
-[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.0...v1.4.1

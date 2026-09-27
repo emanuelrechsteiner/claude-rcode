@@ -335,6 +335,95 @@ else
     bad "(status-aware) old-style row with explicit stop_reason is still surfaced" "line containing 'quota exhausted mid-turn'" "$OUT"
 fi
 
+# ── IMP-229 (2026-09-27): numeric markers need error context ───────────────
+# A planning-agent that delivered a complete report was flagged 💀 abnormal
+# because its report contained the character count "529" in a table. The
+# marker expression now requires error context around 429/529.
+
+watchdog_status() {  # $1=session $2=last message (no stop_reason key) -> prints status
+    reset_logs
+    jq -nc --arg sid "$1" --arg msg "$2" \
+        '{hook_event_name:"SubagentStop",session_id:$sid,agent_id:"a-imp229",agent_type:"t",last_assistant_message:$msg}' \
+        | bash "$WATCHDOG" >/dev/null 2>"$SCRATCH/stderr-imp229"
+    jq -r '.status' "$CLAUDE_SUBAGENT_STOPS_LOG"
+}
+
+# 23 (a). Character count "529" in a finished report -> normal, no 💀.
+STATUS=$(watchdog_status "sess-23" "removed 529 chars, net −200")
+STDERR_LEN=$(wc -c < "$SCRATCH/stderr-imp229" | tr -d ' ')
+if [ "$STATUS" = "normal" ] && [ "$STDERR_LEN" -eq 0 ]; then
+    ok "(IMP-229 a) 'removed 529 chars, net −200' -> normal, no 💀"
+else
+    bad "(IMP-229 a) bare 529 as a count -> normal" "status=normal stderr=0" "status=$STATUS stderr_len=$STDERR_LEN"
+fi
+
+# 24 (b). Real overload error line -> abnormal.
+STATUS=$(watchdog_status "sess-24" "API Error: 529 overloaded")
+[ "$STATUS" = "abnormal" ] && [ -s "$SCRATCH/stderr-imp229" ] \
+    && ok "(IMP-229 b) 'API Error: 529 overloaded' -> abnormal, 💀 fires" \
+    || bad "(IMP-229 b) 'API Error: 529 overloaded' -> abnormal" "status=abnormal" "status=$STATUS"
+
+# 25 (c). "status 429" -> abnormal.
+STATUS=$(watchdog_status "sess-25" "status 429")
+[ "$STATUS" = "abnormal" ] \
+    && ok "(IMP-229 c) 'status 429' -> abnormal" \
+    || bad "(IMP-229 c) 'status 429' -> abnormal" "status=abnormal" "status=$STATUS"
+
+# 26 (d). API error type identifier -> abnormal.
+STATUS=$(watchdog_status "sess-26" "Error: rate_limit_error")
+[ "$STATUS" = "abnormal" ] \
+    && ok "(IMP-229 d) 'Error: rate_limit_error' -> abnormal" \
+    || bad "(IMP-229 d) 'Error: rate_limit_error' -> abnormal" "status=abnormal" "status=$STATUS"
+
+# 27 (e). Pre-M22 row (no status field), empty stop_reason, preview = the
+#         (a) text -> NOT alarm-worthy in background-agent-check.sh.
+reset_logs
+T10=$(ts_minutes_ago 10)
+printf '{"ts":"%s","session_id":"sess-27","tool":"Task","subagent_type":"planning-agent"}\n' "$T10" >> "$CLAUDE_DISPATCH_LOG"
+printf '{"ts":"%s","session_id":"sess-27","agent_id":"a27","agent_type":"planning-agent","stop_reason":"","abnormal":true,"preview":"removed 529 chars, net −200"}\n' "$T10" >> "$CLAUDE_SUBAGENT_STOPS_LOG"
+OUT=$(printf '{"hook_event_name":"Stop","session_id":"sess-27"}' | bash "$CHECKER" 2>/dev/null)
+if [ -z "$OUT" ]; then
+    ok "(IMP-229 e) pre-M22 row with bare '529' count is NOT surfaced"
+else
+    bad "(IMP-229 e) pre-M22 row with bare '529' count is NOT surfaced" "(nothing)" "$OUT"
+fi
+
+# 28. Pre-M22 row with a REAL error in the preview is still surfaced (the
+#     narrowed expression must not blind the fallback path).
+reset_logs
+printf '{"ts":"%s","session_id":"sess-28","tool":"Task","subagent_type":"control-agent"}\n' "$T10" >> "$CLAUDE_DISPATCH_LOG"
+printf '{"ts":"%s","session_id":"sess-28","agent_id":"a28","agent_type":"control-agent","stop_reason":"","abnormal":true,"preview":"API Error: 529 {\\"type\\":\\"overloaded_error\\"}"}\n' "$T10" >> "$CLAUDE_SUBAGENT_STOPS_LOG"
+OUT=$(printf '{"hook_event_name":"Stop","session_id":"sess-28"}' | bash "$CHECKER" 2>/dev/null)
+if printf '%s' "$OUT" | grep -qF "a28"; then
+    ok "(IMP-229) pre-M22 row with 'API Error: 529 … overloaded_error' is still surfaced"
+else
+    bad "(IMP-229) pre-M22 row with a real API error is still surfaced" "line naming a28" "$OUT"
+fi
+
+# 29. Real log shapes that were false positives (2026-09-27 measurement):
+#     table cell, line range, commit hash, identifier, prose -> all normal.
+FP_FAILS=""
+for msg in '| `domain-docs-convention.md` | 529 | 707 | +178 |' \
+           'Reading ledger entries 3010-3529' \
+           'commit 3529ad5 (context.md)' \
+           'inspecting default_config and rate_limit_configs values' \
+           'Added rate limiting and API error handling; storage quota field added'; do
+    S=$(watchdog_status "sess-29" "$msg")
+    [ "$S" = "normal" ] || FP_FAILS="$FP_FAILS [$msg -> $S]"
+done
+[ -z "$FP_FAILS" ] \
+    && ok "(IMP-229) 5 observed/prose false-positive shapes -> all normal" \
+    || bad "(IMP-229) false-positive shapes -> normal" "all normal" "$FP_FAILS"
+
+# 30. Parity: both hooks carry the byte-identical expression.
+RE_W=$(grep -m1 "^ABNORMAL_MARKER_RE=" "$WATCHDOG")
+RE_C=$(grep -m1 "^ABNORMAL_MARKER_RE=" "$CHECKER")
+if [ -n "$RE_W" ] && [ "$RE_W" = "$RE_C" ]; then
+    ok "(IMP-229) ABNORMAL_MARKER_RE is byte-identical in both hooks"
+else
+    bad "(IMP-229) ABNORMAL_MARKER_RE identical in both hooks" "identical, non-empty" "watchdog='$RE_W' checker='$RE_C'"
+fi
+
 echo "──────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
 [ "$FAIL" -eq 0 ] || exit 1

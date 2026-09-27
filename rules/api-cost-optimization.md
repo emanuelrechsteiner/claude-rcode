@@ -1,10 +1,10 @@
 # API Cost Optimization Rules
 
-> Model-selection heuristics for Anthropic API calls. Refreshed for the Claude 5 model era 2026-07-03 (IMP-080). Always loaded.
+> Model-selection heuristics for Anthropic API calls. Refreshed for the Claude 5.x era 2026-09-27 (IMP-080, IMP-220). Always loaded.
 
-## Model Era: Claude 5 Family (2026-07)
+## Model Era: Claude 5.x Family (2026-09)
 
-Current tiers, cheapest → most capable: **Haiku 4.5 → Sonnet 5 → Opus 4.8 → Fable 5 / Mythos 5** (`claude-fable-5` — a new Mythos-class tier ABOVE Opus). The structural heuristics below (N_turns cost equation, cache discipline, triage-then-depth) are model-era-independent; concrete price ratios are NOT. **Verify current pricing at docs.claude.com/pricing before any batch job** — never trust a ratio written down in a prior model era.
+Current tiers, cheapest → most capable: **Haiku 4.5 → Sonnet 5 → Opus 5.5 → Fable 5.1** (`claude-fable-5-1`, the tier above Opus). Price ratio (2026-09-27, input and output): 1:2:4:10. Window: Haiku 200K, others 1M. The structural heuristics below (N_turns cost equation, cache discipline, triage-then-depth) are model-era-independent; concrete price ratios are NOT. **Verify current pricing at docs.claude.com/pricing before any batch job** — never trust a ratio written down in a prior model era.
 
 ## The Dual-Model Default
 
@@ -12,13 +12,13 @@ Current tiers, cheapest → most capable: **Haiku 4.5 → Sonnet 5 → Opus 4.8 
 
 ## Model-Selection Decision Matrix
 
-Use when choosing between Haiku 4.5 / Sonnet 5 / Opus 4.8 / Fable 5 for a given task.
+Use when choosing between Haiku 4.5 / Sonnet 5 / Opus 5.5 / Fable 5.1 for a given task.
 
 > **Applied per-spawn via `agents/control-agent.md` §2 (IMP-091).** This matrix is the Model axis of the canonical dispatch spec — the control-agent (or the main-thread planner form) reads it once per atomic task to assign Model alongside Agent, Effort, and dependencies. This file stays the single source for the Model criteria; it is not re-derived in `foundation.md` or `parallel-by-default.md`.
 
-| Dimension | Favors Haiku 4.5 | Favors Sonnet 5 | Favors Opus 4.8 | Favors Fable 5 (Mythos-class) |
-|-----------|------------------|-----------------|-----------------|-------------------------------|
-| **Input length** | < 2K tokens | 2K–50K tokens | 50K+ tokens, multi-doc synthesis | Very large windows (`[1m]`-class), whole-framework corpora |
+| Dimension | Favors Haiku 4.5 | Favors Sonnet 5 | Favors Opus 5.5 | Favors Fable 5.1 |
+|-----------|------------------|-----------------|-----------------|------------------|
+| **Input length** | < 2K tokens | 2K–50K tokens | 50K+ tokens, multi-doc synthesis | Whole-framework corpora |
 | **Semantic complexity** | Classification, extraction, formatting | Reasoning, drafting, code edits | Multi-step reasoning, architectural decisions, novel synthesis | Hardest synthesis — meta-analysis across many systems, novel cross-domain reasoning |
 | **Output type** | Labels, JSON, regex-like extraction | Prose, code, structured plans | Plans spanning many files | Framework-wide meta-reviews, deep multi-source reports |
 | **Cost sensitivity** | High-volume batch (email triage, log scan) | Interactive sessions | Rare one-offs where cost is dwarfed by value | Rarest tier — only where no lower tier has succeeded |
@@ -47,7 +47,7 @@ For **agent loops**, default to Sonnet unless you have evidence Haiku reliably o
 
 > The flush mechanics are model-era-independent; the TTL and cache-write premiums are not — verify current values at docs.claude.com/pricing before relying on them in batch jobs.
 
-Anthropic's prompt cache (historically 5-min TTL, 80–90% cost reduction after first call) is the single biggest cost-saver. **But every model switch flushes the entire cache** — the next call is full-price. This applies across the whole Claude 5 ladder: toggling Sonnet 5 ↔ Opus 4.8 ↔ Fable 5 mid-session flushes just like the old Opus/Sonnet toggle did.
+Anthropic's prompt cache (5-min TTL, 1h optional; a hit costs 0.1× base input, 0.05× on Opus 5.5, 0.025× on Fable 5.1) is the single biggest cost-saver. **But every model switch flushes the entire cache** — the next call is full-price. This applies across the whole Claude 5 ladder: toggling Sonnet 5 ↔ Opus 5.5 ↔ Fable 5.1 mid-session flushes just like the old Opus/Sonnet toggle did.
 
 ### Anti-patterns
 
@@ -76,11 +76,11 @@ Cache expires after 5 minutes of idle. If your session has ~5min gaps (thinking 
 ## Anti-Patterns
 
 ### ❌ Top-tier-for-everything (Opus or Fable as default)
-Using Opus 4.8 — or worse, Fable 5 — as default pays a large tier-premium for work Sonnet 5 handles equally well (verify the current multiples at docs.claude.com/pricing). Reserve Opus for:
+Using Opus 5.5 — or worse, Fable 5.1 — as default pays a 2× / 5× premium over Sonnet 5 for work Sonnet handles equally well (verify at docs.claude.com/pricing). Reserve Opus for:
 - Architectural planning across many files
 - Novel synthesis where Sonnet has been observed to miss nuance on the specific domain
 
-Reserve Fable 5 (Mythos-class) for:
+Reserve Fable 5.1 for:
 - `/meta` style meta-analysis (framework-wide reasoning)
 - The hardest synthesis tasks where Opus has demonstrably fallen short
 
@@ -88,7 +88,7 @@ Reserve Fable 5 (Mythos-class) for:
 A single Sonnet call on 500 emails costs a full tier-multiple more than Haiku-filter → Sonnet-on-10% of those. If the first step is a filter, use Haiku.
 
 ### ❌ Ignoring prompt caching
-For repeated work over stable context (long system prompts, retrieved docs), use Anthropic prompt caching. It reduces cost 80–90% after the first call within the 5-minute window and is essentially free to enable.
+For repeated work over stable context (long system prompts, retrieved docs), use Anthropic prompt caching. It is essentially free to enable; a read costs ≤10% of base input.
 
 ### ❌ Over-instrumented retries
 Retrying Opus on every transient failure is expensive. Cap retries at 2, exponential backoff, fall back to smaller model on persistent failure.
@@ -114,7 +114,7 @@ When writing new AI-powered code:
 
 ## References
 
-- Anthropic pricing: **verify current per-token rates and tier ratios at docs.claude.com/pricing** — ratios change per model generation; the old Claude-4-era "haiku ≈ 1/10 sonnet ≈ 1/50 opus" is historical, not current
-- IMP-011 in improvement-ledger.json; model-era refresh: IMP-080 (2026-07-03)
+- Anthropic pricing: **verify current per-token rates and tier ratios at docs.claude.com/pricing** — ratios change per model generation; the 2026-09-27 review is `docs/model-era-review-2026-09-27.md`
+- IMP-011 in improvement-ledger.json; model-era refresh: IMP-080 (2026-07-03), IMP-220 (2026-09-27)
 
 > Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/api-cost-optimization.md`

@@ -10,8 +10,6 @@
 
 Compounding agent reliability: `P(end-state correct) = P(step correct)^N`
 
-If `P(step correct) = 0.95` and you have 20 steps: `P(end) = 36%`.
-
 **Adding silent slop to the chain** (unverified scaffolds, ignored type errors, untested code) drops `P(step)` to ~0.7–0.8, making `P(end)` approach zero exponentially:
 
 | P(step) | 20 steps → P(end) |
@@ -58,17 +56,11 @@ Workflow:
 3. **Describe** the relevant part of that output in words — per checkpoint, one line of what is there.
 4. Compare the description against the claim, and the claim against the **source** — not against the declaration that was edited, and not against any paraphrase of the requirement.
 5. If no rendering step exists yet, build one before making the completion claim, not after the fact.
+6. **Report verdict-first.** The first line of every completion report, visual or not, is `Done: yes` or `Done: no — missing: <list>`, scoped per visible surface (`verified` / `not checked`). An unchecked surface the user can see is never covered by a completion-flavored sentence.
 
 A discipline agreed only in chat is not enforced — it lives here, in this rule.
 
-**The four error types** (IMP-160) — each has its own countermeasure, and fixing only the first leaves the other three live:
-
-| # | Error type | Countermeasure |
-|---|---|---|
-| 1 | **Circular check** — the test derives its expectation from the same declaration it is meant to check | Trigger 3 above: prove against the render, not the declaration |
-| 2 | **Checking against one's own paraphrase** instead of the source | "Check against the SOURCE" above + the *"Copy, don't interpret"* pattern below |
-| 3 | **Confirmation bias when looking** | "Describe what you see, then judge" above + the adversarial counter-check below |
-| 4 | **Sub-agent replaces an explicit user instruction with its own judgement**, and the orchestrator waves it through | `agents/control-agent.md` §3 (verbatim instruction travels with the brief; deviation escalates, never decides) + §4 synthesis check |
+**Four error types** (IMP-160), each with its own countermeasure — fixing one leaves the others live: circular check, checking against your own paraphrase, confirmation bias (countered above and by the patterns below), and a sub-agent overruling an explicit user instruction (`agents/control-agent.md` §3/§4).
 
 ## How to Apply
 
@@ -137,7 +129,5 @@ See *"Copy, don't interpret"* above. The paraphrase is where the requirement qui
 ## References
 
 - Trigger 3: IMP-143, `plans/meta-proposal-2026-08-23-chat-analyse.md`; companion paragraph in `testing-quality.md` ("Rendered-Proof for Visual Claims")
-- Trigger 3 extension + the two patterns above: IMP-160/IMP-167 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §2, §3.4
-- Error type 4 (sub-agent overruling an explicit user instruction) is enforced in `agents/control-agent.md` §3/§4, not here — the brief is where the instruction has to survive
 
 > Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/slop-prevention.md`

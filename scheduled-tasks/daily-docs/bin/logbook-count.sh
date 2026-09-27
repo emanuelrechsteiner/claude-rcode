@@ -95,12 +95,29 @@ rcpt() { echo "RECEIPT $*" >&2; }
 #   DIR symlink      -> ABORT (hides a subtree)
 #   pattern symlink   -> ABORT (hides a countable source file)
 #   any other         -> goes into the certificate, NO abort (hides nothing)
+#
+# IMP-225 — IN-TREE FILE LINKS (4th argument "intree", used ONLY by S1a):
+# Claude Code itself creates, when a background-job session starts, file symlinks
+# <new-session>/subagents/agent-*.jsonl -> <parent-session>/subagents/agent-*.jsonl
+# in the SAME project directory (measured 2026-09-27: 3 such links; every
+# background job made the next daily-docs run ABORT(19)). Such a link hides
+# nothing: its target is a regular file that the normal walk (find WITHOUT -L,
+# BSD grep -r, which does not follow file links — measured) already counts once.
+# A pattern link is TOLERATED iff ALL hold (else it stays a pattern symlink -> ABORT):
+#   - stat() through the link succeeds (not dangling, no cycle),
+#   - the fully resolved target is a REGULAR file,
+#   - it lies strictly under realpath(tree root),
+#   - its basename matches the same pattern (so the walk counts it).
+# Tolerated links are excluded from the count, listed on stderr (NOTE W19) and
+# certified as symlinks_tolerated=N. The find/find -L axis still has to agree:
+# n_L must equal n + tolerated, otherwise ABORT(19) as before.
 W19_CERT=""
 w19() {
-  local baum="$1"; local quelle="$2"; local muster="$3"
-  local dirn=0 mustn=0 sonst=0 n=0 nL=0 frc=0 wurzel=nein
+  local baum="$1"; local quelle="$2"; local muster="$3"; local modus="${4:-}"
+  local dirn=0 mustn=0 sonst=0 n=0 nL=0 frc=0 wurzel=nein tol=0 crc=0
   local L="$WORK/w19-$quelle.links"; local B="$WORK/w19-$quelle.bad"
-  : > "$L"; : > "$B"
+  local P="$WORK/w19-$quelle.pattern"; local V="$WORK/w19-$quelle.verdicts"
+  : > "$L"; : > "$B"; : > "$P"; : > "$V"
   # (0) Root probe: find WITHOUT -L does not enter a symlink root at all.
   if [ -L "$baum" ]; then wurzel=ja; fi
   set +e
@@ -112,19 +129,62 @@ w19() {
     if [ -d "$lk" ]; then dirn=$((dirn+1)); printf 'DIR\t%s\n' "$lk" >> "$B"
     else
       case "$(basename "$lk")" in
-        $muster) mustn=$((mustn+1)); printf 'MUSTER\t%s\n' "$lk" >> "$B" ;;
+        $muster)
+          if [ "$modus" = intree ]; then printf '%s\n' "$lk" >> "$P"
+          else mustn=$((mustn+1)); printf 'MUSTER\t%s\n' "$lk" >> "$B"; fi ;;
         *) sonst=$((sonst+1)) ;;
       esac
     fi
   done < "$L"
+  # (2b) IMP-225: classify pattern links (intree mode only) in ONE pass.
+  if [ -s "$P" ]; then
+    set +e
+    python3 - "$P" "$baum" "$muster" > "$V" 2>"$WORK/w19-$quelle.pyerr" <<'PY'
+import fnmatch, os, stat, sys
+sys.stdout.reconfigure(errors='surrogateescape')
+lst, root, pat = sys.argv[1], sys.argv[2], sys.argv[3]
+rroot = os.path.realpath(root)
+with open(lst, 'rb') as fh:
+    links = [os.fsdecode(x) for x in fh.read().split(b'\n') if x]
+for lk in links:
+    try:
+        st = os.stat(lk)                      # follows the link; dangling/cycle -> OSError
+    except FileNotFoundError:
+        print('DANGLING\t%s\t%s' % (lk, os.readlink(lk))); continue
+    except OSError as e:
+        print('UNRESOLVABLE\t%s\t%s' % (lk, e.strerror)); continue
+    tgt = os.path.realpath(lk)
+    if not stat.S_ISREG(st.st_mode):
+        print('NONREGULAR\t%s\t%s' % (lk, tgt)); continue
+    if tgt == rroot or os.path.commonpath([rroot, tgt]) != rroot:
+        print('OUTSIDE\t%s\t%s' % (lk, tgt)); continue
+    if not fnmatch.fnmatchcase(os.path.basename(tgt), pat):
+        print('PATTERN_MISMATCH\t%s\t%s' % (lk, tgt)); continue
+    print('TOLERATED\t%s\t%s' % (lk, tgt))
+PY
+    crc=$?
+    set -e
+    if [ "$crc" -ne 0 ] || [ "$(wc -l < "$V" | tr -d ' ')" != "$(wc -l < "$P" | tr -d ' ')" ]; then
+      { echo "ABORT(19): symlink classification FAILED in the scan tree of $quelle (python_rc=$crc)"
+        echo "  tree=$baum"
+        head -3 "$WORK/w19-$quelle.pyerr" | sed 's/^/  python: /'
+      } >&2
+      exit 19
+    fi
+    while IFS=$'\t' read -r urteil lk ziel; do
+      if [ "$urteil" = TOLERATED ]; then tol=$((tol+1))
+      else mustn=$((mustn+1)); printf 'MUSTER-%s\t%s -> %s\n' "$urteil" "$lk" "$ziel" >> "$B"; fi
+    done < "$V"
+  fi
   # (3) Second, different-kind axis: set comparison find vs. find -L.
   #     -L is ONLY counted, NEVER used for the actual collection.
+  #     find -L lists every tolerated link as one more -type f path -> n_L = n + tolerated.
   n=$("$FINDBIN"    "$baum" -name "$muster" -type f 2>/dev/null | wc -l | tr -d ' ')
   nL=$("$FINDBIN" -L "$baum" -name "$muster" -type f 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$wurzel" = ja ] || [ "$dirn" -gt 0 ] || [ "$mustn" -gt 0 ] || [ "$n" != "$nL" ] || [ "$frc" -ne 0 ]; then
+  if [ "$wurzel" = ja ] || [ "$dirn" -gt 0 ] || [ "$mustn" -gt 0 ] || [ "$nL" != "$((n+tol))" ] || [ "$frc" -ne 0 ]; then
     { echo "ABORT(19): symlink in the scan tree of $quelle"
       echo "  tree=$baum"
-      echo "  root_is_symlink=$wurzel dir_symlinks=$dirn pattern_symlinks=$mustn other=$sonst find_rc=$frc"
+      echo "  root_is_symlink=$wurzel dir_symlinks=$dirn pattern_symlinks=$mustn other=$sonst find_rc=$frc symlinks_tolerated=$tol"
       echo "  files without -L=$n with -L=$nL (difference=$((nL-n)) invisible files)"
       head -5 "$B" | sed 's/^/  affected: /'
       echo "  MEASUREMENT INCOMPLETE. NOT switched to -L: -L stays silent on cycles (rc=0,"
@@ -133,6 +193,18 @@ w19() {
       echo "  or replace the symlink with the real directory."
     } >&2
     exit 19
+  fi
+  if [ "$modus" = intree ]; then
+    local zst=symlinkfrei
+    if [ "$tol" -gt 0 ]; then
+      zst=tolerated
+      { echo "NOTE W19 $quelle: $tol in-tree file symlink(s) TOLERATED — not counted; each target is counted once by the normal walk:"
+        awk -F'\t' '$1=="TOLERATED"{print "  tolerated: " $2 " -> " $3}' "$V"
+      } >&2
+    fi
+    W19_CERT="${W19_CERT}${quelle}:symlinks=$((dirn+mustn+sonst+tol));dir=$dirn;muster=$mustn;sonstige=$sonst;symlinks_tolerated=$tol;n=$n;n_L=$nL;state=$zst|"
+    rcpt "W19 $quelle symlinks=$((dirn+mustn+sonst+tol)) (dir=$dirn muster=$mustn sonstige=$sonst) symlinks_tolerated=$tol n=$n n_L=$nL state=$zst"
+    return 0
   fi
   W19_CERT="${W19_CERT}${quelle}:symlinks=$((dirn+mustn+sonst));dir=$dirn;muster=$mustn;sonstige=$sonst;n=$n;n_L=$nL;state=symlinkfrei|"
   rcpt "W19 $quelle symlinks=$((dirn+mustn+sonst)) (dir=$dirn muster=$mustn sonstige=$sonst) n=$n n_L=$nL state=symlinkfrei"
@@ -279,7 +351,7 @@ rcpt "S1b desktop_status=$DESK_STATUS (source starts $EP_DESK)"
 # `|| true`; measured, this let an unreadable file rc=2 AND 11 of 12 hits on stdout
 # through — a genuine partial hit that was reported as "ok".
 PROJ="$HOME/.claude/projects"
-w19 "$PROJ" "S1a_transcripts" "*.jsonl"
+w19 "$PROJ" "S1a_transcripts" "*.jsonl" intree
 set +e
 "$FINDBIN" "$PROJ" -name '*.jsonl' -type f -print > "$WORK/all_jsonl.txt" 2>"$WORK/find_s1a.err"; FIND_RC=$?
 set -e
@@ -313,6 +385,12 @@ fi
 # population itself checkable.
 CERT_S1A="rc=$GREP_RC;find_rc=$FIND_RC;dateien=$NALL;unlesbar=$NUNREAD;kandidaten=$NCAND;epoche=$EP_TR;state=$TR_STATE"
 rcpt "S1a candidates=$NCAND files=$NALL unreadable=$NUNREAD grep_rc=$GREP_RC"
+# TEST HOOK (IMP-225): stop right after the S1a receipt so the symlink regression suite
+# (scripts/tests/logbook-count-symlink-regression.sh) needs no fixtures for S2+.
+# NEVER set in production (the scheduled run does not export it). Exits 99, NOT 0:
+# if the variable leaks into a real run (a leftover export, settings.json env,
+# env.local.sh sourced above), a truncated run must never look like a pass.
+if [ "${LOGBOOK_STOP_AFTER_S1A:-}" = "1" ]; then rcpt "STOP after S1a (LOGBOOK_STOP_AFTER_S1A=1) — test hook, exit 99"; exit 99; fi
 
 # ============================== S2 TOOL MAP (declared, not guessed) ==============
 # Classes: W = write tool (column 3 = target parameter in priority order)
@@ -374,7 +452,14 @@ rcpt "S2 tool_map_entries=$NMAP classes=W/B/R"
 
 # All declared parameter names (superset) — jq extracts exactly these keys.
 PKEYS='file_path,path,filename,notebook_path,source,destination,filePath,relative_path,local_path,paths,files,project,url,query'
-KNOWN=$(cut -f1 "$WORK/toolmap.tsv" | python3 -c "import sys;print(' '+' '.join(l for l in sys.stdin.read().split(chr(10)) if l)+' ')")
+# KNOWN = every mapped tool name, each framed by U+001F (unit separator) on both
+# sides; S3 and S6 test membership with contains("\u001f"+name+"\u001f"). The
+# separator is written as an ESCAPE (chr(31) / "\u001f"), never as a raw control
+# byte: the earlier version carried raw NUL bytes here, bash drops NULs when it
+# reads a script, so KNOWN became all names run together and the S3 check degraded
+# into a substring match ("Writ" counted as known), while S6 used a space and never
+# matched at all. Regression: scripts/tests/logbook-count-desktop-regression.sh (k, l).
+KNOWN=$(cut -f1 "$WORK/toolmap.tsv" | python3 -c "import sys;print(chr(31)+chr(31).join(l for l in sys.stdin.read().split(chr(10)) if l)+chr(31))")
 
 # ============================== S3 Events ==============================
 # iv = declared parameter values (parameter map).  sc = path-like string leaves
@@ -392,7 +477,7 @@ xargs -0 -n 40 jq -c --arg s "$WSTART" --arg e "$WEND" --arg pk "$PKEYS" --arg k
              cmd:(.input.command // .input.script // ""),
              iv:[ $keys[] as $k | select($t.input[$k]? != null)
                   | {k:$k, v:($t.input[$k] | if type=="string" then . elif type=="array" then (map(select(type=="string"))|join("")) else "" end)} ],
-             sc:( if ($known|contains(" "+$t.name+" ")) then []
+             sc:( if ($known|contains("\u001f"+$t.name+"\u001f")) then []
                   else [ $t.input | .. | strings | select(length < 4096) ] | .[0:40] end )} ]}
   | select((.tu|length) > 0)' \
   < <(tr '\n' '\0' < "$WORK/cand.txt") > "$WORK/events.jsonl"
@@ -612,7 +697,18 @@ rcpt "S4 pairs=$NPAIRS error_ids=$NFAIL remaining=$NOK raw_paths=$(wc -l < "$WOR
 
 # ============================== S6 Desktop raw paths ==============================
 : > "$WORK/qd_raw.txt"
-NAUDIT=0; DESK_FIND_RC=0; DESK_JQ_RC=0; DESK_UNREAD=0
+NAUDIT=0; DESK_FIND_RC=0; DESK_JQ_RC=0; DESK_UNREAD=0; DESK_LINES=0; DESK_UNPARSEABLE=0; DESK_WIN_LINES=0; DESK_WIN_UNPARSEABLE=0; DESK_UNDATED=0
+# IMP-223: the desktop app writes the occasional audit.jsonl line that jq rejects
+# ("Invalid \uXXXX\uXXXX surrogate pair escape" — a lone UTF-16 high surrogate,
+# e.g. a tool_result text truncated between the two halves of a surrogate pair
+# and followed directly by "[TRUNCATED]"). One such line used to abort the whole
+# run (5 of 13 daily-docs fails, 2026-09-10..09-21). Such lines are now COUNTED
+# (receipt + certificate + summary, never silent) and skipped. Above this share
+# the scan counts as genuinely incomplete -> ABORT(16). The share is checked twice:
+# over all scanned non-blank lines AND over the lines inside [WSTART,WEND) only.
+# Integer percent; the check is unparseable*100 > lines*MAX (exactly 1% passes).
+# Decision record: docs/adr/0004-desktop-audit-lone-surrogate-tolerance.md
+DESK_UNPARSEABLE_MAX_PCT=1
 if [ "$DESK_STATUS" = "ok" ]; then
   w19 "$DESK" "S1b_desktop" "audit.jsonl"
   set +e
@@ -626,8 +722,84 @@ if [ "$DESK_STATUS" = "ok" ]; then
   if [ "$NAUDIT" -gt 0 ]; then
     # Bring desktop events into the SAME shape as S3 (no cwd in audit.jsonl ->
     # relative targets stay unresolvable and are reported as such, not guessed).
+    # TOLERANT READER (IMP-223): a python pre-pass (desk_lines.py) parses every
+    # line on its own, passes the ORIGINAL bytes of every line jq will accept on to
+    # the unchanged jq filter, and counts the rest (file:line of the first ones in
+    # desk_lines.meta). NOT `jq -R 'fromjson?'`: measured on the real audit files
+    # (jq-1.7.1), -R mode corrupts multibyte UTF-8 characters at ~4 KiB buffer
+    # boundaries (7 of 8322 events differed, "€" -> U+FFFD), and it glues the last
+    # line of a file without a trailing newline onto the next file's first line.
+    # An unreadable file makes the pre-pass exit non-zero -> ABORT(16); any line
+    # the pre-pass lets through but jq still rejects -> jq rc != 0 -> ABORT(16).
+    cat > "$WORK/desk_lines.py" <<'PYEOF'
+import sys, json, re
+listfile, metafile, wstart, wend = sys.argv[1:5]
+# IN-WINDOW share (review finding #5): the corpus-wide share alone is measured over
+# every audit file ever written (~159k lines), so 1% would let ~1.6k unparseable
+# lines through — enough to swallow a whole day. Every line is therefore also
+# classified against the SAME window as the jq filter (top-level "timestamp",
+# fractional seconds dropped, WSTART <= ts < WEND). A line json cannot parse has no
+# top level, so its FIRST raw "timestamp":"YYYY-MM-DDTHH:MM:SS is used; a rejected
+# line with no such prefix is counted as undated (it still weighs on the corpus share).
+TS_RAW = re.compile(rb'"timestamp"\s*:\s*"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})')
+TS_STR = re.compile(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})')
+def in_window(ts19):
+    return ts19 is not None and wstart <= ts19 + 'Z' < wend
+# A lone high surrogate can only come from a \uD8xx..\uDBxx escape (raw UTF-8
+# surrogate bytes are invalid UTF-8 and decode to U+FFFD). The tree walk below is
+# the expensive part (~25 s on 159k lines), so it only runs on lines matching this
+# superset gate; the walk then decides.
+HIGH_ESC = re.compile(rb'\\u[dD][89abAB][0-9a-fA-F]{2}')
+paths = [p for p in open(listfile, 'rb').read().decode('utf-8', 'surrogateescape').split('\0') if p]
+def lone_high(x):
+    # json.loads combines a valid \uD8xx\uDCxx pair into ONE code point, so any
+    # remaining high surrogate is lone — exactly what jq-1.7.1 rejects ("Invalid
+    # \uXXXX\uXXXX surrogate pair escape"). A lone LOW surrogate jq accepts (U+FFFD).
+    if isinstance(x, str): return any('\ud800' <= c <= '\udbff' for c in x)
+    if isinstance(x, dict): return any(lone_high(k) or lone_high(v) for k, v in x.items())
+    if isinstance(x, list): return any(lone_high(v) for v in x)
+    return False
+def ts_of(ev, raw):
+    # Parsed line: exactly the field jq filters on. Unparsed line: raw prefix.
+    if ev is not None:
+        t = ev.get('timestamp') if isinstance(ev, dict) else None
+        m = TS_STR.match(t) if isinstance(t, str) else None
+        return m.group(1) if m else None
+    m = TS_RAW.search(raw)
+    return m.group(1).decode('ascii') if m else None
+nlines = nbad = wlines = wbad = undated = 0; first = []; out = sys.stdout.buffer
+for p in paths:
+    try:
+        fh = open(p, 'rb')
+    except OSError as err:
+        print('desk_lines: cannot open %s: %s' % (p, err), file=sys.stderr); sys.exit(3)
+    with fh:
+        for ln, raw in enumerate(fh, 1):
+            if not raw.strip(): continue
+            nlines += 1
+            ev = None
+            try:
+                ev = json.loads(raw.decode('utf-8', 'replace'))
+                ok = not (HIGH_ESC.search(raw) and lone_high(ev))
+            except ValueError:
+                ok = False
+            ts = ts_of(ev, raw)
+            if in_window(ts): wlines += 1
+            if ok:
+                out.write(raw if raw.endswith(b'\n') else raw + b'\n')
+            else:
+                nbad += 1
+                if ts is None: undated += 1
+                elif in_window(ts): wbad += 1
+                if len(first) < 3: first.append('%s:%d' % (p, ln))
+with open(metafile, 'w') as fh:
+    json.dump({'files': len(paths), 'lines': nlines, 'unparseable': nbad,
+               'window_lines': wlines, 'window_unparseable': wbad,
+               'undated_unparseable': undated, 'first': first}, fh)
+PYEOF
     set +e
-    xargs -0 -n 40 jq -c --arg s "$WSTART" --arg e "$WEND" --arg pk "$PKEYS" --arg known "$KNOWN" '
+    python3 "$WORK/desk_lines.py" "$WORK/audits.z" "$WORK/desk_lines.meta" "$WSTART" "$WEND" 2>"$WORK/desk_lines.err" \
+    | jq -c --arg s "$WSTART" --arg e "$WEND" --arg pk "$PKEYS" --arg known "$KNOWN" '
       ($pk|split(",")) as $keys |
       select(.timestamp != null)
       | select((.timestamp|sub("\\.[0-9]+Z$";"Z")) >= $s and (.timestamp|sub("\\.[0-9]+Z$";"Z")) < $e)
@@ -640,14 +812,42 @@ if [ "$DESK_STATUS" = "ok" ]; then
                  cmd:(.input.command // .input.script // ""),
                  iv:[ $keys[] as $k | select($t.input[$k]? != null)
                       | {k:$k, v:($t.input[$k] | if type=="string" then . else "" end)} ],
-                 sc:( if ($known|contains(" "+$t.name+" ")) then []
+                 sc:( if ($known|contains("\u001f"+$t.name+"\u001f")) then []
                       else [ $t.input | .. | strings | select(length < 4096) ] | .[0:40] end )} ]}
       | select((.tu|length) > 0)' \
-      < "$WORK/audits.z" 2>"$WORK/desk_jq.err" > "$WORK/devents.jsonl"; DESK_JQ_RC=$?
+      2>"$WORK/desk_jq.err" > "$WORK/devents.jsonl"; DESK_PIPE_RC=("${PIPESTATUS[@]}")
     set -e
+    DESK_PRE_RC=${DESK_PIPE_RC[0]}; DESK_JQ_RC=${DESK_PIPE_RC[1]}
+    if [ "$DESK_PRE_RC" -ne 0 ] || [ ! -s "$WORK/desk_lines.meta" ]; then
+      { echo "ABORT(16): S6 desktop pre-pass FAILED (rc=$DESK_PRE_RC) — scan incomplete, not silent undercounting"
+        head -3 "$WORK/desk_lines.err" | sed 's/^/  desk_lines: /'; } >&2
+      exit 16
+    fi
     if [ "$DESK_JQ_RC" -ne 0 ]; then
       { echo "ABORT(16): S6 desktop jq FAILED (rc=$DESK_JQ_RC) — partial failure, not silent undercounting"
         head -3 "$WORK/desk_jq.err" | sed 's/^/  jq: /'; } >&2
+      exit 16
+    fi
+    DESK_LINES=$(jq -r '.lines' "$WORK/desk_lines.meta")
+    DESK_UNPARSEABLE=$(jq -r '.unparseable' "$WORK/desk_lines.meta")
+    DESK_WIN_LINES=$(jq -r '.window_lines' "$WORK/desk_lines.meta")
+    DESK_WIN_UNPARSEABLE=$(jq -r '.window_unparseable' "$WORK/desk_lines.meta")
+    DESK_UNDATED=$(jq -r '.undated_unparseable' "$WORK/desk_lines.meta")
+    NDFILES=$(jq -r '.files' "$WORK/desk_lines.meta")
+    if [ "$NDFILES" -ne "$NAUDIT" ]; then
+      echo "ABORT(16): S6 desktop pre-pass read $NDFILES of $NAUDIT audit files" >&2; exit 16; fi
+    if [ "$DESK_UNPARSEABLE" -gt 0 ]; then
+      { echo "WARN S6 desktop: $DESK_UNPARSEABLE of $DESK_LINES lines unparseable (skipped, counted; in window: $DESK_WIN_UNPARSEABLE of $DESK_WIN_LINES, undated: $DESK_UNDATED), first:"
+        jq -r '.first[] | "  " + .' "$WORK/desk_lines.meta"; } >&2
+    fi
+    # Two shares, both must hold: corpus-wide (all audit lines) AND in-window (only
+    # the lines this run actually counts). The corpus share alone dilutes a bad day.
+    if [ $((DESK_UNPARSEABLE * 100)) -gt $((DESK_LINES * DESK_UNPARSEABLE_MAX_PCT)) ]; then
+      echo "ABORT(16): S6 desktop scan INCOMPLETE — unparseable=$DESK_UNPARSEABLE of $DESK_LINES lines exceeds ${DESK_UNPARSEABLE_MAX_PCT}% (DESK_UNPARSEABLE_MAX_PCT)" >&2
+      exit 16
+    fi
+    if [ $((DESK_WIN_UNPARSEABLE * 100)) -gt $((DESK_WIN_LINES * DESK_UNPARSEABLE_MAX_PCT)) ]; then
+      echo "ABORT(16): S6 desktop scan INCOMPLETE — in-window unparseable=$DESK_WIN_UNPARSEABLE of $DESK_WIN_LINES window lines [$WSTART,$WEND) exceeds ${DESK_UNPARSEABLE_MAX_PCT}% (DESK_UNPARSEABLE_MAX_PCT; corpus: $DESK_UNPARSEABLE of $DESK_LINES)" >&2
       exit 16
     fi
     python3 "$WORK/extract.py" "$WORK/toolmap.tsv" "$WORK/toolmap_re.tsv" "$WORK/devents.jsonl" \
@@ -660,8 +860,13 @@ fi
 [ -f "$WORK/qbd_raw.tsv" ] || : > "$WORK/qbd_raw.tsv"
 [ -f "$WORK/qbd.meta" ] || echo '{"ncmds":0,"unparsed":0}' > "$WORK/qbd.meta"
 [ -f "$WORK/unknown_qd.tsv" ] || : > "$WORK/unknown_qd.tsv"
-CERT_S1B="status=$DESK_STATUS;find_rc=$DESK_FIND_RC;jq_rc=$DESK_JQ_RC;audits=$NAUDIT;unlesbar=$DESK_UNREAD;state=$( [ "$DESK_STATUS" = ok ] && echo verified || echo degraded_missing )"
-rcpt "S6 desktop_status=$DESK_STATUS audit_files=$NAUDIT raw_paths=$(wc -l < "$WORK/qd_raw.txt" | tr -d ' ') desktop_bash_calls=$(jq -r '.ncmds' "$WORK/qbd.meta") desktop_bash_targets=$(awk -F'\t' '$1=="F"' "$WORK/qbd_raw.tsv" | wc -l | tr -d ' ')"
+CERT_S1B="status=$DESK_STATUS;find_rc=$DESK_FIND_RC;jq_rc=$DESK_JQ_RC;audits=$NAUDIT;unlesbar=$DESK_UNREAD;lines=$DESK_LINES;unparseable=$DESK_UNPARSEABLE;window_lines=$DESK_WIN_LINES;window_unparseable=$DESK_WIN_UNPARSEABLE;undated_unparseable=$DESK_UNDATED;state=$( [ "$DESK_STATUS" = ok ] && echo verified || echo degraded_missing )"
+rcpt "S6 desktop_status=$DESK_STATUS audit_files=$NAUDIT lines=$DESK_LINES unparseable=$DESK_UNPARSEABLE raw_paths=$(wc -l < "$WORK/qd_raw.txt" | tr -d ' ') desktop_bash_calls=$(jq -r '.ncmds' "$WORK/qbd.meta") desktop_bash_targets=$(awk -F'\t' '$1=="F"' "$WORK/qbd_raw.tsv" | wc -l | tr -d ' ') window_lines=$DESK_WIN_LINES window_unparseable=$DESK_WIN_UNPARSEABLE undated_unparseable=$DESK_UNDATED"
+# Test hook (IMP-223, scripts/tests/logbook-count-desktop-regression.sh): stop right
+# after the S6 receipt so the desktop step can be exercised in isolation against a
+# scratch $HOME. Unset in production — the scheduler never sets it. Exits 99, NOT 0,
+# so a leaked variable can never turn a truncated run into an apparent pass.
+if [ "${LOGBOOK_STOP_AFTER_S6:-}" = "1" ]; then rcpt "STOP after S6 (LOGBOOK_STOP_AFTER_S6=1) — test hook, exit 99"; exit 99; fi
 
 # ============================== canon.py ==============================
 cat > "$WORK/canon.py" <<'PYEOF'
@@ -1534,6 +1739,7 @@ print(json.dumps(d,ensure_ascii=False))"),
  "i4_gap": $I4,
  "nebenmetriken": {"ereigniszeilen": $NEV, "schreibpaare_roh": $NPAIRS,
                    "fehlschlaege_gefiltert": $NFAIL, "bash_calls": $NBASH, "bash_unparsebar": $NBUNPARSED,
+                   "desktop_zeilen": $DESK_LINES, "desktop_unparseable": $DESK_UNPARSEABLE,
                    "signals_keys": $NSIG, "repo_ids_gescannt": $NREPO,
                    "arbeitskopien_gesehen": $NREPO_WC},
  "items_sha256": "$SHA"

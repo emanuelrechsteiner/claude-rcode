@@ -6,7 +6,7 @@ This repo is the configuration of Claude Code itself and exists in
 | Path | Place | Rule |
 |---|---|---|
 | `…/claude-code-config` | **Workshop** | Change and commit here. Nothing here is live. |
-| `~/.claude` | **Live install** | What Claude Code reads. **Do not edit by hand** — only `claude-deploy` writes here. |
+| `~/.claude` | **Live install** | What Claude Code reads. **Do not edit by hand** — only `claude-deploy` writes here. Exception: git-ignored `rules/*.local.md` overlays are machine-local and edited in place. |
 
 Three rules:
 

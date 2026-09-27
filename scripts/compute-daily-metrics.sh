@@ -35,11 +35,35 @@
 #   CLAUDE_ARCHIVE_DIR   default: $HOME/.claude/global-observation/archives
 #   CLAUDE_METRICS_FILE  default: $HOME/.claude/global-observation/daily-metrics.jsonl
 #   CLAUDE_ALERTS_FILE   default: $HOME/.claude/global-observation/alerts.jsonl
+#   CLAUDE_DISPATCH_LOG  default: $HOME/.claude/global-observation/dispatch-capture.jsonl
 #
 # Exit codes:
-#   0  — row appended, or already present (idempotent skip), or dry-run
-#   1  — shard missing or corrupt → NO row written; blocker alert appended
+#   0  — row appended (incl. a verified-empty zero-activity row, see IMP-227
+#        below), or already present (idempotent skip), or dry-run
+#   1  — shard MISSING, or present-but-corrupt (gzip -t fails, or the archive
+#        holds non-JSON lines), or a 0-byte PLAIN shard → NO row written;
+#        blocker alert appended
 #   2  — script-level error (missing deps, unwritable paths, bad arguments)
+#
+# IMP-227 — EMPTY vs. MISSING vs. CORRUPT (companion to rotate-signals.sh's
+# IMP-221): since IMP-221, a zero-signal day gets an explicit, gzip-verified,
+# 0-line shard written by rotate-signals.sh — NOT the absence of a shard. Before
+# this fix, this script conflated "0 lines" with "corrupt" and aborted with a
+# blocker alert on every such day, even though the shard proves zero Edit/Write
+# activity, not a measurement failure. The contract now mirrors
+# logbook-count.sh's `state=empty_verified` naming (scheduled-tasks/daily-docs/
+# bin/logbook-count.sh):
+#   * shard file absent                              → abort (state=missing)
+#   * shard file present, `gzip -t` fails              → abort (state=corrupt)
+#   * shard present, valid, but holds non-JSON lines   → abort (corrupt content)
+#   * PLAIN shard present but 0 bytes                  → abort (interrupted
+#                                                         rotation; only a gz
+#                                                         can prove emptiness)
+#   * GZ shard valid, decompresses to 0 bytes          → row written, all
+#                                                         shard-derived counts
+#                                                         0, "shard_state":
+#                                                         "empty_verified",
+#                                                         exit 0, NO alert
 #
 # Idempotent: a second run for the same date detects the existing row and exits 0
 # without appending. It never rewrites recorded history — backfilling drifted
@@ -55,15 +79,15 @@ ALERTS="${CLAUDE_ALERTS_FILE:-$HOME/.claude/global-observation/alerts.jsonl}"
 log() { echo "[compute-daily-metrics] $*"; }
 
 # ── Dependency check ──────────────────────────────────────────────────────────
-for cmd in jq gzip gzcat date mktemp mv rm wc grep; do
+# Decompression uses `gzip -dc` only — never a gzcat/zcat fallback: BSD `zcat`
+# reads .gz shards as EMPTY with exit 0 (IMP-110), which would now be certified
+# as an empty_verified zero-activity day (IMP-227).
+for cmd in jq gzip date mktemp mv rm wc grep awk; do
   if ! command -v "$cmd" &>/dev/null; then
-    # gzcat is macOS; zcat is the GNU name — accept either
-    if [[ "$cmd" == "gzcat" ]] && command -v zcat &>/dev/null; then continue; fi
     echo "[compute-daily-metrics] FATAL: required command not found: $cmd" >&2
     exit 2
   fi
 done
-if command -v gzcat &>/dev/null; then GZCAT=gzcat; else GZCAT=zcat; fi
 
 # ── Portable "yesterday, UTC" (BSD date -v vs GNU date -d) ───────────────────
 yesterday_utc() {
@@ -120,29 +144,52 @@ work_file="$(mktemp /tmp/compute-daily-metrics.XXXXXX)"
 cleanup() { rm -f "$work_file"; }
 trap cleanup EXIT
 
+SHARD_KIND=""
 if [[ -f "$SHARD_GZ" ]]; then
+  SHARD_KIND="gz"
   log "shard: $SHARD_GZ"
-  $GZCAT "$SHARD_GZ" > "$work_file" 2>/dev/null || abort_with_alert "shard unreadable: $SHARD_GZ"
+  # IMP-227: verify gzip integrity explicitly BEFORE decompressing, so a
+  # corrupt archive is reported as corrupt — never conflated with "empty".
+  gzip -t "$SHARD_GZ" 2>/dev/null || abort_with_alert "shard corrupt (gzip -t failed): $SHARD_GZ"
+  gzip -dc "$SHARD_GZ" > "$work_file" 2>/dev/null || abort_with_alert "shard unreadable despite gzip -t pass: $SHARD_GZ"
 elif [[ -f "$SHARD_PLAIN" ]]; then
+  SHARD_KIND="plain"
   log "shard: $SHARD_PLAIN"
-  cp "$SHARD_PLAIN" "$work_file"
+  cp "$SHARD_PLAIN" "$work_file" || abort_with_alert "plain shard unreadable: $SHARD_PLAIN"
 else
   abort_with_alert "no archive shard for $TARGET_DATE (looked for signals-${TARGET_DATE}.jsonl[.gz])"
 fi
 
 # ── Validate: every line must be parseable JSON (corrupt shard → no row) ─────
-total_lines=$(wc -l < "$work_file" | tr -d ' ')
+# IMP-227: a shard that is gzip-verified AND decompresses to 0 BYTES is a
+# ZERO-ACTIVITY DAY (rotate-signals.sh's IMP-221 empty-shard fill), not a
+# corrupt or missing shard — it must NOT abort. Mirrors logbook-count.sh's
+# `state=empty_verified` (scheduled-tasks/daily-docs/bin/logbook-count.sh).
+# Emptiness is tested on the DECOMPRESSED bytes ($work_file), never on the
+# .gz itself (an empty gzip is ~20 bytes) and never via `wc -l` (content
+# without a trailing newline has wc -l = 0 but is not empty).
+# A 0-byte PLAIN shard is NOT a zero-activity proof: rotate-signals.sh only
+# ever writes empty shards as gzip (IMP-221); a plain shard is the transient
+# STEP-2 output (`>>` creates the file before writing), so an empty one means
+# an interrupted run → abort (fail-loud), never certify it as verified.
+# Line count via awk NR: counts a final line even without a trailing newline.
+total_lines=$(awk 'END { print NR }' "$work_file")
 set +o pipefail
 valid_json=$(jq -c '.' "$work_file" 2>/dev/null | wc -l | tr -d ' ')
 set -o pipefail
 
-if [[ "$total_lines" -eq 0 ]]; then
-  abort_with_alert "shard for $TARGET_DATE is empty (0 lines)"
-fi
-if [[ "$valid_json" -ne "$total_lines" ]]; then
+SHARD_STATE="ok"
+if [[ ! -s "$work_file" ]]; then
+  if [[ "$SHARD_KIND" != "gz" ]]; then
+    abort_with_alert "plain shard is 0 bytes (interrupted rotation, not a verified zero-activity day): $SHARD_PLAIN"
+  fi
+  SHARD_STATE="empty_verified"
+  log "shard verified empty (gzip-valid, 0 decompressed bytes) — zero-activity day for $TARGET_DATE, not an abort"
+elif [[ "$valid_json" -ne "$total_lines" ]]; then
   abort_with_alert "shard contains non-JSON lines: total=$total_lines valid=$valid_json"
+else
+  log "shard validated: $total_lines lines, all parseable JSON"
 fi
-log "shard validated: $total_lines lines, all parseable JSON"
 
 # ── agent_invocations from the dispatch meter (IMP-115) ──────────────────────
 # dispatch-capture.sh (PreToolUse|Task|Agent) is the only surface that sees a
@@ -166,7 +213,12 @@ fi
 
 # ── Compute metrics (single jq pass — the ONLY place numbers are derived) ────
 # agent_invocations is deliberately null: the capture surface cannot observe it.
-metrics_json=$(jq -s --arg date "$TARGET_DATE" --argjson agents "$AGENT_INVOCATIONS" '
+# IMP-227: on a gzip-verified 0-byte shard every shard-derived field below
+# naturally computes to 0/{} (length of [], group_by of []) — no special-casing
+# needed here. "shard_state" is added ONLY when SHARD_STATE != "ok", so a
+# normal day's row stays byte-for-byte identical to the pre-IMP-227 output.
+metrics_json=$(jq -s --arg date "$TARGET_DATE" --argjson agents "$AGENT_INVOCATIONS" \
+  --arg shard_state "$SHARD_STATE" '
   {
     date: $date,
     tool_invocations: length,
@@ -185,23 +237,30 @@ metrics_json=$(jq -s --arg date "$TARGET_DATE" --argjson agents "$AGENT_INVOCATI
     ),
     sessions: (map(.session_id) | unique | length)
   }
+  + (if $shard_state != "ok" then {shard_state: $shard_state} else {} end)
 ' "$work_file") || abort_with_alert "jq metric computation failed"
 
 # ── Attach provenance so a future reader can tell measured from unmeasurable ──
 row=$(printf '%s' "$metrics_json" | jq -c \
   --arg ts "$(date -u '+%s')" \
   --arg src "$(basename "${SHARD_GZ}")" \
-  --arg script "compute-daily-metrics.sh" '
+  --arg script "compute-daily-metrics.sh" \
+  --arg shard_state "$SHARD_STATE" '
   {date: .date, ts: ($ts | tonumber)}
   + (. | del(.date))
-  + {_provenance: {
-      source: $src,
-      computed_by: $script,
-      capture_surface: "PostToolUse Edit|Write only",
-      tool_invocations_note: "Edit+Write only, not all tools; includes blocked-edit error records (consistent with prior rows)",
-      agent_invocations_note: "counted from dispatch-capture.jsonl (PreToolUse Task|Agent, live since 2026-08-01, IMP-115) - NOT from the signal shard, whose matcher is Edit|Write. null means the meter had no coverage for that date, which is not the same as zero dispatches. Rows before 2026-07-18 reported 0, a fabricated default.",
-      hook_blocks_note: "counted independently of errors; currently identical because all captured errors are read-before-edit-block"
-    }}
+  + {_provenance: (
+      {
+        source: $src,
+        computed_by: $script,
+        capture_surface: "PostToolUse Edit|Write only",
+        tool_invocations_note: "Edit+Write only, not all tools; includes blocked-edit error records (consistent with prior rows)",
+        agent_invocations_note: "counted from dispatch-capture.jsonl (PreToolUse Task|Agent, live since 2026-08-01, IMP-115) - NOT from the signal shard, whose matcher is Edit|Write. null means the meter had no coverage for that date, which is not the same as zero dispatches. Rows before 2026-07-18 reported 0, a fabricated default.",
+        hook_blocks_note: "counted independently of errors; currently identical because all captured errors are read-before-edit-block"
+      }
+      + (if $shard_state == "empty_verified" then {
+        shard_state_note: "IMP-227: shard was gzip-verified and decompressed to 0 bytes - a confirmed zero-activity day (rotate-signals.sh IMP-221 empty-shard fill), not a measurement failure. All shard-derived fields above are genuine zeros, not fabricated defaults."
+      } else {} end)
+    )}
 ') || abort_with_alert "provenance assembly failed"
 
 log "computed: $(printf '%s' "$row" | jq -c 'del(._provenance)')"

@@ -348,6 +348,104 @@ else
     bad "vault.sh missing entirely: FATAL script-level error, exit 2" "rc=$rc out=$out"
 fi
 
+# ══ IMP-188: self-maintaining counters (recompute after every write,
+#    --recompute-only, --check). ═════════════════════════════════════════
+run_mode() {  # run_mode <args...> — against the current scratch LEDGER, no stdin
+    CLAUDE_VAULT_DIR="$VAULT" CLAUDE_LEDGER_FILE="$LEDGER" bash "$LEDGER_APPEND" "$@" </dev/null 2>&1
+}
+drifted_fixture() {  # 3 entries (2 implemented, 1 with measured; 1 proposed), stale header
+    jq -n '{
+      totalImprovements: 1, totalImplementations: 9, totalStaged: 0, totalRollbacks: 0,
+      metrics: {computedAt: "2020-01-01T00:00:00Z", totalEntries: 1,
+                statusBreakdown: {implemented: 9}, outcomeMeasurementCoverage: "0/9", note: "keep me"},
+      batchA_2020: {description: "d", entries: [
+        {id: "IMP-001", status: "implemented", verification: {measured: "5/5 suite"}},
+        {id: "IMP-002", status: "implemented", verification: null}]},
+      batchB_2020: {description: "d", entries: [{id: "IMP-003", status: "proposed"}]}
+    }' > "$LEDGER"
+}
+
+# ── Case 16: an append recomputes EVERY counter, not only totalImprovements,
+#    and the result passes --check. ──────────────────────────────────────
+fresh_env
+init_vault
+drifted_fixture
+jq -nc '{finding:"F-016",title:"t16",category:"quality",riskLevel:"low",recommendation:"clean",evidence:"clean"}' \
+    | run_append "meta-proposal-2026-16.md" >/dev/null
+rc=$?
+C16=$(jq -c '[.totalImprovements, .totalImplementations, .metrics.totalEntries, .metrics.statusBreakdown.proposed, .metrics.outcomeMeasurementCoverage, .metrics.note]' "$LEDGER")
+out=$(run_mode --check); rc_check=$?
+if [[ "$rc" -eq 0 ]] && [[ "$C16" == '[4,2,4,2,"1/2","keep me"]' ]] && [[ "$rc_check" -eq 0 ]]; then
+    ok "append recomputes all counters from the entries (4 ids, 2 implemented, coverage 1/2) and --check passes"
+else
+    bad "append must recompute all counters" "rc=$rc counters=$C16 rc_check=$rc_check out=$out"
+fi
+
+# ── Case 17: --check on a drifted ledger -> exit 1, names each drifted
+#    field, ledger byte-identical. ─────────────────────────────────────
+fresh_env
+drifted_fixture
+BEFORE17=$(hash_of "$LEDGER")
+out=$(run_mode --check); rc=$?
+AFTER17=$(hash_of "$LEDGER")
+if [[ "$rc" -eq 1 ]] && [[ "$BEFORE17" == "$AFTER17" ]] \
+    && printf '%s' "$out" | grep -q "totalImprovements: stored=1 recomputed=3" \
+    && printf '%s' "$out" | grep -q 'metrics.outcomeMeasurementCoverage: stored="0/9" recomputed="1/2"'; then
+    ok "--check on a drifted ledger: exit 1, drifted fields named, ledger byte-identical"
+else
+    bad "--check must fail on drift without writing" "rc=$rc before=$BEFORE17 after=$AFTER17 out=$out"
+fi
+
+# ── Case 18: --recompute-only fixes the drift, leaves every entry untouched
+#    and keeps non-counter metrics fields; --check passes afterwards. ─────
+ENTRIES_BEFORE=$(jq -c '[.batchA_2020, .batchB_2020]' "$LEDGER")
+out=$(run_mode --recompute-only); rc=$?
+ENTRIES_AFTER=$(jq -c '[.batchA_2020, .batchB_2020]' "$LEDGER")
+C18=$(jq -S -c '[.totalImprovements, .totalImplementations, .totalStaged, .totalRollbacks, .metrics.totalEntries, .metrics.statusBreakdown, .metrics.outcomeMeasurementCoverage, .metrics.note, (.metrics.computedAt != "2020-01-01T00:00:00Z"), (.lastUpdated != null)]' "$LEDGER")
+out2=$(run_mode --check); rc_check=$?
+if [[ "$rc" -eq 0 ]] && [[ "$ENTRIES_BEFORE" == "$ENTRIES_AFTER" ]] \
+    && [[ "$C18" == '[3,2,0,0,3,{"deprecated":0,"implemented":2,"in-progress":0,"proposed":1,"regressed":0},"1/2","keep me",true,true]' ]] \
+    && [[ "$rc_check" -eq 0 ]]; then
+    ok "--recompute-only: counters fixed, entries untouched, note kept, --check passes afterwards"
+else
+    bad "--recompute-only must fix the counters only" "rc=$rc counters=$C18 entries_same=$([[ "$ENTRIES_BEFORE" == "$ENTRIES_AFTER" ]] && echo y || echo n) rc_check=$rc_check out=$out out2=$out2"
+fi
+
+# ── Case 19: --recompute-only --dry-run reports the drift, writes nothing. ─
+fresh_env
+drifted_fixture
+BEFORE19=$(hash_of "$LEDGER")
+out=$(run_mode --recompute-only --dry-run); rc=$?
+AFTER19=$(hash_of "$LEDGER")
+if [[ "$rc" -eq 0 ]] && [[ "$BEFORE19" == "$AFTER19" ]] && printf '%s' "$out" | grep -q "DRY-RUN"; then
+    ok "--recompute-only --dry-run: drift reported, ledger byte-identical"
+else
+    bad "--recompute-only --dry-run must not write" "rc=$rc before=$BEFORE19 after=$AFTER19 out=$out"
+fi
+
+# ── Case 20: duplicate IMP ids -> both modes refuse (exit 1), nothing written.
+fresh_env
+jq -n '{a: {entries: [{id: "IMP-001", status: "implemented"}]}, b: {entries: [{id: "IMP-001", status: "proposed"}]}}' > "$LEDGER"
+BEFORE20=$(hash_of "$LEDGER")
+out=$(run_mode --check); rc1=$?
+out2=$(run_mode --recompute-only); rc2=$?
+AFTER20=$(hash_of "$LEDGER")
+if [[ "$rc1" -eq 1 ]] && [[ "$rc2" -eq 1 ]] && [[ "$BEFORE20" == "$AFTER20" ]] && printf '%s' "$out" | grep -q "duplicate IMP ids in the ledger: IMP-001"; then
+    ok "duplicate ids: --check and --recompute-only both refuse, ledger byte-identical"
+else
+    bad "duplicate ids must block both modes" "rc1=$rc1 rc2=$rc2 before=$BEFORE20 after=$AFTER20 out=$out out2=$out2"
+fi
+
+# ── Case 21: argument misuse is a script-level error (exit 2). ────────────
+fresh_env
+out=$(run_mode --check --recompute-only); rc1=$?
+out2=$(run_mode --check --proposal "p.md"); rc2=$?
+if [[ "$rc1" -eq 2 ]] && [[ "$rc2" -eq 2 ]]; then
+    ok "--check with --recompute-only or --proposal: exit 2"
+else
+    bad "mode argument misuse must exit 2" "rc1=$rc1 rc2=$rc2 out=$out out2=$out2"
+fi
+
 echo "──────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

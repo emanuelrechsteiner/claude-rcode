@@ -1,0 +1,16 @@
+# User Preferences (Personal, user-global)
+
+> How you work with the agent, in every project. Copy to
+> `~/.claude/rules/preferences.local.md`. Git-ignored (`*.local.md`), never
+> committed or published; auto-loaded as a rule in every session.
+> One line per preference: every line counts against the instruction budget.
+> English or your own language. Project invariants belong in the project's
+> CONTEXT.md / ADRs, not here (`rules/domain-docs-convention.md`, step 1a).
+
+## Preferences
+
+<!-- Examples only, inert while commented; copy a line below this comment to use it.
+- I do interface/click tests myself: report "ready for your check" plus a short checklist. Rendered proof (slop-prevention Trigger 3) still applies before that report.
+- Subagents never inherit the session model: every dispatch sets an explicit `model` parameter (IMP-212).
+- Default branch is `main`, never `master`. (Note: `git config --global init.defaultBranch main` is a separate ESCALATE op; ask first.)
+-->

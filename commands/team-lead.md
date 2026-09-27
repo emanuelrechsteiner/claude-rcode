@@ -113,7 +113,10 @@ checkpoint from `~/.claude/agents/control-agent.md` §4: digest-review outputs a
 the §2 definition-of-done, re-evaluate the remaining plan and each spawn's
 Model×Effort sizing, and decide explicitly (continue / re-decompose /
 escalate) BEFORE dispatching the next wave. Then consolidate all outputs
-into one coherent result for the user. Surface any ESCALATE-band operations
+into one coherent result for the user; its first line is `Done: yes` or
+`Done: no — missing: <list>`, scoped per visible surface (`verified` /
+`not checked`), per `~/.claude/rules/slop-prevention.md` Trigger 3 step 6.
+Surface any ESCALATE-band operations
 subagents flagged up to you (per `~/.claude/rules/agency-bands.md` — you are the
 human-facing escalation point for this delegation).
 

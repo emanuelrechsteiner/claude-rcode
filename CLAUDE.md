@@ -7,7 +7,7 @@
 > | `pwd` ends in … | You are in the … | What applies here |
 > |---|---|---|
 > | `…/claude-code-config` | **WORKSHOP** (working copy) | Development and commits happen here. Nothing here is live. **This is the right place for changes.** |
-> | `~/.claude` | **LIVE INSTALL** (installation) | What Claude Code actually reads. **Do NOT edit by hand here** — only `claude-deploy` writes here. |
+> | `~/.claude` | **LIVE INSTALL** (installation) | What Claude Code actually reads. **Do NOT edit by hand here** — only `claude-deploy` writes here. **Exception:** git-ignored `rules/*.local.md` overlays are machine-local by design and edited here in place. |
 >
 > **The three rules for agents:**
 > 1. **Changes go in the workshop only.** Edit `~/.claude/...` directly, and the change is lost at the next deploy (fast-forward conflict) — and it goes live immediately, mid-session.

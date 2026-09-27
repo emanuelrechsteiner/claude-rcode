@@ -1,6 +1,6 @@
 <!--
 Status: ARCHIVED
-Last Updated: 2026-09-24
+Last Updated: 2026-09-27
 Purpose: Evidence, incidents, and measurements moved verbatim out of rules/slop-prevention.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
 # Evidence for `rules/slop-prevention.md`
@@ -49,3 +49,31 @@ _Original lines; the rule now carries only the IMP IDs and file paths:_
 - Cluster source: see author's knowledge base (private)
 - Trigger 3: proj-902a42 chat-transcript evidence (2026-08-09 → 2026-08-12, ≥9 recurrences) — IMP-143, `plans/meta-proposal-2026-08-23-chat-analyse.md`; companion paragraph in `testing-quality.md` ("Rendered-Proof for Visual Claims")
 - Trigger 3 extension (source-not-paraphrase, describe-before-judging, four-error table) + the two patterns above: IMP-160/IMP-167 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §2 (13 incidents / 7 days, four self-diagnosed error types) and §3.4 (proj-1df43a 2026-07-13, 39 deviations found by a deviation-hunting agent)
+
+## Moved 2026-09-27 (budget offset for IMP-224)
+
+> Moved out verbatim to offset the instruction-budget cost of the IMP-224 amendment (Trigger 3 workflow step 6). The rule keeps a one-line pointer naming all four error types and the control-agent enforcement point.
+
+### "Slop-on-Slop" Math — worked example (verbatim; restates the first table row)
+
+If `P(step correct) = 0.95` and you have 20 steps: `P(end) = 36%`.
+
+### Trigger 3 — the four-error-type table as it stood 2026-09-24..2026-09-27 (verbatim)
+
+**The four error types** (IMP-160) — each has its own countermeasure, and fixing only the first leaves the other three live:
+
+| # | Error type | Countermeasure |
+|---|---|---|
+| 1 | **Circular check** — the test derives its expectation from the same declaration it is meant to check | Trigger 3 above: prove against the render, not the declaration |
+| 2 | **Checking against one's own paraphrase** instead of the source | "Check against the SOURCE" above + the *"Copy, don't interpret"* pattern below |
+| 3 | **Confirmation bias when looking** | "Describe what you see, then judge" above + the adversarial counter-check below |
+| 4 | **Sub-agent replaces an explicit user instruction with its own judgement**, and the orchestrator waves it through | `agents/control-agent.md` §3 (verbatim instruction travels with the brief; deviation escalates, never decides) + §4 synthesis check |
+
+## Moved 2026-09-27 (budget offset, review fix)
+
+> Moved out verbatim to offset the instruction-budget cost of the review fix (scope carve-out and step 2 in `rules/domain-docs-convention.md`; "every completion report, visual or not" in Trigger 3 step 6). Non-normative: provenance, plus a pointer the rule still carries in its four-error-types line (`agents/control-agent.md` §3/§4) and in the "Copy, don't interpret" pattern (quote the user instruction verbatim in the brief).
+
+### References — two former lines (verbatim)
+
+- Trigger 3 extension + the two patterns above: IMP-160/IMP-167 — `plans/meta-proposal-2026-08-24-august-vollanalyse.md` §2, §3.4
+- Error type 4 (sub-agent overruling an explicit user instruction) is enforced in `agents/control-agent.md` §3/§4, not here — the brief is where the instruction has to survive

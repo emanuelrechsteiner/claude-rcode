@@ -57,9 +57,27 @@
 # Idempotent: the dedup key is "<proposal-basename>#<finding>". Re-running the
 # same proposal appends nothing and exits 0.
 #
+# SELF-MAINTAINING COUNTERS (IMP-188, 2026-09-27): the header counters
+# (totalImprovements, totalImplementations, totalStaged, totalRollbacks) and
+# the metrics block (computedAt, totalEntries, statusBreakdown,
+# outcomeMeasurementCoverage) plus lastUpdated are RECOMPUTED from the entries
+# after every write — never carried forward. Hand-maintained counters drifted
+# three times (IMP-097, IMP-188, and again 2026-09-27: 201 vs 204 ids, 146 vs
+# 172 implemented). Two standalone modes let any other writer use the same
+# computation (no second implementation):
+#   ledger-append-proposed.sh --recompute-only [--dry-run]   # rewrite counters
+#   ledger-append-proposed.sh --check                        # exit 1 on drift
+# Both honour CLAUDE_LEDGER_FILE, read no stdin and need no --proposal.
+# Definitions (per unique IMP id, last occurrence wins; duplicate ids are a
+# hard error): totalImplementations = status "implemented"; totalStaged =
+# status approved|in_progress|in-progress|staged; totalRollbacks = status
+# rolled_back|rolled-back; outcomeMeasurementCoverage = "<implemented with a
+# non-empty verification.measured>/<implemented>".
+#
 # Exit codes:
-#   0  — entries appended, or all were duplicates (idempotent), or dry-run
-#   1  — input/ledger validation failed → NOTHING written
+#   0  — entries appended, or all were duplicates (idempotent), or dry-run,
+#        or --recompute-only wrote, or --check found the counters consistent
+#   1  — input/ledger validation failed → NOTHING written; or --check drift
 #   2  — script-level error (missing deps, bad arguments)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -74,18 +92,118 @@ die() { echo "[ledger-append-proposed] FATAL: $*" >&2; exit "${2:-2}"; }
 
 command -v jq >/dev/null 2>&1 || die "jq not found"
 
-PROPOSAL=""; DRY_RUN=0
+PROPOSAL=""; DRY_RUN=0; MODE="append"
+set_mode() {
+  [[ "$MODE" == "append" || "$MODE" == "$1" ]] || die "--recompute-only and --check are mutually exclusive"
+  MODE="$1"
+}
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --proposal) PROPOSAL="${2:-}"; shift 2 ;;
-    --dry-run)  DRY_RUN=1; shift ;;
+    --proposal)       PROPOSAL="${2:-}"; shift 2 ;;
+    --dry-run)        DRY_RUN=1; shift ;;
+    --recompute-only) set_mode recompute; shift ;;
+    --check)          set_mode check; shift ;;
     *) die "unknown argument: $1" ;;
   esac
 done
 
-[[ -n "$PROPOSAL" ]] || die "--proposal <path> is required"
 [[ -f "$LEDGER" ]]   || die "ledger not found: $LEDGER"
 jq -e . "$LEDGER" >/dev/null 2>&1 || die "ledger is not valid JSON — refusing to touch it" 1
+
+# ── Counter recomputation (IMP-188) — the ONE jq implementation used by the
+#    append path, --recompute-only and --check alike. ──────────────────────
+COUNTERS_JQ='
+def imp_entries:
+  [.. | objects | select((.id? | type) == "string") | select(.id | test("^IMP-[0-9]+$"))]
+  | group_by(.id) | map(.[-1]);
+def dup_ids:
+  [.. | objects | .id? | select(type == "string") | select(test("^IMP-[0-9]+$"))]
+  | group_by(.) | map(select(length > 1) | .[0]);
+def counters:
+  imp_entries as $e
+  | ($e | map(select(.status == "implemented"))) as $impl
+  | ($impl | map(select((.verification.measured? // "") | tostring | length > 0)) | length) as $measured
+  | {
+      totalImprovements: ($e | length),
+      totalImplementations: ($impl | length),
+      totalStaged: ($e | map(select(.status | IN("approved", "in_progress", "in-progress", "staged"))) | length),
+      totalRollbacks: ($e | map(select(.status | IN("rolled_back", "rolled-back"))) | length),
+      metrics: {
+        totalEntries: ($e | length),
+        statusBreakdown: ({deprecated: 0, implemented: 0, "in-progress": 0, proposed: 0, regressed: 0}
+          + ($e | map(.status | tostring) | group_by(.) | map({(.[0]): length}) | add // {})),
+        outcomeMeasurementCoverage: "\($measured)/\($impl | length)"
+      }
+    };
+def stored:
+  { totalImprovements, totalImplementations, totalStaged, totalRollbacks,
+    metrics: { totalEntries: (.metrics.totalEntries?),
+               statusBreakdown: (.metrics.statusBreakdown?),
+               outcomeMeasurementCoverage: (.metrics.outcomeMeasurementCoverage?) } };
+def drift:
+  counters as $c | stored as $s
+  | ([$c, $s] | map([paths(type != "object")]) | add | unique) as $ps
+  | [ $ps[]
+      | . as $p
+      | (try ($c | getpath($p)) catch "<type-mismatch>") as $cv
+      | (try ($s | getpath($p)) catch "<type-mismatch>") as $sv
+      | select($cv != $sv)
+      | "\($p | map(tostring) | join(".")): stored=\($sv | tojson) recomputed=\($cv | tojson)" ];
+def apply_counters($now):
+  counters as $c
+  | .totalImprovements = $c.totalImprovements
+  | .totalImplementations = $c.totalImplementations
+  | .totalStaged = $c.totalStaged
+  | .totalRollbacks = $c.totalRollbacks
+  | .metrics = ((.metrics // {}) + $c.metrics + {
+      computedAt: $now,
+      computedBy: "scripts/ledger-append-proposed.sh (IMP-188) — recomputed from the entries after every write; never hand-edit",
+      method: "Per unique IMP id (last occurrence): totalEntries = count; statusBreakdown = count per status over a zero base; outcomeMeasurementCoverage = implemented with non-empty verification.measured / implemented. Same definitions feed the header counters. Verify with --check."
+    })
+  | .lastUpdated = $now;
+'
+
+NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+if [[ "$MODE" != "append" ]]; then
+  [[ -z "$PROPOSAL" ]] || die "--proposal cannot be combined with --$([[ "$MODE" == check ]] && echo check || echo recompute-only)"
+  DUPS=$(jq -r "$COUNTERS_JQ"' dup_ids | join(",")' "$LEDGER") || die "jq failed while scanning ids" 1
+  [[ -z "$DUPS" ]] || die "duplicate IMP ids in the ledger: $DUPS — counters are undefined until this is resolved" 1
+
+  if [[ "$MODE" == "check" ]]; then
+    DRIFT=$(jq -r "$COUNTERS_JQ"' drift | .[]' "$LEDGER") || die "jq failed while comparing counters" 1
+    if [[ -n "$DRIFT" ]]; then
+      echo "[ledger-append-proposed] COUNTER DRIFT in $LEDGER:" >&2
+      printf '%s\n' "$DRIFT" | sed 's/^/  /' >&2
+      echo "[ledger-append-proposed] fix: $0 --recompute-only (with the same CLAUDE_LEDGER_FILE)" >&2
+      exit 1
+    fi
+    log "counters consistent: $(jq -c "$COUNTERS_JQ"' counters | {totalImprovements, totalImplementations, totalStaged, totalRollbacks} + .metrics' "$LEDGER")"
+    exit 0
+  fi
+
+  UPDATED=$(jq --arg now "$NOW" "$COUNTERS_JQ"' apply_counters($now)' "$LEDGER") || die "jq recompute failed" 1
+  printf '%s' "$UPDATED" | jq -e . >/dev/null 2>&1 || die "recompute produced invalid JSON — nothing written" 1
+  REMAINING=$(printf '%s' "$UPDATED" | jq -r "$COUNTERS_JQ"' drift | length') || die "jq failed on the recomputed ledger" 1
+  [[ "$REMAINING" -eq 0 ]] || die "recompute left $REMAINING drifting field(s) — nothing written" 1
+  DRIFT_BEFORE=$(jq -r "$COUNTERS_JQ"' drift | .[]' "$LEDGER") || die "jq failed while comparing counters" 1
+  if [[ -n "$DRIFT_BEFORE" ]]; then
+    log "correcting drifted counters:"; printf '%s\n' "$DRIFT_BEFORE" | sed 's/^/  /'
+  else
+    log "counters already consistent (rewriting computedAt/lastUpdated only)"
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then log "DRY-RUN — nothing written"; exit 0; fi
+  BACKUP="$LEDGER.bak-recompute-$(date -u +%Y%m%dT%H%M%SZ)"
+  cp "$LEDGER" "$BACKUP"
+  TMP="$(mktemp "${TMPDIR:-/tmp}/ledger-recompute.XXXXXX")"
+  printf '%s\n' "$UPDATED" > "$TMP"
+  mv "$TMP" "$LEDGER"
+  log "backup: $BACKUP"
+  log "DONE — counters recomputed: $(jq -c "$COUNTERS_JQ"' counters | {totalImprovements, totalImplementations, totalStaged, totalRollbacks} + .metrics' "$LEDGER")"
+  exit 0
+fi
+
+[[ -n "$PROPOSAL" ]] || die "--proposal <path> is required"
 
 # ── Pseudonymization gate (IMP-219) init'd EARLY, before PROPOSAL_KEY is
 #    used anywhere: as of the Welle-3 rework, sourceProposal (built below as
@@ -218,7 +336,7 @@ rm -f "$TMP_ENTRIES_IN" "$TMP_ENTRIES_OUT"
 UPDATED=$(jq \
   --argjson new "$NEW_ENTRIES" \
   --arg section "$SECTION" \
-  --arg today "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+  --arg today "$NOW" "$COUNTERS_JQ"'
   .[$section] = (
     (.[$section] // {
       description: "Findings written back automatically by the weekly-improve routine (IMP-112). status:\"proposed\" ONLY — a human review promotes them; the routine never self-approves.",
@@ -226,8 +344,7 @@ UPDATED=$(jq \
     })
     | .entries += $new
   )
-  | .totalImprovements = ([.. | objects | .id? | select(type == "string") | select(test("^IMP-[0-9]+$"))] | unique | length)
-  | .lastUpdated = $today
+  | apply_counters($today)
 ' "$LEDGER") || die "jq splice failed" 1
 
 # ── Gates: valid JSON, id uniqueness, no status regression ───────────────────
@@ -241,7 +358,10 @@ DUP_IDS=$(printf '%s' "$UPDATED" | jq -r '
 BAD_STATUS=$(printf '%s' "$NEW_ENTRIES" | jq -r 'map(select(.status != "proposed")) | length')
 [[ "$BAD_STATUS" -eq 0 ]] || die "refusing to write an entry with status != proposed (trust boundary)" 1
 
-log "GATE valid JSON: ok   GATE unique ids: ok   GATE all status=proposed: ok"
+N_DRIFT=$(printf '%s' "$UPDATED" | jq -r "$COUNTERS_JQ"' drift | length') || die "jq failed on the counter gate" 1
+[[ "$N_DRIFT" -eq 0 ]] || die "counters would still drift in $N_DRIFT field(s) after recompute — nothing written" 1
+
+log "GATE valid JSON: ok   GATE unique ids: ok   GATE all status=proposed: ok   GATE counters recomputed: ok"
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   log "DRY-RUN — would append:"
