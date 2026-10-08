@@ -35,7 +35,18 @@
       "Read(**/.ssh/id_*)",
       "Edit(**/.env)",
       "Edit(**/.env.*)",
-      "Edit(**/secrets/**)"
+      "Edit(**/secrets/**)",
+      "Read(~/.claude/cockpit/web-*)",
+      "Edit(~/.claude/cockpit/web-*)",
+      "Bash(cat ~/.claude/cockpit/web-*:*)",
+      "Bash(head ~/.claude/cockpit/web-*:*)",
+      "Bash(tail ~/.claude/cockpit/web-*:*)",
+      "Bash(less ~/.claude/cockpit/web-*:*)",
+      "Bash(grep * ~/.claude/cockpit/web-*:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(tmux pipe-pane:*)",
+      "Bash(tmux save-buffer:*)",
+      "Bash(tmux show-buffer:*)"
     ],
     "ask": [
       "Bash(git push --force:*)",
@@ -44,7 +55,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "claude-opus-5-5[1m]",
+  "model": "opus[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -91,6 +102,14 @@
           },
           {
             "type": "command",
+            "command": "~/.claude/hooks/governing-path-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/git-bypass-guard.sh"
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/git-state-check.sh"
           },
           {
@@ -112,6 +131,15 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/read-tool-preference-advisory.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Grep|Glob|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/cockpit-secret-guard.sh"
           }
         ]
       },
@@ -184,6 +212,10 @@
           },
           {
             "type": "command",
+            "command": "~/.claude/hooks/governing-path-guard.sh"
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/security-audit.sh"
           },
           {
@@ -207,6 +239,10 @@
       {
         "matcher": "MultiEdit",
         "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/governing-path-guard.sh"
+          },
           {
             "type": "command",
             "command": "~/.claude/hooks/vault-write-gate.sh"
@@ -422,13 +458,16 @@
       "effortLevel": "medium"
     },
     "claude-fable-5-1": {
-      "effortLevel": "medium"
-    },
-    "claude-sonnet-5": {
       "effortLevel": "high"
     },
+    "claude-sonnet-5": {
+      "effortLevel": "low"
+    },
     "claude-opus-5-5": {
-      "effortLevel": "medium"
+      "effortLevel": "high"
+    },
+    "claude-sonnet-5-5": {
+      "effortLevel": "xhigh"
     }
   }
 }

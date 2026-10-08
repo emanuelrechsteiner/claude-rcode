@@ -1,6 +1,6 @@
 <!--
 Status: ACTIVE
-Last Updated: 2026-09-23
+Last Updated: 2026-10-08
 Purpose: Framework glossary for claude-code-config — terms coined once (rules/domain-docs-convention.md), reused everywhere
 -->
 
@@ -33,3 +33,13 @@ Purpose: Framework glossary for claude-code-config — terms coined once (rules/
 **IMP / Ledger** — a numbered, ledger-tracked improvement (`IMP-NNN`, `global-observation/improvement-ledger.json`). Not every rework carries one — see `docs/adr/0002-rcode-plan-follows-practice.md` for a decision recorded without an IMP number.
 
 **English-only** — every framework, Cockpit and website artifact (code, comments, messages, tests, docs, ADRs, images) is written in English; German appears only as accepted input aliases (e.g. `AGENTENWAHL:`) and in the owner's private `*.local.*` files.
+
+**Obsidian vault** — any folder opened in Obsidian; the app writes its per-folder state into `.obsidian/` there. Always say "Obsidian vault": the bare word `vault` in this repo is the PII pseudonym store (`/vault/`, `docs/adr/0003-vault-and-gate.md`). See `docs/OBSIDIAN.md`, `docs/adr/0006-obsidian-read-window.md`.
+
+**Knowledge folder** — the machine-local directory that `CLAUDE_KNOWLEDGE_DIR` points to, outside `~/.claude`, the workshop and any synced folder, holding `mirror/` (owned by the script, overwritten on each run) and `notes/` (the owner's, never touched); opened in Obsidian as its own Obsidian vault. Written `<KNOWLEDGE>` in docs.
+
+**Knowledge mirror** — the read-only copy of the distilled knowledge layer (logbook, per-project memory, meta-proposals, tracked rules, a rendered ledger index) that `scripts/knowledge-mirror.sh` writes into `<KNOWLEDGE>/mirror/`; a snapshot that is stale until the script runs again.
+
+**Rule link** — the token form `[[name]]`: a bare basename, with no path and no extension, pointing to `rules/<name>.md` (or `skills/<name>/`); a pointer for readers that nothing in the framework resolves or checks, which Obsidian makes clickable. See `docs/OBSIDIAN.md` § Link convention.
+
+**Library lookup** — `scripts/knowledge-lookup.sh`: the agent's on-demand search over the knowledge mirror by keywords or `--stack` (keywords derived from the project's dependency files). It serves the third knowledge layer — true across projects, needed only sometimes — which is searched when needed and never loaded into every session (the always-loaded layer is `rules/`, the per-project layer is `CONTEXT.md`/ADRs/project memory). See `docs/OBSIDIAN.md` § Stage 3.

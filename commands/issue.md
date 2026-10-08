@@ -80,7 +80,9 @@ In Worker mode, run only:
 - **Step 0** — readiness + env-key preflight, for this unit only.
 - **Step 1** — scope boundary ("I WILL / I will NOT").
 - **Step 3** — implement per CONVENTIONS.md / ARCHITECTURE.md.
-- **Step 4** — check trio.
+- **Step 4** — sub-steps 1-3 only: RED/GREEN evidence (sub-step 1) and the
+  check trio. Sub-step 4 (review) is Standalone only: a worker cannot spawn
+  subagents, the lead reviews after the report-back.
 - **Step 5** — commit ON THE BRANCH THE LEAD NAMED (commit ref format in
   Step 5); do NOT create a branch, do NOT push, do NOT open a PR.
 
@@ -95,8 +97,16 @@ Unit: <unit-id>
 Files changed: <list>
 Commits: <hash — subject>
 Check trio: PASS | FAIL (which check, if FAIL)
+RED evidence: <value defined in Step 4.1>                    (Step 4.1)
+GREEN evidence: <same test, command + passing summary line>  (Step 4.1)
+Fresh-context review: pending — lead                         (lead fills it after this report)
+Not verified: <what, why> | none
 Deviations from the task brief (if any): <what, why>
 ```
+
+`RED evidence` and `GREEN evidence` are mandatory. A field the worker cannot
+fill is reported as such, never invented. The lead spawns the reviewer after
+this report (`~/.claude/rcode/stages/develop.md` Core loop).
 
 Standalone mode runs every Step below, in order.
 
@@ -269,6 +279,15 @@ Use specialized agents via the Task tool as needed:
    - Include edge cases from the unit body
    ```
 
+   **RED first.** For a **bug-fix unit** this is mandatory: write the test
+   that reproduces the bug and run it BEFORE the fix, so it fails for the
+   stated reason (not a syntax or import error). For a feature unit it is
+   recommended. Allowed `RED evidence` values (defined here once):
+   `<failing test + failure line>` | `not observed — <reason>` (feature
+   units only; a test never seen failing proves nothing, so say so) |
+   `n/a — docs/config unit`. `GREEN evidence` is the same test passing, with
+   command and summary line.
+
 2. **Run the check trio** — the project's three pre-commit checks
    (type/build · test · lint), defined ONCE in the project's `CLAUDE.md` →
    "## Mandatory Pre-Commit" (M7). Do not hardcode `npx tsc`/`npm test` here
@@ -280,6 +299,16 @@ Use specialized agents via the Task tool as needed:
    - Fix the issue
    - Re-run the check trio
    - Do NOT proceed to Step 5 with a failing check
+
+4. **Fresh-context review** *(Standalone only)* — before Step 5, spawn a
+   `code-reviewer-agent` (read-only: Read/Grep/Glob, it cannot run git) with
+   no prior context. Pass absolute paths of the changed files and the unit
+   body/brief, plus a scratch file holding `git diff` if it should see the
+   diff, never your summary (`~/.claude/rules/slop-prevention.md` "Copy,
+   don't interpret"). `fix N issues first` blocks Step 5 until resolved or
+   the user explicitly overrules. Record agent, verdict and findings
+   pointer; they go into the Step 7 PR "Test Plan" and the Step 8 agent-log
+   `**Review:**` line.
 
 ---
 
@@ -378,6 +407,7 @@ decision after the wave, ESCALATE per `~/.claude/rules/agency-bands.md`)*
    ## Test Plan
 
    - [ ] Check trio passes (CLAUDE.md → Mandatory Pre-Commit)
+   - [ ] Fresh-context review: <agent> — <verdict> — <pointer> (Step 4.4)
    - [ ] Manual verification: [specific steps]
 
    ## New Patterns (if any)
@@ -453,6 +483,7 @@ always `main` — see Step 2's dynamic-trunk resolution):
    **Agent:** [identifier]
    **Last step:** 8
    **Unit:** <id> — [Title]
+   **Review:** <agent> — <verdict> — <pointer>
    **Branch:** [branch-name]
    **PR:** #[PR-number] (tracker github + remote only)
 

@@ -1,42 +1,29 @@
 # MCP Tool Usage Guidelines
 
-> Patterns for using MCP tools correctly to prevent validation errors
+> Patterns for using MCP tools correctly to prevent validation errors.
 
 ## Path Conventions
 
-### Serena + MCP Filesystem Tools (relative paths)
+| Tools | Paths | ✅ | ❌ |
+|---|---|---|---|
+| Serena (`mcp__serena__*`), MCP filesystem (`mcp__filesystem__*`) | **relative** to project root | `src/components/Button.tsx`, `./src/utils/helper.ts` | `/Users/<user>/project/src/Button.tsx` |
+| Claude native `Read` / `Edit` / `Write` | **absolute** | `/Users/<user>/project/src/Button.tsx` | `src/Button.tsx` |
 
-Serena (`mcp__serena__*`) and the MCP filesystem server (`mcp__filesystem__*`) use
-**relative paths** from project root:
-
-```
-✅ relative_path: "src/components/Button.tsx"
-✅ relative_path: "./src/utils/helper.ts"
-❌ relative_path: "/Users/<user>/project/src/Button.tsx"  // WRONG - absolute path
-```
-
-### Claude Native Tools (absolute paths)
-
-Claude's built-in Read/Edit/Write tools use **absolute paths**:
-
-```
-✅ file_path: "/Users/<user>/project/src/Button.tsx"
-❌ file_path: "src/Button.tsx"  // WRONG - relative path
-```
+`Error: File does not exist` → check relative vs absolute for that tool. MCP tools cannot write outside the project directory (`AssertionError - Cannot create file outside of project directory`) — use Claude's native `Write` for files outside the project.
 
 ## Tool Selection Matrix
 
 | Need | MCP Tool | Native Tool | Notes |
-|------|----------|-------------|-------|
+|---|---|---|---|
 | Read file | `mcp__filesystem__read_text_file` | `Read` | Native handles more formats |
-| Edit file (regex) | `mcp__serena__replace_content` | `Edit` | Serena writes run through `serena-write-gate.sh` (see below) |
+| Edit file (regex) | `mcp__serena__replace_content` | `Edit` | Serena writes run through `serena-write-gate.sh` |
 | Edit file (exact) | — | `Edit` | Simple replacements |
 | Edit whole symbol | `mcp__serena__replace_symbol_body` | `Edit` | Gated; token-efficient for full-symbol rewrites |
 | Rename symbol (all refs) | `mcp__serena__rename_symbol` | — | Gated with a y/n ask (LSP writes N files) |
 | Write file | `mcp__filesystem__write_file` | `Write` | Similar capabilities |
 | Find symbols | `mcp__serena__find_symbol` | — | Language-aware (LSP) |
 | Find references | `mcp__serena__find_referencing_symbols` | — | Language-aware; `Grep` misses/over-matches |
-| Search text | — | `Grep` | Serena's `search_for_pattern` is excluded by the `claude-code` context |
+| Search text | — | `Grep` | Serena's `search_for_pattern` is excluded (below) |
 | List files | `mcp__filesystem__list_directory` | `Glob` | Native more flexible |
 
 ## Serena
@@ -74,108 +61,12 @@ registration, hook matchers incl. `mcp__plugin_serena_serena__*`, rollout order)
 
 ## Common Parameter Formats
 
-### mcp__filesystem__read_multiple_files
+Array parameters take arrays, never a string (`Invalid input: expected array, received string` → wrap single items: `["item"]`, not `"item"`):
+- `mcp__filesystem__read_multiple_files`: `{"paths": ["/absolute/path/file1.ts", "/absolute/path/file2.ts"]}`
+- `mcp__filesystem__edit_file`: `{"path": "/absolute/path/file.ts", "edits": [{"oldText": "find this", "newText": "replace with"}]}`
 
-**Correct:**
-```json
-{
-  "paths": ["/absolute/path/file1.ts", "/absolute/path/file2.ts"]
-}
-```
-
-**Wrong:**
-```json
-{
-  "paths": "file1.ts"  // ❌ String instead of array
-}
-```
-
-### mcp__filesystem__edit_file
-
-**Correct:**
-```json
-{
-  "path": "/absolute/path/file.ts",
-  "edits": [
-    { "oldText": "find this", "newText": "replace with" }
-  ]
-}
-```
-
-**Wrong:**
-```json
-{
-  "path": "/absolute/path/file.ts",
-  "edits": "find this -> replace with"  // ❌ String instead of array
-}
-```
+Provide all required parameters; ``The required parameter `old_string` is missing`` means the wrong tool (MCP vs native) or missing fields. Before a native `Edit`, Read the file first ([[tool-discipline]] Rule 1).
 
 ### Context7 resolve-library-id parameter names
 
-Two Context7 MCP servers can be connected simultaneously, and they use **different** parameter names for `resolve-library-id`:
-
-| Server | Parameter name |
-|--------|---------------|
-| `context7-keyed` | `libraryName` |
-| `your-context7-server-uuid` | `query` |
-
-Using the wrong parameter name throws a **-32602 invalid params** error. Before calling `resolve-library-id`, check which server is active and use the matching name.
-
-**Correct (context7-keyed):**
-```json
-{ "libraryName": "react" }
-```
-
-**Correct (the other server):**
-```json
-{ "query": "react" }
-```
-
-## Project Boundary Restrictions
-
-MCP tools cannot write outside project directory:
-
-```
-❌ Cannot create file outside of the project directory
-   got relative_path='/Users/.../.claude/plans/...'
-```
-
-**Solution:** Use Claude's native `Write` tool for files outside project.
-
-## Error Prevention Checklist
-
-Before using MCP tools:
-
-- [ ] **Path format** - Using relative for MCP, absolute for native?
-- [ ] **Array parameters** - Using arrays where required (paths, edits)?
-- [ ] **Required fields** - All required parameters provided?
-- [ ] **Project boundary** - File within project directory?
-- [ ] **Read first** - Read file before editing (for native Edit)?
-
-## Common Error Patterns
-
-### Pattern 1: Wrong path format
-```
-Error: File does not exist
-```
-→ Check if using relative vs absolute correctly for the tool
-
-### Pattern 2: Wrong parameter type
-```
-Invalid input: expected array, received string
-```
-→ Wrap single items in arrays: `["item"]` not `"item"`
-
-### Pattern 3: Missing required parameter
-```
-The required parameter `old_string` is missing
-```
-→ You're using wrong tool (MCP vs native) or missing fields
-
-### Pattern 4: Path outside project
-```
-AssertionError - Cannot create file outside of project directory
-```
-→ Use Claude's native Write tool for external files
-
-> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/mcp-tool-usage.md`
+Two Context7 MCP servers can be connected simultaneously, and they use **different** parameter names for `resolve-library-id`: `context7-keyed` takes `libraryName`, `your-context7-server-uuid` takes `query` (e.g. `{ "libraryName": "react" }`). The wrong name throws a **-32602 invalid params** error — before calling `resolve-library-id`, check which server is active and use the matching name.

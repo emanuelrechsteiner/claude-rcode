@@ -83,6 +83,19 @@ workshop's sibling directory `…/cockpit`, installed copy at
 PreToolUse hook that reaches into nothing can block tool calls, so the copy
 must be local and complete).
 
+#### Moved from CLAUDE.md on 2026-09-29 (IMP-234)
+
+From `### Two places: the workshop and the inhabited live install` (verbatim; CLAUDE.md now merges this into its READ THIS FIRST banner and keeps runtime keys, runtime data and remotes only as a pointer here):
+
+`<WORKSHOP>` = working copy of this repo outside `~/.claude` (real path stored locally in `~/.claude/env.local.sh`).
+
+| Place | Role | Path |
+|---|---|---|
+| **Workshop** (working copy) | Development, review, and commits happen here. Nothing here is live. | `<WORKSHOP>` |
+| **Live install** (installation) | What Claude Code actually reads. Receives only finished deploys. | `~/.claude` |
+
+Remotes: workshop `origin` + `live` (the live install); live install `origin` + `workshop` (the workshop). `claude-deploy [config|cockpit|all]`: only with a clean workshop, fast-forward only, takes effect from the next session; pulls runtime keys (`model`, `effortLevel`, `modelSettings`; IMP-127/194) back into the workshop. Runtime data lives only in the live install. Put environment values in the shell (`~/.zshrc`); values that must arrive even without a shell profile go in `settings.json`'s `env` block — **never secrets**, this file is public. The live install stays complete (no symlink onto the SSD), and so does the Cockpit copy `~/.claude/cockpit` (7 hook entries + the status line point there) — it must be local and complete. More: `docs/WORKING-IN-THIS-REPO.md`, `docs/FRAMEWORK-REFERENCE.md`.
+
 ### Auto-Loaded Rules (always in context)
 
 | Rule | Governs |
@@ -115,6 +128,21 @@ must be local and complete).
 >
 > **Removed from this table (2026-09-23, "Plan folgt Praxis"):** `phase-backward-transitions` — the backward-jump protocol it documented now lives at `~/.claude/rcode/stages/backward-transitions.md` and is read by the R.Code stage playbooks when a backward jump is considered, not loaded into every session of every project. See `docs/adr/0002-rcode-plan-follows-practice.md`.
 
+#### Moved from CLAUDE.md on 2026-09-29 (IMP-234)
+
+From `### Auto-Loaded Rules (always in context)` (verbatim; CLAUDE.md keeps the heading and a one-line pointer here):
+
+| Rule | Governs |
+|---|---|
+| foundation, parallel-by-default, recommend-on-ask | Orchestration, dispatch, questions |
+| agency-bands, agents-as-users, security, fail-loud | Safety, authz, secrets |
+| code-quality, testing-quality, slop-prevention | Code and test quality |
+| workflow-git, identity | Git, identity |
+| tool-discipline, mcp-tool-usage, context-engineering, api-cost-optimization | Tools, MCP, context, models |
+| documentation, planning-doc-convention, domain-docs-convention, docs-first-integration, web-research-trust | Docs, plans, ADRs, research |
+
+Demoted to on-demand skills: legacy-codebase-audit, rcode-ios, framework-extraction, kokonutui-pro (IMP-079); release-cli-discipline, cloud-cli-discipline (IMP-218). phase-backward-transitions → `rcode/stages/backward-transitions.md`. Evidence moved out of the rules: `docs/archive/rules-evidence/`.
+
 ### Agents (Task tool — heavy implementation)
 
 | Agent | Model | Use For |
@@ -136,6 +164,27 @@ must be local and complete).
 
 > **The "archive" folder was live (IMP-208, 2026-09-09).** `agents/archived-replaced-by-skills/` never archived anything: Claude Code scans `agents/` **recursively**, so `build-validator-agent`, `framework-specialist-agent` and `research-agent` were all invocable from inside it (the session's agent list proved it), and two files there — `documentation-agent.md`, `version-control-agent.md` — carried the **same `name:`** as the live top-level agents, with undefined precedence (the archived `version-control` copy predates the report-only rule). The only entry that was ever truly silent was `ux-agent.md.2026-05-26` — a renamed extension. Fix: the folder now lives at `docs/archive/agents-replaced-by-skills/` (where `rules/documentation.md` puts archived material and where nothing loads it); `research-agent.md` moved to `agents/`. **To retire an agent, move it OUT of `agents/` or change its extension — a subfolder does nothing.** Acceptance in the next session: `build-validator-agent`/`framework-specialist-agent` must be absent from the agent list, `visual-qa-agent` present.
 
+#### Moved from CLAUDE.md on 2026-09-29 (IMP-234)
+
+From `### Agents (Task tool)` (verbatim, the whole section body; CLAUDE.md now keeps only pointers here, to the `agents/*.md` descriptions and to `rules/foundation.md`, plus the pattern-extractor-agent hint and the retire-an-agent rule):
+
+| Agent | Model | Use |
+|---|---|---|
+| control-agent | fable | Orchestrator, arbiter |
+| planning-agent | opus | Architecture |
+| backend-agent | sonnet | APIs, DB, auth |
+| testing-agent | sonnet | Tests |
+| code-reviewer-agent | sonnet | Read-only review |
+| cleanup-agent | haiku | Dead code |
+| ui-agent | sonnet | UI components |
+| visual-qa-agent | sonnet | Browser QA |
+| research-agent | haiku | Research; may `Write` a NEW report file, never Edit |
+| documentation-agent | sonnet | Daily-Docs only; ad-hoc docs → `documentation` skill |
+| version-control-agent | sonnet | Git, report-only |
+| pattern-extractor-agent | sonnet | /lessons Step 6; ad-hoc → `pattern-document` skill |
+
+Archived: ux-agent (→ ux-design), improvement-agent (→ observation pipeline). **Retire an agent by moving it OUT of `agents/`; a subfolder does nothing.**
+
 ### Forked Skills (isolated context — lightweight specialists)
 
 | Skill | Model | Use For |
@@ -152,6 +201,22 @@ must be local and complete).
 | scroll-animation-patterns | sonnet | RAF-driven scroll animations, sticky card decks |
 | quality-review | sonnet | Milestone-level 6-specialist parallel review (arch/security/perf/testing/maintainability/docs) — deep pre-commit/pre-PR pass (documented 2026-07-03, IMP-083) |
 | legacy-codebase-audit / rcode-ios / framework-extraction / kokonutui-pro | — | Demoted from always-loaded rules (IMP-079) — load on-demand via their trigger topics |
+
+#### Moved from CLAUDE.md on 2026-09-29 (IMP-234)
+
+From `### Skills` (verbatim; CLAUDE.md now keeps only the demoted-rules and background-skills hints plus a pointer to this table):
+
+| Skill | Mode | Use |
+|---|---|---|
+| validate-build, research, version-control, nextjs-debug, worktree-consolidate, memory-index | forked, haiku | Utilities |
+| pattern-document, documentation, scroll-animation-patterns, quality-review | forked, sonnet | Docs, patterns, review |
+| meta-observer; prototype | forked (opus); forked | IMP proposals; spikes |
+| scope-check, rcode-onboard, grilling, resolving-merge-conflicts | main | Scope, onboard, grill, merge |
+| create-hook, create-rule, create-skill, create-subagent, migrate-to-skills | creation | Author framework assets |
+| legacy-codebase-audit, rcode-ios, framework-extraction, kokonutui-pro, release-cli-discipline, cloud-cli-discipline | on-demand | Demoted rules — load on their topic |
+| react-perf-check, tailwindcss-v4-styling, import-fixer, fix-review, orchestration | background | Auto-trigger only |
+| context-budget, swiftui-patterns, swift-concurrency-6-2, swift-actor-persistence, swift-protocol-di-testing, liquid-glass-design, postgres-patterns, database-migrations, api-design | main | Adapted from ECC (MIT) 2026-10-01, IMP-245 — `skills/THIRD-PARTY-NOTICES.md` |
+| eval-harness, council, click-path-audit, production-audit, canary-watch | manual (`disable-model-invocation`) | Adapted from ECC (MIT) 2026-10-01, IMP-245 — invoke by `/name` only |
 
 ### Framework Creation Skills (NEW 2026-05-24 — ported from Cursor)
 
@@ -170,10 +235,13 @@ must be local and complete).
 | session-start-context.sh | SessionStart | Context loading at session begin |
 | git-identity-check.sh | SessionStart | Identity guard (single identity: Maintainer — LegacyIdentity retired 2026-06; Claude-Login `<email>` is unrelated to git) |
 | guard-unsafe.sh | PreToolUse / Bash | Block destructive commands (rm -rf /, sudo, nc, etc.). **Fix 2026-05-24:** Word-boundary added to nc-regex (was matching `rsync`) |
+| **cockpit-secret-guard.sh** (+ `hooks/lib/cockpit_secret_*.py`) | PreToolUse / `Bash\|Grep\|Glob\|Read` | **Cockpit launch-token tripwire (2026-10-06).** Denies the agent's tmux `capture-pane`/`pipe-pane`/`save-buffer`/`show-buffer`/`list-buffers`/`choose-buffer` (incl. aliases, prefixes, `-L/-S/-f`, env prefixes, wrappers, `bash -c`/`eval`/`$(…)`), any reference to `~/.claude/cockpit/web-*` in any spelling (also as Read/Grep/Glob path), and env dumps of the cockpit server (`ps E/e`, `/proc/*/environ`, only with `server.ts`/`cockpit` named). Quoted data (`git commit -m "…"`, `echo`, `grep` patterns) is not a command and passes. **Override is not a bypass:** an inline `CLAUDE_GUARD_OVERRIDE=1` only turns the deny into a native `ask` prompt to the user; the original command is always scanned unmodified. Fails CLOSED for commands it cannot inspect (> 64 KB, nesting, scanner crash), fails OPEN (loud + logged) only for garbled hook JSON or a missing scanner. **Honest limit: a deterministic best-effort tripwire against the agent's tool calls, not a sandbox** — a same-uid process still reaches the token via terminal scrollback outside tmux, other windows' history or the browser, and a python/node one-liner built from string pieces defeats any pattern guard; `permissions.deny` stays as second layer (effective for the Read tool itself). **Known open classes (2026-10-06, found by automated review and code reading, not yet probed one by one; listed in the hook header):** shell evaluation modelled differently from bash (brace sequences, `${…}` forms, `$(( ))`, `for`, `printf`, `read`), programs with built-in command execution treated as data programs (`git`, `man`, `awk`/`sed`, `find -path`) and unresolved wrapper targets, copy/link destination parsing (`-t`), uncanonicalised path spellings (`/private/…`, `/proc/…/task/…/environ`), interpreter code that builds paths from pieces, debugger attach, MCP tools outside read-like names. Open decision: ASK by default when a command names the Cockpit directory and cannot be classified as harmless. Regression: two suites, `hooks/tests/cockpit-secret-guard-regression.sh` (144 cases, DENY/ALLOW spellings) and `hooks/tests/cockpit-secret-guard-regression-modes.sh` (38 cases, override, logging, fail-closed, fail-open), sharing `hooks/tests/lib/cockpit-secret-guard-harness.sh` (outside the `run-all-tests.sh` glob) |
 | git-state-check.sh | PreToolUse / Bash | Check git state before risky operations |
 | git-identity-enforce.sh | PreToolUse / Bash | Enforce identity on git commits |
 | file-protection.sh | PreToolUse / Write\|Edit | Protect sensitive files |
-| **security-audit.sh** | PreToolUse / Write\|Edit | **Block edits introducing secrets** (github_pat_*, ghp_*, AKIA*, sk-*, AIza*, xox*). New 2026-05-24 after PAT-leak finding |
+| **governing-path-guard.sh** | PreToolUse / Bash, Write\|Edit, MultiEdit | **Blocks writes into the LIVE install's governing paths** (`rules/*.md` except `*.local.md`, `agents/`, `skills/`, `commands/`, `hooks/`, `rcode/`, `scheduled-tasks/`, `scripts/`, `cockpit/`, `output-styles/`, `templates/`, `CLAUDE.md`, `settings*.json`) and `git -C <live>` write subcommands — the two-location rule as a mechanism, aimed at the unattended routine runner (IMP-239, 2026-10-01). Fence against accidental writes, not a wall: known limits in the header. Classifier `hooks/lib/governing-path-classify.py`; parse failure fails closed when the command names a live governing path. Override: single-use, op-bound `CLAUDE_GOVERNING_WRITE_ACK=<sha256>` (logged). Regression: `hooks/tests/governing-path-guard-regression.sh` |
+| **git-bypass-guard.sh** | PreToolUse / Bash | **Blocks git hook bypass**: `--no-verify` / `commit -n` on commit, push, pull, merge, cherry-pick, rebase, am, revert; `core.hooksPath` overrides; `HUSKY=0`; an agent-set `VAULT_PRECOMMIT_BYPASS` (IMP-240, 2026-10-01; mechanism adapted from ECC `block-no-verify.js`, MIT). Classifier `hooks/lib/git-bypass-classify.py` + `gbg_lex.py`; a classifier failure on a git-shaped command asks instead of allowing. Override: `CLAUDE_GIT_BYPASS_ACK=<sha256>` (logged). Regression: `hooks/tests/git-bypass-guard-regression.sh` |
+| **security-audit.sh** | PreToolUse / Write\|Edit | **Block edits introducing secrets** (github_pat_*, ghp_*, AKIA*, sk-*, AIza*, xox*; PEM private keys and JWTs since 2026-10-01 from the shared `scripts/lib/secret-patterns.sh`, IMP-244). No content-marker override. Fails closed if the pattern lib is missing. New 2026-05-24 after PAT-leak finding. Regression: `hooks/tests/security-audit-regression.sh` |
 | **vault-write-gate.sh** | PreToolUse / Write\|Edit (also the MultiEdit input shape) | **Blocks a real name/path/account/ID from landing in a versioned file of a framework-repo clone (IMP-219, 2026-09-25)** — checks only the INCOMING text via `scripts/vault/vault.sh check --stdin --as <target>`, the SAME matcher every other consumer uses; a Tresor or structural hit is `exit 2` naming `term → token` on stderr, never the value in the log. Hygiene gate, not the CRITICAL floor: an infrastructure failure (missing `jq`, broken `vault.sh`) fails OPEN with a loud NOTE. Bypass: `CLAUDE_VAULT_GATE_OFF=1` (logged). Also wired as an inspector in `serena-write-gate.sh`, and mirrored for non-Claude-Code writers (`sed`/heredoc/`jq`) by `scripts/git-hooks/pre-commit` (staged content) — the ledger's own append path is gated separately by `scripts/ledger-append-vault-gate.sh`. ADR: `docs/adr/0003`. Regression: `hooks/tests/vault-write-gate-regression.sh` (13 cases) |
 | auto-format.sh | PostToolUse / Edit\|Write | Auto-format after edits |
 | post-edit-validate.sh | PostToolUse / Edit\|Write | Validate file post-edit |
@@ -286,6 +354,18 @@ itself is IMP-191/192 (`proposed`). Report:
 
 A task run that leaves no log line is indistinguishable from one that never fired (fail-loud applies to routines too).
 
+#### Moved from CLAUDE.md on 2026-09-29 (IMP-234)
+
+From `### Scheduled Tasks` (verbatim; CLAUDE.md keeps the SKILL.md-at-fire-time and run-log rules plus a pointer here):
+
+`scheduled-tasks/<task>/SKILL.md` is read as prompt at fire time (editing it updates the task, no re-registration); runtime state: `mcp__scheduled-tasks__list_scheduled_tasks` / `/schedule`. Run by launchd (`scripts/routine-run.sh`, installer `scripts/install-routine-timers.sh`), watched by routine-liveness-check.sh. A run without a log line is indistinguishable from one that never fired.
+
+| Task | Schedule | Run log (mandatory since IMP-075) |
+|---|---|---|
+| daily-docs | 07:10 daily | daily-docs-log.jsonl |
+| nightly-observation | 02:05 daily | nightly-obs-log.jsonl |
+| weekly-improve | Sunday 22:06 | weekly-improve-log.jsonl |
+
 ### Coordination Protocol (Recommended, not Mandatory)
 
 When the control-agent dispatches subagents for multi-step work, the recommended pattern is:
@@ -374,6 +454,23 @@ as `P-NNN` — GitHub used to be a hard prerequisite everywhere, which those 2 c
 
 R.Code rails (rules for commits, scope, workflow) are installed per-project by `/brainstorm`
 (and `/rcode-init` / `/rcode-migrate`), not loaded globally.
+
+#### Moved from CLAUDE.md on 2026-09-29 (IMP-234)
+
+From `### R.Code` (verbatim; CLAUDE.md keeps the entrance, the Stage names, the tracker field and the command list as one line, and points here for the gates):
+
+For projects with a `.rcode/` directory, use the R.Code workflow. **`/team-lead "<directive>"` is THE entrance** (and the generic controller outside R.Code): picks the **Stage** — Plan, Design, Develop, Test, Launch; never "Phase" (= milestone) — loads its `rcode/stages/` playbook, dispatches. `/plan-team` … `/launch-team` are thin aliases that force their Stage.
+
+Tracker in `.rcode/config.json`: `github` (issues) or `plan` (`P-NNN` in `BRAINSTORM.md`). /decompose, /rcode-init, /rcode-migrate set it; the rest read it.
+
+| Kind | Commands |
+|---|---|
+| Setup | /rcode-init (greenfield; `git init`/commit/remote behind one y/n even in autonomous mode), /brainstorm, /simple-onboard (any repo; offers /rcode-migrate), /rcode-migrate (GitHub/commit mutations behind y/n) |
+| Units | /decompose, /issue \<unit\>, /rcode-review (the only review command — `/review` never existed) |
+| Periodic | /status-sync, /phase-gate \<N\>, /lessons, /rcode-upgrade (per-file y/n, never clobbers customized rules) |
+| Session | /continue, /handoff, /autonomous-overnight (unattended; queues ESCALATE ops, never auto-approves) |
+
+Rails install per project. 22 commands (verify with `framework-inventory.sh`); /rcode-onboard is a skill. Before asserting availability on any machine, check `ls ~/.claude/commands/ | grep -i team`, not a doc. A backward Stage-jump requires a documented futility proof (`rcode/stages/backward-transitions.md`).
 
 ### Key Skills (auto-triggered)
 

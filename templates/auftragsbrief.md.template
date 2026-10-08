@@ -1,10 +1,11 @@
 <!--
 Status: ACTIVE
-Last Updated: 2026-08-24
+Last Updated: 2026-10-01
 Purpose: Mandatory form for briefs to subagents and for handoffs — five
 mandatory fields plus two evidenced additions. Referenced by
 agents/control-agent.md §2/§3, commands/handoff.md, rules/foundation.md.
 Origin: IMP-161, plans/meta-proposal-2026-08-24-august-vollanalyse.md §3.5.
+Completion contract: the section below defines what every delegate hands back.
 Note: the filename stays "auftragsbrief.md.template" (German for "task
 brief") — the English term "task brief" is used throughout the content.
 -->
@@ -44,6 +45,27 @@ brief (5 instead of 50 cents) ran unchallenged for 1h 41min and 97 edits across
   when writing, but again at **every** later expansion — that's part of the
   wave review in `agents/control-agent.md` §4, "Scope against the
   negative-list" (IMP-201).
+
+## Completion contract
+
+Every brief implies it; the delegate's final message is checked against it.
+Adapted from ECC `rules/common/agents.md` (MIT, Copyright (c) 2026 Affaan
+Mustafa, commit c70874f).
+
+1. **The final message IS the deliverable.** "Waiting for background agents"
+   is not a result; a spawned task is not a completed task.
+2. **A delegate that can delegate owns collection.** It integrates its
+   children's results before returning; no fire-and-forget. (Workers
+   cannot spawn subagents, so this binds only delegates that can.)
+3. **Hand back:** files changed (with line ranges), evidence (command plus
+   output summary, or a rendered observation), deviations from this brief,
+   and what it did NOT verify.
+4. **"Done" without evidence is not done.** A claim the acceptance criterion
+   cannot be checked against is reported as unverified.
+5. **A field the delegate cannot meet is named, not filled.** "Not checked:
+   <what>, because <why>" beats a plausible guess.
+6. **Decompose only when the work cannot fit one context.** This binds
+   delegates; the lead follows `rules/foundation.md` (delegate by default).
 
 ## Raw form (copy this)
 

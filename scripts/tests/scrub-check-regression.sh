@@ -476,6 +476,36 @@ must_contain "staged: mixed commit reports the normal file's new leak" "$OUT21" 
 must_not_contain "staged: mixed commit never reports the excluded file" "$OUT21" "scrub-check.sh:"
 must_not_contain "staged: mixed commit never mentions the unbound-variable crash" "$OUT21" "unbound variable"
 
+echo "== chronicle carve-out (2026-10-01): the five chronicle files are skipped, every other file is not =="
+T22="$(new_temp_repo)"
+_chron=(CHANGELOG.md global-observation/improvement-ledger.json
+        docs/superpowers/specs/2026-05-27-claude-config-portability-design.md
+        ops/awesome-claude-code/HANDOFF-coding-agent.json
+        ops/decisions/2026-08-13-publisher-stilllegung.md)
+for _cf in "${_chron[@]}"; do
+  mkdir -p "$T22/$(dirname "$_cf")"
+  printf 'history line that mentions %s on purpose\n' "$_rebrand2" > "$T22/$_cf"
+done
+printf 'harmless\n' > "$T22/normal.txt"
+commit_files "$T22" "seed chronicle" "${_chron[@]}" normal.txt
+OUT22="$(run_scrub "$T22" "$NOVAULT")"; RC22=$?
+check_exit "carve-out: old name only in the five chronicle files, full-tree exits 0 (clean)" 0 "$RC22"
+must_not_contain "carve-out: no chronicle file is reported" "$OUT22" "[REBRAND]"
+
+printf 'a live doc that still says %s\n' "$_rebrand2" > "$T22/notes.txt"
+commit_files "$T22" "add a non-chronicle leak" notes.txt
+OUT22B="$(run_scrub "$T22" "$NOVAULT")"; RC22B=$?
+check_exit "carve-out: the same name in any other file still blocks (full-tree)" 1 "$RC22B"
+must_contain "carve-out: the other file is reported" "$OUT22B" "[REBRAND] notes.txt:1:"
+must_not_contain "carve-out: chronicle files stay unreported next to a real finding" "$OUT22B" "[REBRAND] CHANGELOG.md"
+
+echo "== chronicle carve-out, accepted cost: a NEW mention in a chronicle file is not reported under --staged either =="
+printf 'history line that mentions %s on purpose\nnew entry that mentions %s\n' "$_rebrand2" "$_rebrand2" > "$T22/CHANGELOG.md"
+git -C "$T22" add CHANGELOG.md
+OUT22C="$(run_scrub "$T22" "$NOVAULT" --staged)"; RC22C=$?
+check_exit "carve-out cost: staged new mention in CHANGELOG.md exits 0 (documented, accepted)" 0 "$RC22C"
+must_not_contain "carve-out cost: staged chronicle file is not reported" "$OUT22C" "[REBRAND] CHANGELOG.md"
+
 echo ""
 echo "scrub-check-regression: $PASS passed, $FAIL failed"
 

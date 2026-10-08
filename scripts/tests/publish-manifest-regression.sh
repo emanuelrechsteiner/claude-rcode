@@ -55,7 +55,16 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MANIFEST="$REPO_ROOT/publish-manifest.txt"
+# PUBLISH_MANIFEST_OVERRIDE: test-the-test hook only (red-first demos with a
+# scratch manifest). Unset = the live manifest, exactly like publish.sh.
+MANIFEST="${PUBLISH_MANIFEST_OVERRIDE:-$REPO_ROOT/publish-manifest.txt}"
+SUMMARY_SUFFIX=""
+if [[ -n "${PUBLISH_MANIFEST_OVERRIDE:-}" ]]; then
+  NOTICE="NOTICE: PUBLISH_MANIFEST_OVERRIDE is set — testing $MANIFEST, NOT the real publish-manifest.txt (red-first runs only)"
+  echo "$NOTICE"
+  echo "$NOTICE" >&2
+  SUMMARY_SUFFIX=" (OVERRIDE MANIFEST)"
+fi
 
 [[ -f "$MANIFEST" ]] || { echo "ERROR: required source not found: $MANIFEST" >&2; exit 1; }
 command -v rsync >/dev/null 2>&1 || { echo "ERROR: rsync is required" >&2; exit 1; }
@@ -116,6 +125,12 @@ if [[ "$LOCAL_MD_COUNT" -eq 0 ]]; then
 else
   bad "no *.local.md file anywhere in the archived tree" "found $LOCAL_MD_COUNT such file(s)"
 fi
+OBSIDIAN_TRACKED="$( ( cd "$REPO_ROOT" && git archive HEAD ) | tar -t | grep -F '.obsidian' || true )"
+if [[ -z "$OBSIDIAN_TRACKED" ]]; then
+  ok "no path containing .obsidian in the git archive HEAD listing (never tracked)"
+else
+  bad "no path containing .obsidian in the git archive HEAD listing" "found: $(printf '%s' "$OBSIDIAN_TRACKED" | head -5 | tr '\n' ' ')"
+fi
 
 # ---------------------------------------------------------------------------
 # Synthetic root-level fixtures — written directly into the archived copy,
@@ -127,6 +142,11 @@ fi
 mkdir -p "$ARCHIVE_DIR/vault"
 printf 'synthetic root-vault fixture — never a real secret\n' > "$ARCHIVE_DIR/vault/secret-fixture"
 printf 'synthetic root env.local.sh fixture\n' > "$ARCHIVE_DIR/env.local.sh"
+# Obsidian per-vault state, root AND nested (the manifest line is unanchored
+# on purpose: it must match at any depth).
+mkdir -p "$ARCHIVE_DIR/.obsidian" "$ARCHIVE_DIR/rcode/templates/.obsidian"
+printf '{}\n' > "$ARCHIVE_DIR/.obsidian/workspace.json"
+printf '{}\n' > "$ARCHIVE_DIR/rcode/templates/.obsidian/app.json"
 
 # --- Step 3 equivalent: REAL (non-dry-run) rsync, same two flags publish.sh
 # uses, into a throwaway STAGING dir. -----------------------------------
@@ -149,7 +169,13 @@ echo "== the bug: root-level runtime dir/file stay excluded =============="
 assert_not_in_list "root vault/secret-fixture excluded" "$TRANSFERRED" "vault/secret-fixture"
 assert_not_in_list "root env.local.sh excluded" "$TRANSFERRED" "env.local.sh"
 
+echo "== .obsidian/ (any depth) excluded; look-alike neighbours still ship =="
+assert_not_in_list "root .obsidian/workspace.json excluded" "$TRANSFERRED" ".obsidian/workspace.json"
+assert_not_in_list "nested rcode/templates/.obsidian/app.json excluded" "$TRANSFERRED" "rcode/templates/.obsidian/app.json"
+assert_in_list "rcode/templates/ADR.template.md (neighbour of nested fixture) transferred" "$TRANSFERRED" "rcode/templates/ADR.template.md"
+assert_in_list "docs/OBSIDIAN.md (name merely contains obsidian) transferred" "$TRANSFERRED" "docs/OBSIDIAN.md"
+
 echo ""
-echo "publish-manifest-regression: $PASS passed, $FAIL failed"
+echo "publish-manifest-regression: $PASS passed, $FAIL failed$SUMMARY_SUFFIX"
 [[ "$FAIL" -eq 0 ]] && exit 0
 exit 1

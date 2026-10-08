@@ -68,6 +68,33 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# DOCUMENTED, LOGGED OVERRIDE (IMP-240): the only sanctioned way past this gate.
+# `git commit --no-verify` is NOT offered anywhere: it skips every git hook
+# silently and leaves no trace. VAULT_PRECOMMIT_BYPASS="<reason>" skips this
+# hook for ONE commit, but the reason is appended (tab-separated: UTC time,
+# author email, branch, HEAD sha, staged-file count, reason) to <git-common-dir>/vault-bypass.log first; a blank reason is refused;
+# if that log cannot be written, `set -e` aborts the commit — an unlogged
+# bypass must never succeed. hooks/git-bypass-guard.sh keeps agents from
+# setting it on their own; it needs the user's explicit approval.
+if [ "${VAULT_PRECOMMIT_BYPASS+set}" = "set" ]; then
+    BYPASS_REASON="$(printf '%s' "$VAULT_PRECOMMIT_BYPASS" | tr '\t\n' '  ' | sed -e 's/^ *//' -e 's/ *$//')"
+    if [ -z "$BYPASS_REASON" ]; then
+        echo "pre-commit: BLOCKED — VAULT_PRECOMMIT_BYPASS is set but blank; it needs a reason (VAULT_PRECOMMIT_BYPASS=\"<reason>\")." >&2
+        exit 1
+    fi
+    # common dir (not git-dir): one log for the main checkout and all worktrees.
+    BYPASS_LOG="$(cd "$(git rev-parse --git-common-dir)" && pwd)/vault-bypass.log"
+    printf '%s\t%s\t%s\t%s\t%s files\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        "$(git config user.email || true)" \
+        "$(git symbolic-ref --short -q HEAD || echo detached)" \
+        "$(git rev-parse --short -q --verify HEAD 2>/dev/null || echo no-head)" \
+        "$(git diff --cached --name-only | wc -l | tr -d ' ')" \
+        "$BYPASS_REASON" >> "$BYPASS_LOG"
+    echo "pre-commit: NOTE — vault/scrub gate BYPASSED for this commit via VAULT_PRECOMMIT_BYPASS; reason logged to $BYPASS_LOG" >&2
+    exit 0
+fi
+
 VAULT_SH="$REPO_ROOT/scripts/vault/vault.sh"
 
 FOUND=0
@@ -142,7 +169,7 @@ if [ "$IGNORE_FOUND" -eq 1 ]; then
     echo "" >&2
     echo "pre-commit: is this deliberate? Then adjust the .gitignore pattern first so the" >&2
     echo "  path is no longer covered, and commit again — or if you really mean to commit" >&2
-    echo "  it as-is: git commit --no-verify" >&2
+    echo "  it as-is: VAULT_PRECOMMIT_BYPASS=\"<reason>\" git commit ... (logged to <git-common-dir>/vault-bypass.log)" >&2
     exit 1
 fi
 
@@ -151,7 +178,7 @@ if [ "$FOUND" -eq 1 ]; then
     printf '%s' "$FINDINGS_TXT" >&2
     echo "" >&2
     echo "pre-commit: use a placeholder/vault token, or add a reviewed exemption to scripts/scrub-allowlist.txt." >&2
-    echo "pre-commit: deliberate bypass for this commit: git commit --no-verify" >&2
+    echo "pre-commit: deliberate, logged bypass for this commit: VAULT_PRECOMMIT_BYPASS=\"<reason>\" git commit ..." >&2
     exit 1
 fi
 
@@ -163,7 +190,7 @@ if [ -x "$REPO_ROOT/scripts/scrub-check.sh" ]; then
         echo "" >&2
         echo "pre-commit: BLOCKED by scripts/scrub-check.sh --staged — fix the findings above, or" >&2
         echo "  add a reviewed exemption to scripts/scrub-allowlist.txt, then commit again." >&2
-        echo "  Deliberate bypass: git commit --no-verify" >&2
+        echo "  Deliberate, logged bypass: VAULT_PRECOMMIT_BYPASS=\"<reason>\" git commit ..." >&2
         exit 1
     fi
 fi

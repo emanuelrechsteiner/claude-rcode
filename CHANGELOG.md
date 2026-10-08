@@ -12,6 +12,43 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-08
+
+Obsidian as a read window over the distilled knowledge layer, a machine-local
+knowledge mirror, and an on-demand library lookup for the agent.
+
+### Added
+
+- `docs/OBSIDIAN.md` and ADR 0006: open the framework checkout as an Obsidian
+  vault (read window, never a store); `.obsidian/` is gitignored and excluded
+  from publishing; the live install is never opened as a vault.
+- `scripts/knowledge-mirror.sh`: read-only copies of the logbook, per-project
+  memory, meta-proposals, tracked rules and a ledger index into
+  `CLAUDE_KNOWLEDGE_DIR` (new optional block in
+  `templates/env.local.sh.template`). `*.local.md` overlays are never copied;
+  hand-edited copies are refused, not overwritten. Regression suite included.
+- `scripts/knowledge-lookup.sh`: keyword or `--stack` search over the mirror —
+  the third knowledge layer (true across projects, needed only sometimes) is
+  searched on demand instead of loaded into every session. One sentence in
+  `rules/foundation.md` and one session-start hint line wire it in. Regression
+  suite included.
+- `/rcode-init` writes `.obsidian/` into the minimal `.gitignore` it creates
+  for a new project.
+
+### Fixed
+
+- `scripts/rcode-units.sh`: on macOS awk a phase name after an em dash was
+  parsed as "— Name", which also emptied the Phase totals.
+- `hooks/dispatch-specialist-check.sh`: the `Begründung Agentenwahl:` marker was
+  not recognised when the hook ran without a UTF-8 locale.
+
+### Changed
+
+- `scripts/tests/publish-manifest-regression.sh` pins the `.obsidian/`
+  exclusion at any depth and announces an override manifest loudly.
+- `docs/PUBLISHING.md` states that publishing is hard-disabled and that the
+  script never pushes.
+
 ## [1.6.1] - 2026-09-27
 
 Maintenance: three routine fixes, a model-era refresh, and verdict-first

@@ -1,0 +1,80 @@
+name: tests
+
+# Runs every regression suite (hooks/tests/*.sh, scripts/tests/*.sh) through
+# scripts/run-all-tests.sh --workshop: the suites exercise the files of this
+# checkout, never an installed copy (CI has no ~/.claude; the runner builds a
+# throwaway HOME). Same entry point as the local `scripts/run-all-tests.sh`
+# and the deploy precondition in scripts/deploy-to-live.sh.
+#
+# The suites were written on macOS. What this job does about that, explicitly:
+#   - stat shim: GNU `stat -f` prints filesystem info instead of failing, which
+#     defeats the suites' `stat -f ... || stat -c ...` fallbacks; the shim
+#     translates the two BSD formats the suites use (%m, %Lp) and fails loud on
+#     any other.
+#   - git identity + init.defaultBranch=main: scripts/deploy-to-live.sh commits
+#     in the workshop repo without -c user.*, and the deploy suite builds repos
+#     whose branch must be called main.
+#   - jq, rsync, gawk installed: scripts/publish* needs rsync; the R.Code gather
+#     scripts need gawk (mawk, the Ubuntu default, mis-parses them).
+#   - Suites that use BSD-only `date -j/-v` (and one macOS symlink case) are
+#     reported as SKIP with their reason by the runner (CLAUDE_TEST_PLATFORM=linux
+#     rules in scripts/run-all-tests.sh) - listed in the log, never silent.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  regression-suites:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install tools the suites need
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq rsync gawk
+
+      - name: Prepare environment (git identity, stat shim)
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "ci@example.invalid"
+          git config --global init.defaultBranch main
+          mkdir -p "$RUNNER_TEMP/shim"
+          cat > "$RUNNER_TEMP/shim/stat" <<'SH'
+          #!/usr/bin/env bash
+          if [ "${1:-}" = "-f" ] && [ $# -lt 3 ]; then
+            echo "stat shim: 'stat -f' needs a format and a file" >&2; exit 2
+          fi
+          if [ "${1:-}" = "-f" ]; then
+            fmt="$2"; shift 2
+            case "$fmt" in
+              %m)  exec /usr/bin/stat -c %Y "$@" ;;
+              %Lp) exec /usr/bin/stat -c %a "$@" ;;
+              *)   echo "stat shim: unsupported BSD format '$fmt'" >&2; exit 2 ;;
+            esac
+          fi
+          exec /usr/bin/stat "$@"
+          SH
+          chmod +x "$RUNNER_TEMP/shim/stat"
+          echo "$RUNNER_TEMP/shim" >> "$GITHUB_PATH"
+
+      - name: Run all regression suites
+        run: bash scripts/run-all-tests.sh --workshop --logs "$RUNNER_TEMP/suite-logs" --junit "$RUNNER_TEMP/junit.xml"
+
+      - name: Upload suite logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-logs
+          path: |
+            ${{ runner.temp }}/suite-logs
+            ${{ runner.temp }}/junit.xml
+          if-no-files-found: warn

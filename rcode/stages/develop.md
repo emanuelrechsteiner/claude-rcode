@@ -28,6 +28,22 @@ sync, agent-log all included). Units with disjoint file-sets may run in
 parallel via the `parallel-dispatch` skill, following the Write-mode
 Worktree & Follow-up Discipline (`~/.claude/rules/parallel-by-default.md`).
 
+**Per-unit fresh-context review.** Workers cannot spawn subagents, so
+after a worker's report-back and BEFORE the next wave or any merge, the
+LEAD spawns, per unit, a fresh `code-reviewer-agent` (no prior context). It
+gets (a) the changed files as absolute paths, (b) the commit hash for
+context, (c) the unit's brief path, never a summary
+(`~/.claude/rules/slop-prevention.md` "Copy, don't interpret"). The reviewer
+has only Read/Grep/Glob and cannot run `git diff`; to show it the diff, the
+lead writes `git show <hash>` to a scratch file and passes that path. The
+lead records `**Review:** <agent> — <verdict> — <pointer>` in the agent-log
+and sets the unit's `Fresh-context review:` field. Verdict `fix N issues
+first`: the lead sends the unit back to a worker (or amends/reverts) and
+neither merges nor builds on it; the user may overrule via the lead as
+arbiter. This gate is prose-enforced; no hook checks it. Bug-fix units need
+RED-first; allowed `RED evidence` values are defined once in
+`~/.claude/commands/issue.md` Step 4.1.
+
 A unit that renders something visible (a page, a component, a game state)
 is not reported done on a green test suite alone — route the rendered
 result through `visual-qa-agent` or the `human-testing` skill before

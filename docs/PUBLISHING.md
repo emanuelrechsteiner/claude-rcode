@@ -1,10 +1,12 @@
 <!--
 Status: ACTIVE
-Last Updated: 2026-08-06
+Last Updated: 2026-10-08
 Purpose: Publish-pipeline architecture, runbook, and PR-governance model for the private→public repo mirror.
 -->
 
 # Publishing — architecture & runbook
+
+> **Publishing is hard-disabled since 2026-08-12** (owner decision, private-layer protection): `scripts/publish.sh` exits at its `PUBLISH_DISABLED=1` line before doing anything. Re-enabling is a deliberate edit of that one line, never an environment override. Even when enabled, the script never pushes — it stages, transforms, scrub-checks, commits into the public dir and prints the `git push` command for a human to run. The runbook below describes the enabled state.
 
 This document explains how `claude-code-config` (private) and `claude-rcode`
 (public) relate, how to actually run a publish, how to handle a public PR,
@@ -258,7 +260,7 @@ The deployment URLs Vercel prints (`*-<team>.vercel.app`) are protected by
 Vercel's SSO and answer 302; the production alias above answers 200 and is
 the only URL that belongs in docs, badges and `og:` tags. Absolute URLs are
 baked into every page's `<link rel="canonical">`, `og:url`, `og:image` and
-`twitter:image` — change them in all six pages if the alias ever changes.
+`twitter:image` (`assets/brand/og-image.png`, 1200×630) — change them in all six pages if the alias ever changes.
 
 The GitHub repository's *social preview* image
 (`docs/assets/brand/social-preview.png`, 1280×640) has no API — upload it

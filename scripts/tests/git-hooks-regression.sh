@@ -247,6 +247,18 @@ git -C "$T3" add structural.txt
 git -C "$T3" commit -q -m "add structural leak" >/dev/null 2>"$SCRATCH/err3"
 check_exit "commit with a structural /Users/ pattern is blocked" 1 "$?"
 
+echo "== pre-commit: VAULT_PRECOMMIT_BYPASS is the logged override (IMP-240) =="
+# T3 still has the staged structural leak. Blank reason must refuse; a real reason must pass and be logged.
+ERRB="$(VAULT_PRECOMMIT_BYPASS=" " git -C "$T3" commit -m "blank bypass" 2>&1)"
+check_exit "blank VAULT_PRECOMMIT_BYPASS refuses the commit" 1 "$?"
+echo "$ERRB" | grep -q "needs a reason" && ok "blank bypass message says it needs a reason" || bad "blank bypass message" "$ERRB"
+VAULT_PRECOMMIT_BYPASS="synthetic test reason" git -C "$T3" commit -q -m "bypass with reason" >/dev/null 2>&1
+check_exit "VAULT_PRECOMMIT_BYPASS with a reason lets the commit through" 0 "$?"
+BLOG="$T3/.git/vault-bypass.log"
+grep -q "synthetic test reason" "$BLOG" 2>/dev/null && ok "bypass reason is logged to <git-common-dir>/vault-bypass.log" || bad "bypass log" "no reason line in $BLOG"
+awk -F'\t' 'NF==6' "$BLOG" 2>/dev/null | grep -q . && ok "bypass log line carries branch + HEAD sha + file count" || bad "bypass log shape" "$(cat "$BLOG" 2>/dev/null)"
+grep -n -e "--no-verify" "$PRECOMMIT_SRC" | grep -v '^[0-9]*:#' >/dev/null && bad "pre-commit still recommends --no-verify" "non-comment hit" || ok "pre-commit messages no longer recommend --no-verify"
+
 echo "== pre-commit: renamed file with injected content is blocked (diff-filter includes R) =="
 T9="$(new_temp_repo)"
 require_temp_repo T9

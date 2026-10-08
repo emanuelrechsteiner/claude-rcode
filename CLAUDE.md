@@ -4,79 +4,34 @@
 >
 > **Before you change anything, run `pwd` to find out where you are.**
 >
-> | `pwd` ends in … | You are in the … | What applies here |
+> | `pwd` ends in … | You are in the … | What applies |
 > |---|---|---|
-> | `…/claude-code-config` | **WORKSHOP** (working copy) | Development and commits happen here. Nothing here is live. **This is the right place for changes.** |
-> | `~/.claude` | **LIVE INSTALL** (installation) | What Claude Code actually reads. **Do NOT edit by hand here** — only `claude-deploy` writes here. **Exception:** git-ignored `rules/*.local.md` overlays are machine-local by design and edited here in place. |
+> | `…/claude-code-config` | **WORKSHOP** (`<WORKSHOP>`; real path in `~/.claude/env.local.sh`) | Development, review, commits. Nothing here is live. |
+> | `~/.claude` | **LIVE INSTALL** | What Claude Code actually reads; receives only finished deploys. **Do NOT edit by hand** — only `claude-deploy` writes here. **Exception:** git-ignored `rules/*.local.md` overlays are machine-local by design and edited here in place. |
 >
-> **The three rules for agents:**
-> 1. **Changes go in the workshop only.** Edit `~/.claude/...` directly, and the change is lost at the next deploy (fast-forward conflict) — and it goes live immediately, mid-session.
-> 2. **You cannot verify your own work in your own session.** Claude Code reads rules, hooks, and skills at **session start**. What you change only takes effect in a **new** session after `claude-deploy`. Never claim "it works" — write down what the user needs to verify.
-> 3. **What you CAN verify yourself:** call hook scripts and shell tools directly (pipe JSON via stdin, check exit code and output), `jq . settings.json` for syntax checking, run existing regression suites under `hooks/tests/`. Always do this before reporting done.
+> 1. **Changes go in the workshop only.** An edit to `~/.claude/...` goes live immediately, mid-session, and is lost at the next deploy (fast-forward conflict).
+> 2. **You cannot verify your own work in your own session:** rules, hooks, and skills load at session start, so a change takes effect only in a **new** session after `claude-deploy`. Never claim "it works" — write down what the user needs to verify.
+> 3. **Always verify what you CAN before reporting done:** call hook scripts and shell tools directly (pipe JSON via stdin, check exit code and output), `jq . settings.json` for syntax, the regression suites under `hooks/tests/`.
 >
-> Full workshop conventions incl. acceptance protocol: **`docs/WORKING-IN-THIS-REPO.md`**.
-> Deploy to the live install: `claude-deploy [config|cockpit|all]`.
-
-> You orchestrate, agents execute. Use specialized agents for heavy implementation and forked skills for diagnostics/utilities.
+> Deploy: `claude-deploy [config|cockpit|all]` — clean workshop only, fast-forward only, effective from the next session. The live install and the Cockpit copy `~/.claude/cockpit` (7 hook entries + the status line point there) stay local and complete — no symlink onto the SSD. Environment values go in the shell (`~/.zshrc`); values that must arrive even without a shell profile go in `settings.json`'s `env` block — **never secrets**, the file is public. The deploy pulls runtime keys (`model`, `effortLevel`, `modelSettings`; IMP-127/194) back into the workshop; runtime data, remotes: `docs/FRAMEWORK-REFERENCE.md` §Two locations; conventions + acceptance protocol: `docs/WORKING-IN-THIS-REPO.md`.
 
 ## System Architecture
 
-Rules, commands, skills, agents, hooks, scheduled tasks. **Counts are GENERATED, never hand-maintained:** `scripts/framework-inventory.sh`. **Rules is the one count that differs by location — state both, never one:** workshop 21 tracked, live install 24 after `claude-deploy` (+3 git-ignored `*.local.md`). Inventory/history: `docs/FRAMEWORK-REFERENCE.md`; architecture: `HARNESS.md`; changes: `global-observation/improvement-ledger.json`.
-
-### Two places: the workshop and the inhabited live install
-
-`<WORKSHOP>` = working copy of this repo outside `~/.claude` (real path stored locally in `~/.claude/env.local.sh`).
-
-| Place | Role | Path |
-|---|---|---|
-| **Workshop** (working copy) | Development, review, and commits happen here. Nothing here is live. | `<WORKSHOP>` |
-| **Live install** (installation) | What Claude Code actually reads. Receives only finished deploys. | `~/.claude` |
-
-Remotes: workshop `origin` + `live` (the live install); live install `origin` + `workshop` (the workshop). `claude-deploy [config|cockpit|all]`: only with a clean workshop, fast-forward only, takes effect from the next session; pulls runtime keys (`model`, `effortLevel`, `modelSettings`; IMP-127/194) back into the workshop. Runtime data lives only in the live install. Put environment values in the shell (`~/.zshrc`); values that must arrive even without a shell profile go in `settings.json`'s `env` block — **never secrets**, this file is public. The live install stays complete (no symlink onto the SSD), and so does the Cockpit copy `~/.claude/cockpit` (7 hook entries + the status line point there) — it must be local and complete. More: `docs/WORKING-IN-THIS-REPO.md`, `docs/FRAMEWORK-REFERENCE.md`.
+**Counts are GENERATED, never hand-maintained:** `scripts/framework-inventory.sh`. **Rules is the one count that differs by location — state both, never one:** workshop 21 tracked, live install 24 after `claude-deploy` (+3 git-ignored `*.local.md`). Inventory/history (incl. key files and archived agents): `docs/FRAMEWORK-REFERENCE.md`; architecture: `HARNESS.md`; changes: `global-observation/improvement-ledger.json`.
 
 ### Auto-Loaded Rules (always in context)
 
-| Rule | Governs |
-|---|---|
-| foundation, parallel-by-default, recommend-on-ask | Orchestration, dispatch, questions |
-| agency-bands, agents-as-users, security, fail-loud | Safety, authz, secrets |
-| code-quality, testing-quality, slop-prevention | Code and test quality |
-| workflow-git, identity | Git, identity |
-| tool-discipline, mcp-tool-usage, context-engineering, api-cost-optimization | Tools, MCP, context, models |
-| documentation, planning-doc-convention, domain-docs-convention, docs-first-integration, web-research-trust | Docs, plans, ADRs, research |
-
-Demoted to on-demand skills: legacy-codebase-audit, rcode-ios, framework-extraction, kokonutui-pro (IMP-079); release-cli-discipline, cloud-cli-discipline (IMP-218). phase-backward-transitions → `rcode/stages/backward-transitions.md`. Evidence moved out of the rules: `docs/archive/rules-evidence/`.
+Every tracked `rules/*.md` plus the live install's `*.local.md` overlays; topic map: `docs/FRAMEWORK-REFERENCE.md` §Auto-Loaded Rules. Evidence moved out of each rule: `docs/archive/rules-evidence/<rule>.md`.
 
 ### Agents (Task tool)
 
-| Agent | Model | Use |
-|---|---|---|
-| control-agent | fable | Orchestrator, arbiter |
-| planning-agent | opus | Architecture |
-| backend-agent | sonnet | APIs, DB, auth |
-| testing-agent | sonnet | Tests |
-| code-reviewer-agent | sonnet | Read-only review |
-| cleanup-agent | haiku | Dead code |
-| ui-agent | sonnet | UI components |
-| visual-qa-agent | sonnet | Browser QA |
-| research-agent | haiku | Research; may `Write` a NEW report file, never Edit |
-| documentation-agent | sonnet | Daily-Docs only; ad-hoc docs → `documentation` skill |
-| version-control-agent | sonnet | Git, report-only |
-| pattern-extractor-agent | sonnet | /lessons Step 6; ad-hoc → `pattern-document` skill |
+Roster with models: `docs/FRAMEWORK-REFERENCE.md` §Agents; each agent's use-when is its `agents/*.md` description; the Need → Agent map is in `rules/foundation.md`. pattern-extractor-agent: /lessons Step 6; ad-hoc → `pattern-document` skill.
 
-Archived: ux-agent (→ ux-design), improvement-agent (→ observation pipeline). **Retire an agent by moving it OUT of `agents/`; a subfolder does nothing.**
+**Retire an agent by moving it OUT of `agents/`; a subfolder does nothing.**
 
 ### Skills
 
-| Skill | Mode | Use |
-|---|---|---|
-| validate-build, research, version-control, nextjs-debug, worktree-consolidate, memory-index | forked, haiku | Utilities |
-| pattern-document, documentation, scroll-animation-patterns, quality-review | forked, sonnet | Docs, patterns, review |
-| meta-observer; prototype | forked (opus); forked | IMP proposals; spikes |
-| scope-check, rcode-onboard, grilling, resolving-merge-conflicts | main | Scope, onboard, grill, merge |
-| create-hook, create-rule, create-skill, create-subagent, migrate-to-skills | creation | Author framework assets |
-| legacy-codebase-audit, rcode-ios, framework-extraction, kokonutui-pro, release-cli-discipline, cloud-cli-discipline | on-demand | Demoted rules — load on their topic |
-| react-perf-check, tailwindcss-v4-styling, import-fixer, fix-review, orchestration | background | Auto-trigger only |
+Demoted rules live as on-demand skills — load them on their topic: legacy-codebase-audit, rcode-ios, framework-extraction, kokonutui-pro (IMP-079); release-cli-discipline, cloud-cli-discipline (IMP-218). Forked, sonnet: pattern-document, documentation, scroll-animation-patterns, quality-review. Background, auto-trigger only: react-perf-check, tailwindcss-v4-styling, import-fixer, fix-review, orchestration. Full list with modes: `docs/FRAMEWORK-REFERENCE.md` §Forked Skills.
 
 ### Hooks (registered in `settings.json`)
 
@@ -87,49 +42,24 @@ Archived: ux-agent (→ ux-design), improvement-agent (→ observation pipeline)
 | Token | Scopes | Semantics |
 |-------|--------|-----------|
 | `CLAUDE_GUARD_OVERRIDE` | `guard-unsafe.sh` | One-shot, inline-from-command-string, logged. Approves a single guarded command. |
-| `CLAUDE_AGENCY_ACK_ONCE=<sha256>` | `excessive-agency-gate.sh` (the bash gate) | Op-bound + single-use + inline-visible + logged (`authorizer=user`). The sha is computed over the normalized (data-stripped, whitespace-collapsed) op signature; a mismatch logs `ack-mismatch` and still blocks; a replay re-blocks. **Replaces the old `CLAUDE_GATEGUARD_OFF` for the bash gate.** |
+| `CLAUDE_AGENCY_ACK_ONCE=<sha256>` | `excessive-agency-gate.sh` (the bash gate) | Op-bound, single-use, inline-visible, logged (`authorizer=user`); contract: [[agency-bands]]. Replaces the old `CLAUDE_GATEGUARD_OFF` for the bash gate — that flag scopes only `gateguard.sh`; a persistent disable would live in `settings.json` `env`, not an inline `export`. |
 | `CLAUDE_CONFIG_PROTECT_OFF` | `config-protection.sh` | Recoverable override for protected-config edits. |
-
-`CLAUDE_GATEGUARD_OFF` scopes only `gateguard.sh`, not the bash gate; a persistent disable would live in `settings.json` `env`, not a bare inline `export`.
 
 ### Observation Pipeline
 
-Signals feed `/meta-observe` proposals; weekly-improve writes back:
-
-> **Trust boundary — do not widen it:** `ledger-append-proposed.sh` writes `status:"proposed"` and
-> nothing else. It never promotes to `implemented` and never applies a change. Observation data must
-> not write framework governance; a human is the gate. Idempotent via a `sourceProposal` dedup key.
-
-Key files: observation-capture.sh, session-end-check.sh, meta-observer, compute-daily-metrics.sh, improvement-ledger.json.
+Signals feed `/meta-observe` proposals; weekly-improve writes back. **Trust boundary — do not widen it:** `ledger-append-proposed.sh` writes only `status:"proposed"` — never promotes to `implemented`, never applies a change; observation data must not write framework governance, a human is the gate.
 
 ### Scheduled Tasks
 
-`scheduled-tasks/<task>/SKILL.md` is read as prompt at fire time (editing it updates the task, no re-registration); runtime state: `mcp__scheduled-tasks__list_scheduled_tasks` / `/schedule`. Run by launchd (`scripts/routine-run.sh`, installer `scripts/install-routine-timers.sh`), watched by routine-liveness-check.sh. A run without a log line is indistinguishable from one that never fired.
-
-| Task | Schedule | Run log (mandatory since IMP-075) |
-|---|---|---|
-| daily-docs | 07:10 daily | daily-docs-log.jsonl |
-| nightly-observation | 02:05 daily | nightly-obs-log.jsonl |
-| weekly-improve | Sunday 22:06 | weekly-improve-log.jsonl |
+`scheduled-tasks/<task>/SKILL.md` is read as prompt at fire time (editing it updates the task, no re-registration); runtime state: `mcp__scheduled-tasks__list_scheduled_tasks` / `/schedule`; every run must leave a run-log line (IMP-075) — else it is indistinguishable from one that never fired. Schedules, runner: `docs/FRAMEWORK-REFERENCE.md` §Scheduled Tasks.
 
 ### R.Code
 
-For projects with a `.rcode/` directory, use the R.Code workflow. **`/team-lead "<directive>"` is THE entrance** (and the generic controller outside R.Code): picks the **Stage** — Plan, Design, Develop, Test, Launch; never "Phase" (= milestone) — loads its `rcode/stages/` playbook, dispatches. `/plan-team` … `/launch-team` are thin aliases that force their Stage.
-
-Tracker in `.rcode/config.json`: `github` (issues) or `plan` (`P-NNN` in `BRAINSTORM.md`). /decompose, /rcode-init, /rcode-migrate set it; the rest read it.
-
-| Kind | Commands |
-|---|---|
-| Setup | /rcode-init (greenfield; `git init`/commit/remote behind one y/n even in autonomous mode), /brainstorm, /simple-onboard (any repo; offers /rcode-migrate), /rcode-migrate (GitHub/commit mutations behind y/n) |
-| Units | /decompose, /issue \<unit\>, /rcode-review (the only review command — `/review` never existed) |
-| Periodic | /status-sync, /phase-gate \<N\>, /lessons, /rcode-upgrade (per-file y/n, never clobbers customized rules) |
-| Session | /continue, /handoff, /autonomous-overnight (unattended; queues ESCALATE ops, never auto-approves) |
-
-Rails install per project. 22 commands (verify with `framework-inventory.sh`); /rcode-onboard is a skill. Before asserting availability on any machine, check `ls ~/.claude/commands/ | grep -i team`, not a doc. A backward Stage-jump requires a documented futility proof (`rcode/stages/backward-transitions.md`).
+Projects with a `.rcode/` directory use the R.Code workflow. **`/team-lead "<directive>"` is THE entrance** (also the generic controller outside R.Code); it picks the **Stage** (Plan, Design, Develop, Test, Launch — never "Phase", a milestone); `/plan-team` … `/launch-team` force their Stage. Tracker in `.rcode/config.json`: `github` (issues) or `plan` (`P-NNN` in `BRAINSTORM.md`), set by /decompose, /rcode-init, /rcode-migrate. Rails install per project. 22 commands (verify with `framework-inventory.sh`); /rcode-onboard is a skill. Before asserting availability on any machine, check `ls ~/.claude/commands/ | grep -i team`, not a doc. A backward Stage-jump requires a documented futility proof (`rcode/stages/backward-transitions.md`). Commands: /rcode-init, /brainstorm, /simple-onboard, /rcode-migrate, /decompose, /issue \<unit\>, /rcode-review (the only review command — `/review` never existed), /status-sync, /phase-gate \<N\>, /lessons, /rcode-upgrade, /continue, /handoff, /autonomous-overnight. Each command's y/n gates: `docs/FRAMEWORK-REFERENCE.md` §R.Code.
 
 ### Output Style — Hausbau (personal preference, opt-in)
 
-`output-styles/hausbau.md`, house-building metaphor, for readers who are not deeply technical. This is the owner's own runtime preference (own `settings.json`, same category as `model`/`effortLevel`) — not a framework default; publish transform 40 strips `outputStyle` on release, so the public framework answers in plain developer language and anyone can opt in with `/output-style Hausbau`. `keep-coding-instructions: true` is load-bearing; `false` (default) strips the built-in engineering instructions. Main thread only, read at session start; a project-level `outputStyle` would override it. Facts stay concrete, the metaphor never softens a defect; where construction has no honest counterpart, say so and explain directly.
+`output-styles/hausbau.md` — house-building metaphor for readers who are not deeply technical — is the owner's runtime preference, not a framework default (publish transform 40 strips `outputStyle` on release; opt in with `/output-style Hausbau`). `keep-coding-instructions: true` is load-bearing: `false`, the default, strips the built-in engineering instructions. Main thread only, read at session start; a project-level `outputStyle` overrides it. Facts stay concrete; the metaphor never softens a defect; where construction has no honest counterpart, say so and explain directly.
 
 ### Token Optimization
 
@@ -137,19 +67,27 @@ Rails install per project. 22 commands (verify with `framework-inventory.sh`); /
 
 ### Behavioral Directives
 
-1. **Automatic development recognition**: build/create/develop → 5-phase workflow (`rules/foundation.md`).
-2. **Delegate-by-default posture**: the main thread acts as control-agent (plan, delegate, synthesize) and delegates implementation to specialists; skip-list in `rules/foundation.md`, 2+ independent units per `parallel-by-default.md`; opt-out `CLAUDE_PARALLEL_AUTO_SUGGEST=0`.
-3. **Use control-agent for multi-domain work**: 3+ agents → `control-agent` first, the Autonomy Arbiter: sub-agents never ask the user directly, they report ESCALATE-band ops up and it consolidates one verbatim y/n per logical operation. Coordination (recommended, not mandatory): brief intent before action (what + why + expected output), concrete results after (files changed, decisions, blockers).
-4. **Commit discipline**: every 60 min; report-only default per `workflow-git.md`.
-5. **Error recovery**: If an agent reports a blocker → assess → spawn resolution agent → resume.
-6. **Context hygiene**: `/clear` between unrelated tasks.
-7. **Routine awareness**: daily-docs writes a Notion scaffold, filled during the day.
+1. **Development recognition:** build/create/develop → 5-phase workflow (`rules/foundation.md`).
+2. **Delegate by default** — you orchestrate, agents execute (specialized agents for heavy implementation, forked skills for diagnostics/utilities); skip-list: `rules/foundation.md`; 2+ independent units: `parallel-by-default.md`; opt-out `CLAUDE_PARALLEL_AUTO_SUGGEST=0`.
+3. **Multi-domain work:** 3+ agents → `control-agent` first, the Autonomy Arbiter — sub-agents never ask the user directly ([[agency-bands]]); recommended, not mandatory: brief intent before action (what + why + expected output), concrete results after (files changed, decisions, blockers).
+4. **Commit discipline:** every 60 min; report-only default per `workflow-git.md`.
+5. **Error recovery:** blocker → assess → spawn resolution agent → resume.
+6. **Context hygiene:** `/clear` between unrelated tasks.
+7. **Routine awareness:** daily-docs writes a Notion scaffold, filled during the day.
+
+## External collaboration — Moin Latif / karst (since 2026-10-06)
+
+- **Finding, verified 2026-10-06 against `commands/team-lead.md`:** `/team-lead` checks unit independence at task level only ("disjoint files, no output→input chain"). There is no code-level check (callers, imports) before dispatch. **Two agents on disjoint file sets can still break each other through callers.** An impact check before dispatch would close that gap.
+- **Who:** Moin Latif builds **karst** (github.com/Moin105/karst): local MCP server, tree-sitter call graph, tool `find_impact` (blast radius of a change), Python, Apache-2.0, six languages; as of 2026-10-06 early (0 stars, 53 commits).
+- **His proposal:** a deterministic **pre-Edit gate** — blast radius CRITICAL or graph coverage short → human y/n, like the force-push gate — plus one impact check before `/team-lead` dispatch. He offered to wire a prototype against our hooks. The maintainer accepted the collaboration (LinkedIn thread, 2026-10-06).
+- **Design line for the prototype:** fail closed — if karst is slow or fails, the gate blocks and asks. Keep the gate a plain script (no model in the loop), consistent with [[agency-bands]].
+- **Status:** waiting for his prototype (thread or GitHub issue). If it arrives as a PR on `claude-rcode`: `pr-guard` blocks the merge by design; review it there, then `scripts/backport-pr.sh <PR>` here (CONTRIBUTING.md, checked 2026-10-06, public copy is current).
+- **Knowledge base for the LinkedIn side (read-only from here):** `/Volumes/<VOLUME>/COWORK/CPI_APP_R.Code/promo/linkedin-monitor/ledger/` (`<VOLUME>` = the volume in `CLAUDE_BAUHOF_ROOT`, `~/.claude/env.local.sh`) — `ledger.db` (SQLite), `ledger.py` (`python3 ledger.py query "SELECT …"`), `README.md` (schema, IDs, relevance scale), `exports/ledger.md` (readable view). Private, never published. Thread record: P-016, C-016, C-024, C-027.
+- Nothing implemented yet; no hook, rule or changelog entry until the prototype lands and is reviewed. Private context: this file is not in `publish-manifest.txt`.
 
 ## Graphify — Knowledge-Graph Tool (external, installed 2026-07-31, IMP-109)
 
-**Durable framework note. The `## graphify` section below is TOOL-OWNED and gets overwritten — put nothing here that matters into it.**
-
-Global (`~/.local/bin/graphify`), nudge-only (strict toggle `GRAPHIFY_HOOK_STRICT`, not enabled), inert until `graphify-out/graph.json` exists, fails open; removal: `graphify uninstall`. `graphify claude install` has **no global mode** — it writes `./CLAUDE.md` + `./.claude/settings.json` in the *cwd only*; re-running it in a project installs a **second, project-scoped** copy. See `docs/FRAMEWORK-REFERENCE.md`.
+**Durable note: the `## graphify` section below is TOOL-OWNED and gets overwritten — put nothing that matters into it.** Global (`~/.local/bin/graphify`), nudge-only (strict toggle `GRAPHIFY_HOOK_STRICT`, off), inert until `graphify-out/graph.json` exists, fails open; remove with `graphify uninstall`. `graphify claude install` has **no global mode**: it writes `./CLAUDE.md` + `./.claude/settings.json` in the cwd only, so re-running it in a project installs a **second, project-scoped** copy.
 
 ## graphify
 

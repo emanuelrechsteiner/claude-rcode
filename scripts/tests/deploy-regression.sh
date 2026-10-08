@@ -20,6 +20,12 @@ check(){ # check <name> <expected> <got>
   if [ "$2" = "$3" ]; then ok; else bad "$1" "expected='$2' got='$3'"; fi
 }
 
+# IMP-243: deploy-to-live.sh runs scripts/run-all-tests.sh first. The dummy
+# workshops below have no runner, so every case except section R skips that
+# gate explicitly (with the mandatory reason); section R tests the gate itself.
+export CLAUDE_DEPLOY_SKIP_TESTS=1
+export CLAUDE_DEPLOY_SKIP_REASON="deploy-regression: dummy workshop has no runner"
+
 G() { git -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false "$@"; }
 
 # A settings.json with a STABLE key order: model comes first,
@@ -307,6 +313,124 @@ LEFTOVER_Q=("$BACKUP_TMPDIR_Q"/deploy-haus-only-backup.*)
 shopt -u nullglob
 check "restore-success/no-backup-file-left" 0 "${#LEFTOVER_Q[@]}"
 teardown
+
+# ── R) IMP-243: the deploy refuses unless the regression suites are green ─────
+# The workshop gets a stub scripts/run-all-tests.sh (committed, workshop stays
+# clean) that records its arguments and exits with the chosen status.
+make_runner() { # make_runner <exit-code>  (commits a stub runner into $WS)
+  mkdir -p "$WS/scripts"
+  cat > "$WS/scripts/run-all-tests.sh" <<STUB
+#!/usr/bin/env bash
+echo "\$*" >> "$ROOT/runner-args"
+echo "[\${CLAUDE_TEST_SKIP_RULES:-}]" > "$ROOT/runner-env"
+echo "1 suites: \$([ $1 -eq 0 ] && echo 1 || echo 0) pass, \$([ $1 -eq 0 ] && echo 0 || echo 1) fail, 0 timeout, 0 skip"
+exit $1
+STUB
+  echo "Rule R" > "$WS/rules-r.md"
+  G -C "$WS" add -A && G -C "$WS" commit -q -m "runner + Rule R"
+}
+run_gated() { # run_gated [env assignments...] -> OUT, returns exit code
+  OUT=$(env -u CLAUDE_DEPLOY_SKIP_TESTS -u CLAUDE_DEPLOY_SKIP_REASON "$@" \
+        CLAUDE_WORKSHOP_ROOT="$ROOT/workshop" CLAUDE_LIVE_CONFIG="$LIVE" bash "$DEPLOY" config 2>&1)
+  return $?
+}
+arrived() { [ -f "$LIVE/rules-r.md" ] && echo 1 || echo 0; }
+
+setup; make_runner 0; run_gated A=1; RC=$?
+check "gate-green/exit0"            0 "$RC"
+check "gate-green/rule-arrived"     1 "$(arrived)"
+check "gate-green/runner-got-workshop-flag" "--workshop" "$(cat "$ROOT/runner-args")"
+check "gate-green/runner-called-once" 1 "$(wc -l < "$ROOT/runner-args" | tr -d ' ')"
+check "gate-green/summary-printed"  1 "$(echo "$OUT" | grep -c '^1 suites: 1 pass, 0 fail')"
+teardown
+
+setup; make_runner 1; run_gated A=1; RC=$?
+check "gate-red/refuses"            1 "$RC"
+check "gate-red/prints-summary"     1 "$(echo "$OUT" | grep -c '^1 suites: 0 pass, 1 fail')"
+check "gate-red/says-refusing"      1 "$(echo "$OUT" | grep -c 'refusing to deploy')"
+check "gate-red/live-untouched"     0 "$(arrived)"
+teardown
+
+setup; make_runner 1; run_gated CLAUDE_DEPLOY_SKIP_TESTS=1; RC=$?
+check "gate-skip-no-reason/refuses" 1 "$RC"
+check "gate-skip-no-reason/names-reason-var" 1 "$(echo "$OUT" | grep -c 'CLAUDE_DEPLOY_SKIP_REASON')"
+check "gate-skip-no-reason/live-untouched" 0 "$(arrived)"
+check "gate-skip-no-reason/runner-not-run" 0 "$([ -f "$ROOT/runner-args" ] && echo 1 || echo 0)"
+teardown
+
+setup; make_runner 1; run_gated CLAUDE_DEPLOY_SKIP_TESTS=1 CLAUDE_DEPLOY_SKIP_REASON="runner broken on this host"; RC=$?
+check "gate-skip-reason/exit0"      0 "$RC"
+check "gate-skip-reason/rule-arrived" 1 "$(arrived)"
+check "gate-skip-reason/warns-with-reason" 1 "$(echo "$OUT" | grep -c 'SKIPPED.*runner broken on this host')"
+check "gate-skip-reason/logged-in-checklist" 1 "$(grep -c 'runner broken on this host' "$LIVE/pending-verification.md")"
+check "gate-skip-reason/runner-not-run" 0 "$([ -f "$ROOT/runner-args" ] && echo 1 || echo 0)"
+teardown
+
+setup; run_gated A=1; RC=$?
+check "gate-no-runner/refuses"      1 "$RC"
+check "gate-no-runner/says-missing" 1 "$(echo "$OUT" | grep -c 'test runner not found')"
+teardown
+
+# red runner + dirty live runtime key: the gate fires before sync_runtime_prefs,
+# so the workshop gets no pull-back commit and its HEAD does not move
+setup; make_runner 1
+jq '.model = "opus"' "$LIVE/settings.json" > "$LIVE/s.tmp" && mv "$LIVE/s.tmp" "$LIVE/settings.json"
+HEAD_BEFORE=$(G -C "$WS" rev-parse HEAD); run_gated A=1; RC=$?
+check "gate-order/refuses"                 1 "$RC"
+check "gate-order/workshop-head-unchanged" "$HEAD_BEFORE" "$(G -C "$WS" rev-parse HEAD)"
+teardown
+
+# what lands must be what was tested: dirty workshop / wrong branch refuse
+setup; make_runner 0; echo dirty > "$WS/dirty.txt"; run_gated A=1; RC=$?
+check "gate-dirty-ws/refuses"              1 "$RC"
+check "gate-dirty-ws/runner-not-run"       0 "$([ -f "$ROOT/runner-args" ] && echo 1 || echo 0)"
+teardown
+setup; make_runner 0; G -C "$WS" checkout -q -b feature; run_gated A=1; RC=$?
+check "gate-not-main/refuses"              1 "$RC"
+check "gate-not-main/names-branch"         1 "$(echo "$OUT" | grep -c "'feature'")"
+teardown
+
+# blank reason is no reason; the skip is recorded durably even when up to date
+setup; make_runner 1; run_gated CLAUDE_DEPLOY_SKIP_TESTS=1 CLAUDE_DEPLOY_SKIP_REASON="   "; RC=$?
+check "gate-skip-blank-reason/refuses"     1 "$RC"
+teardown
+setup; run_gated CLAUDE_DEPLOY_SKIP_TESTS=1 CLAUDE_DEPLOY_SKIP_REASON="  nothing to test  "; RC=$?
+check "gate-skip-uptodate/exit0"           0 "$RC"
+check "gate-skip-uptodate/up-to-date"      1 "$(echo "$OUT" | grep -c 'already up to date')"
+check "gate-skip-uptodate/durable-record"  1 "$(grep -c 'reason=nothing to test$' "$LIVE/global-observation/deploy-skips.log")"
+teardown
+
+# operator CLAUDE_TEST_* env must not reach the runner; with the REAL runner a
+# skip-everything rule is therefore ignored and the suite really runs
+setup; make_runner 0; run_gated CLAUDE_TEST_SKIP_RULES='*|*|x'; RC=$?
+check "gate-env/stub-sees-no-skip-rules"   "[]" "$(cat "$ROOT/runner-env")"
+teardown
+setup
+mkdir -p "$WS/scripts" "$WS/hooks/tests"
+cp "$SCRIPT_DIR/../run-all-tests.sh" "$WS/scripts/run-all-tests.sh"
+printf '#!/usr/bin/env bash\necho ran-ok\n' > "$WS/hooks/tests/ok-regression.sh"
+G -C "$WS" add -A && G -C "$WS" commit -q -m "real runner + one suite"
+run_gated CLAUDE_TEST_SKIP_RULES='*|*|x' CLAUDE_TEST_PLATFORM=nonsense; RC=$?
+check "gate-env/real-runner-exit0"         0 "$RC"
+check "gate-env/suite-really-ran"          1 "$(echo "$OUT" | grep -c '^PASS .*ok-regression')"
+teardown
+
+# target scoping: cockpit alone never runs the suites; "all" runs them once
+for T in cockpit all; do
+  setup; make_runner 0
+  CWS="$ROOT/workshop/cockpit"; CLIVE="$ROOT/live-cockpit"; SHIM="$ROOT/bin"; mkdir -p "$CWS" "$SHIM"
+  printf '#!/bin/sh\nexit 0\n' > "$SHIM/npm"; chmod +x "$SHIM/npm"
+  echo '{"name":"c","private":true}' > "$CWS/package.json"
+  G -C "$CWS" init -q -b main && G -C "$CWS" add -A && G -C "$CWS" commit -q -m init
+  G clone -q "$CWS" "$CLIVE"; G -C "$CLIVE" remote add workshop "$CWS"
+  OUT=$(env -u CLAUDE_DEPLOY_SKIP_TESTS -u CLAUDE_DEPLOY_SKIP_REASON PATH="$SHIM:$PATH" \
+        CLAUDE_WORKSHOP_ROOT="$ROOT/workshop" CLAUDE_LIVE_CONFIG="$LIVE" CLAUDE_LIVE_COCKPIT="$CLIVE" \
+        bash "$DEPLOY" "$T" 2>&1); RC=$?
+  check "target-$T/exit0" 0 "$RC"
+  [ "$T" = cockpit ] && WANT=0 || WANT=1
+  check "target-$T/runner-calls" "$WANT" "$([ -f "$ROOT/runner-args" ] && wc -l < "$ROOT/runner-args" | tr -d ' ' || echo 0)"
+  teardown
+done
 
 # ── Cockpit with new commits: dependencies must be synced ──────────────────────
 # Found 2026-09-24: `[ "$name" = "config" ] && write_pending_verification …`

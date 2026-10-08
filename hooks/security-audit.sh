@@ -30,7 +30,36 @@ if [[ "$FILE_PATH" =~ \.env(\.|$) ]] || \
     exit 0
 fi
 
+# Shared secret-shape regexes (PEM, JWT) from scripts/lib/secret-patterns.sh
+# (IMP-244). scrub-check.sh can source this lib (not yet switched).
+# Missing lib fails CLOSED, except when the edit targets the lib itself (repair).
+PATTERN_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/lib/secret-patterns.sh"
+if [[ -f "$PATTERN_LIB" ]]; then
+    # shellcheck source=/dev/null
+    source "$PATTERN_LIB"
+elif [[ "$FILE_PATH" =~ /scripts/lib/secret-patterns\.sh$ ]]; then
+    SECRET_RE_PEM="" SECRET_RE_JWT=""
+else
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] PATTERN LIB MISSING: $PATTERN_LIB" >> "$LOG"
+    echo "BLOCKED: security-audit.sh cannot load $PATTERN_LIB (missing); restore it before editing." >&2
+    exit 2
+fi
+if [[ -z "${SECRET_RE_PEM:-}" || -z "${SECRET_RE_JWT:-}" ]] && ! [[ "$FILE_PATH" =~ /scripts/lib/secret-patterns\.sh$ ]]; then
+    echo "BLOCKED: security-audit.sh: $PATTERN_LIB defines no SECRET_RE_PEM/SECRET_RE_JWT." >&2
+    exit 2
+fi
+
 ISSUES=""
+
+# PEM private key block
+if [[ -n "$SECRET_RE_PEM" ]] && echo "$CONTENT" | grep -qE -- "$SECRET_RE_PEM"; then
+    ISSUES+="PEM private key block. "
+fi
+
+# JWT (three base64url segments, eyJ prefix)
+if [[ -n "$SECRET_RE_JWT" ]] && echo "$CONTENT" | grep -qE "$SECRET_RE_JWT"; then
+    ISSUES+="JSON Web Token (eyJ*.eyJ*.*). "
+fi
 
 # GitHub Fine-Grained PAT (the format found in the 2026-05-24 audit)
 if echo "$CONTENT" | grep -qE 'github_pat_[A-Za-z0-9_]{82}'; then

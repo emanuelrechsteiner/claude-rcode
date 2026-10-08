@@ -1,0 +1,5 @@
+# config-security-audit.allow - documented exceptions for scripts/config-security-audit.sh
+# Format: rule-id<TAB>pattern<TAB>reason   (pattern = exact "subject" of the finding)
+# Lines starting with # and blank lines are ignored. Every entry needs a reason.
+CSA-001	Bash(*)	offset by guard-unsafe/excessive-agency-gate; see rules/agency-bands.md
+CSA-040	research/ECC/.mcp.json	deliberate research clone, never opened as a Claude project

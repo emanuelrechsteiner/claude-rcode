@@ -8,13 +8,7 @@
 
 ## Why This Matters
 
-Agents are statistically prone to writing "defensive" code that hides bugs:
-- `except: pass` to "make the test green"
-- `value = config.get("X") or "default"` when X is required
-- `try { ... } catch { return null }` masking the real failure
-- "Just adding a check" that silently skips broken paths
-
-Each silent fallback **compounds reliability degradation** (slop-on-slop pattern from `slop-prevention.md`). At 0.95^20 = 36% reliability already without fallbacks, adding fallbacks accelerates the degradation toward zero.
+Agents are statistically prone to "defensive" code that hides bugs — including "just adding a check" that silently skips broken paths — and each silent fallback **compounds reliability degradation** (the slop-on-slop math in [[slop-prevention]]).
 
 ## Forbidden Patterns
 
@@ -51,35 +45,18 @@ grep -rE '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{?\s*\}?\s*\)' src/   # promise.catch((
 
 ## Repetition Without Escalation Is Also Silence (IMP-164, 2026-08-24)
 
-**A message that recurs unchanged eight times is functionally a non-message.** Fail-loud is not satisfied by a routine that prints a warning every run if the warning never changes shape when nobody acts on it — the reader habituates, and an unresolved 20-day-old condition becomes visually identical to a fresh one-day condition. This is a distinct failure mode from the ones above: the failure *was* reported, every single time, and it was still effectively silent.
-
-**The fix is escalation, not volume.** A message-class that fires N times in a row must change its own presentation at a threshold (see `hooks/session-end-check.sh`'s `alarm_repeat_count` helper, wired into the IMP-138 staleness reminder: 3rd consecutive occurrence switches from an informational line to an explicit "ESKALATION" form; 5th adds a note that a ledger entry is due). This is deliberately **not an auto-fix** — the human stays the gate — it only makes the N-th occurrence impossible to mistake for the 1st.
+**A message that recurs unchanged eight times is functionally a non-message:** a warning printed every run that never changes shape when nobody acts on it does not satisfy fail-loud — the reader habituates, and a 20-day-old unresolved condition looks identical to a fresh one. **The fix is escalation, not volume:** a message-class that fires N times in a row must change its own presentation at a threshold (reference: `hooks/session-end-check.sh`'s `alarm_repeat_count` helper on the IMP-138 staleness reminder — 3rd consecutive occurrence switches to an explicit "ESKALATION" form, the 5th adds a note that a ledger entry is due). Deliberately **not an auto-fix** — the human stays the gate; it only makes the N-th occurrence impossible to mistake for the 1st.
 
 ## Allowed Patterns (Legitimate Fallbacks)
 
-Fallbacks are OK when:
-1. **At system boundaries** — user input, external API, network. Wrap with explicit error reporting.
-2. **Truly optional values** — feature flags, optional configs. Default is documented behavior, not error-masking.
-3. **Graceful degradation** — UI loading states, retry-with-backoff. Failure is **logged**, not silenced.
+Fallbacks are OK (1) **at system boundaries** — user input, external API, network — wrapped with explicit error reporting; (2) for **truly optional values** — feature flags, optional configs — where the default is documented behavior, not error-masking; (3) as **graceful degradation** — UI loading states, retry-with-backoff — with the failure **logged**, not silenced.
 
-The distinction: **Did the failure get reported somewhere observable?**
-- Logged → OK
-- Metric incremented → OK
-- Returned but caller doesn't know it's a fallback → NOT OK
+The distinction: **did the failure get reported somewhere observable?** Logged → OK; metric incremented → OK; returned but the caller doesn't know it's a fallback → NOT OK.
 
 ## Enforcement
 
-Extend `~/.claude/hooks/security-audit.sh` with the detection regexes above. PreToolUse on Edit/Write blocks edits introducing the forbidden patterns.
-
-If a fallback is genuinely needed, add an explicit `# ALLOWED: <reason>` comment that the hook can recognize as override.
+Extend `~/.claude/hooks/security-audit.sh` with the detection regexes above: PreToolUse on Edit/Write blocks edits introducing the forbidden patterns. If a fallback is genuinely needed, add an explicit `# ALLOWED: <reason>` comment that the hook can recognize as override.
 
 ## When to Override
 
-- Test fixtures and mocks (test code is OK to swallow expected exceptions)
-- Generated code from build tools
-- Auto-formatters writing boilerplate
-- Try/except around imports for optional dependencies (must log unavailable)
-
-Document the override in commit message: `"allows fail-silent in test fixture per fail-loud.md exception"`.
-
-> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/fail-loud.md`
+Test fixtures and mocks (test code may swallow expected exceptions); generated code from build tools; auto-formatters writing boilerplate; try/except around imports for optional dependencies (must log unavailable). Document the override in the commit message: `"allows fail-silent in test fixture per fail-loud.md exception"`.

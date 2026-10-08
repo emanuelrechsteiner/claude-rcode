@@ -102,16 +102,23 @@ just as well as a correct one.
 
 ### Run the existing regression suites
 
-Eight suites live under `hooks/tests/`, one under `scripts/tests/` — the
-four biggest:
+All suites live under `hooks/tests/` and `scripts/tests/` (38 on
+2026-10-01; current count: `scripts/framework-inventory.sh`). Run them all
+against the WORKSHOP files with one command (IMP-242) — each suite in its
+own process, a throwaway HOME, a scrubbed `CLAUDE_*` environment, and
+exit 1 unless at least one suite actually ran and none failed:
 
 ```bash
-bash hooks/tests/gate-regression.sh              # 73 cases
-bash hooks/tests/web-fetch-gate-regression.sh    # 97 cases
-bash scripts/tests/deploy-regression.sh          # 20 cases (deploy)
-bash hooks/tests/parallel-lock-regression.sh     # 12 cases
-ls hooks/tests/ scripts/tests/                   # full list
+bash scripts/run-all-tests.sh                    # all suites, workshop files
+bash scripts/run-all-tests.sh --filter '*gate*'  # a subset
+bash scripts/run-all-tests.sh --list             # what would run
 ```
+
+`scripts/deploy-to-live.sh` runs the same command before every `config`
+or `all` deploy and refuses on red (IMP-243); CI runs it on every push
+(`.github/workflows/tests.yml`, four BSD-only suites skip on Linux with a
+printed reason). Per-suite case counts change with every fix — read them
+from the inventory, not from this page.
 
 If you change a gate, **extend its suite with the new case** — otherwise
 the change stays permanently unverified.
@@ -163,7 +170,10 @@ path).
 
 **One-time setup** (once per machine): copy/fill in
 `templates/env.local.sh.template` to `~/.claude/env.local.sh`, then run
-`vault.sh init`.
+`vault.sh init`. If you want the Obsidian read window over the runtime
+distillate (`docs/OBSIDIAN.md`, Stage 2), also set `CLAUDE_KNOWLEDGE_DIR`
+there — an absolute path outside `~/.claude`, the workshop and any synced
+folder; the mirror script refuses to run without it.
 
 **Ground rule:** prose → token, code → env var + fail-loud (never a token
 as a fallback value), tests → synthetic values.

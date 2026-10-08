@@ -342,12 +342,26 @@ section:first-child {
 }
 
 .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
   font-family: var(--font-mono);
   font-weight: 800;
   font-size: 18px;
   text-decoration: none;
   white-space: nowrap;
 }
+
+.brand-mark__symbol { display: block; height: 24px; width: auto; }
+.brand-mark__symbol--light { display: none; }
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) .brand-mark__symbol--dark { display: none; }
+  html:not([data-theme]) .brand-mark__symbol--light { display: block; }
+}
+html[data-theme="light"] .brand-mark__symbol--dark { display: none; }
+html[data-theme="light"] .brand-mark__symbol--light { display: block; }
+html[data-theme="dark"] .brand-mark__symbol--dark { display: block; }
+html[data-theme="dark"] .brand-mark__symbol--light { display: none; }
 
 .brand-mark__main {
   color: var(--clay);

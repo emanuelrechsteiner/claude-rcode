@@ -392,7 +392,21 @@ mkdir -p "$REPO_H/.rcode"
 echo '{"tracker":"github"}' > "$REPO_H/.rcode/config.json"
 
 EMPTYBIN=$(mktemp -d)
-NOSTUB_PATH="$EMPTYBIN:/usr/bin:/bin"
+# "No gh" must not depend on where a machine installs it: GitHub's ubuntu
+# runners ship gh in /usr/bin, so `PATH=/usr/bin:/bin` still found it and the
+# case failed there (first CI run, 2026-10-01). Link every system tool EXCEPT
+# gh into a private dir and use only that dir as PATH.
+for _d in /usr/bin /bin; do
+  for _f in "$_d"/*; do
+    _n="${_f##*/}"
+    [ "$_n" = gh ] && continue
+    [ -e "$EMPTYBIN/$_n" ] || ln -s "$_f" "$EMPTYBIN/$_n"
+  done
+done
+NOSTUB_PATH="$EMPTYBIN"
+if PATH="$NOSTUB_PATH" command -v gh >/dev/null 2>&1; then
+  bad "no-gh/precondition" "gh is still resolvable on the 'no gh' test PATH"
+fi
 OUT=$(PATH="$NOSTUB_PATH" bash "$RCU" "$REPO_H" 2>&1); RC=$?
 check "no-gh/rcu-exit1" 1 "$RC"
 check "no-gh/rcu-ok-false" "false" "$(jq -r .ok <<<"$OUT")"

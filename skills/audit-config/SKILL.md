@@ -1,7 +1,7 @@
 ---
 name: audit-config
 description: Run a deterministic audit of ~/.claude configuration against known schema-drift patterns (invalid settings fields, stale model IDs, broken hook patterns, naming collisions). Triggers on "audit config", "check config", "verify configuration", "config audit", "konfiguration prüfen", "audit my claude setup", "config check", or quarterly via launchd. Reports CRITICAL/WARN findings to ~/.claude/audit-reports/.
-allowed-tools: Bash(bash ~/.claude/scripts/audit-config.sh), Bash(bash ~/.claude/scripts/command-contract-lint.sh), Read, Glob
+allowed-tools: Bash(bash ~/.claude/scripts/audit-config.sh), Bash(bash ~/.claude/scripts/command-contract-lint.sh), Bash(bash ~/.claude/scripts/config-security-audit.sh *), Read, Glob
 ---
 
 # Audit-Config Skill
@@ -53,6 +53,15 @@ If the script finds CRITICAL issues:
 4. Commit fixes with message like `chore(config): fix audit findings YYYY-MM-DD`
 
 If only WARN findings: review at your convenience. Non-blocking.
+
+## Security pass
+
+`scripts/config-security-audit.sh [--root <dir>] [--live] [--json] [--report] [--allow <file>]` is a read-only, offline static security audit (IMP-244), separate from the schema audit above. Run it quarterly together with `audit-config.sh`, and before enabling any new MCP server or hook. Default root is the repo containing the script; `--live` audits `~/.claude` (and MCP servers in `~/.claude.json`); `--report` is the only write (`~/.claude/audit-reports/config-security-<date>.md`).
+
+- Rules `CSA-NNN`: 001/002 broad `permissions.allow` (`Bash(*)`, bare `Bash`/`Write`/`Edit`, `Bash(sudo:*)`...), `bypassPermissions`, `skipDangerousModePermissionPrompt` (settings, settings.local, settings.framework); 010-014 hook files and bodies (missing, world-writable, `eval`, network without a localhost-only URL, `base64 -d | sh`; every file under `hooks/`); 020-022 MCP definitions (`npx -y`, `@latest`/unpinned, literal env secrets); 030 hidden Unicode (CRITICAL, file:line:col), 031 instruction-shaped HTML comments (only strict `Status:`/`Last Updated:`/`controller-contract:` lines are exempt), 032 BOM, 033 file could not be scanned; 040 cloned repo shipping its own `.mcp.json`/`.claude/settings*.json`; 050/051 invalid settings JSON (CRITICAL).
+- Exceptions: `scripts/config-security-audit.allow`, one `rule-id<TAB>pattern<TAB>reason` per line. `Bash(*)` ships pre-listed (offset by guard-unsafe / excessive-agency-gate, see `rules/agency-bands.md`). Suppressed findings stay visible as `SUPPRESSED` with their reason.
+- Exit codes: 0 no CRITICAL, 1 CRITICAL found, 2 usage/internal error.
+- Heuristics (hook-body and comment-verb matches are line regexes) can false-positive on pattern strings; each message says so. Regression: `bash scripts/tests/config-security-audit-regression.sh`.
 
 ## Schedule
 

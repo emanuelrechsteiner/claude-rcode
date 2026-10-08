@@ -14,6 +14,11 @@
 #   The detour via a ~/.claude/settings.local.json does NOT work — at the
 #   user level Claude Code does not read that file (verified 2026-08-04).
 #
+# Test precondition (IMP-243): a config deploy first runs
+# scripts/run-all-tests.sh --workshop and refuses on anything but green.
+# Override (logged in deploy-skips.log and the deploy checklist): CLAUDE_DEPLOY_SKIP_TESTS=1
+# together with CLAUDE_DEPLOY_SKIP_REASON="<why>" - the reason is mandatory.
+#
 # Usage:  deploy-to-live.sh [config|cockpit|all]   (default: all)
 set -euo pipefail
 
@@ -231,6 +236,45 @@ sync_runtime_prefs() {
   note "config: workshop commit $(git -C "$workshop" rev-parse --short HEAD)"
 }
 
+# IMP-243: refuse to deploy the config workshop unless every regression suite
+# is green, and unless what was tested is what will land (clean workshop, on
+# main - deploy pulls `workshop main`). A skip is deliberate, never silent: it
+# needs a non-blank reason, is printed, appended to
+# $LIVE_CONFIG/global-observation/deploy-skips.log (durable even when the deploy
+# turns out to be "already up to date") and shown in pending-verification.md.
+# Runs BEFORE sync_runtime_prefs (which commits in the workshop). That pull-back
+# only changes runtime keys of settings.json, so testing HEAD first is the
+# safest order: nothing is written anywhere until the gate has passed.
+TEST_SKIP_NOTE=""
+require_green_suites() { # require_green_suites <config-workshop>
+  local ws="$1" runner="$1/scripts/run-all-tests.sh" reason branch
+  if [ "${CLAUDE_DEPLOY_SKIP_TESTS:-}" = "1" ]; then
+    reason=$(printf '%s' "${CLAUDE_DEPLOY_SKIP_REASON:-}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    [ -n "$reason" ] \
+      || fail "CLAUDE_DEPLOY_SKIP_TESTS=1 requires a non-blank CLAUDE_DEPLOY_SKIP_REASON=\"<why>\" - a skipped test gate must state its reason."
+    TEST_SKIP_NOTE="regression suites SKIPPED (CLAUDE_DEPLOY_SKIP_TESTS=1), reason: ${reason}"
+    mkdir -p "$LIVE_CONFIG/global-observation" \
+      && printf '%s skip-tests workshop_head=%s reason=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
+           "$(git -C "$ws" rev-parse --short HEAD 2>/dev/null || echo unknown)" "$reason" \
+           >> "$LIVE_CONFIG/global-observation/deploy-skips.log" \
+      || fail "config: cannot record the test skip in $LIVE_CONFIG/global-observation/deploy-skips.log"
+    warn "config - $TEST_SKIP_NOTE"
+    return 0
+  fi
+  [ -d "$ws/.git" ] || fail "config: no repo in the workshop ($ws)"
+  [ -z "$(git -C "$ws" status --porcelain)" ] \
+    || { git -C "$ws" status --short; fail "config: workshop has uncommitted changes - the suites would test something other than what lands. Commit first, then deploy."; }
+  branch=$(git -C "$ws" rev-parse --abbrev-ref HEAD)
+  [ "$branch" = "main" ] \
+    || fail "config: workshop is on '$branch', not main - the deploy pulls main, so the suites would test something else. Check out main first."
+  [ -f "$runner" ] || fail "config: test runner not found: $runner - cannot verify the suites, refusing to deploy."
+  note "config - running all regression suites (run-all-tests.sh --workshop)"
+  # Operator env must not weaken the gate (skip rules, platform, real HOME).
+  if ! env -u CLAUDE_TEST_SKIP_RULES -u CLAUDE_TEST_PLATFORM -u CLAUDE_TEST_REAL_HOME bash "$runner" --workshop; then
+    fail "config: regression suites are not green (summary above) - refusing to deploy. Fix them, or override: CLAUDE_DEPLOY_SKIP_TESTS=1 CLAUDE_DEPLOY_SKIP_REASON=\"<why>\""
+  fi
+}
+
 # Writes the pending-verification checklist for the next session (IMP-147). Only called
 # for "config" — only there do hook/rule/skill changes land that need
 # verification IN a new Claude Code session; cockpit
@@ -247,6 +291,7 @@ write_pending_verification() {
     printf '## Verification steps\n\n'
     printf '%s\n' "$subjects"
     printf '\nVerification steps per the session acceptance protocol.\n'
+    [ -z "$TEST_SKIP_NOTE" ] || printf '\n**WARNING: %s**\n' "$TEST_SKIP_NOTE"
   } > "$out"
   note "config: checklist written → $out"
 }
@@ -349,6 +394,11 @@ deploy() {
     fi
   fi
 }
+
+# Test gate before anything is touched (sync_runtime_prefs commits, deploy() checks).
+case "$TARGET" in
+  config|all) require_green_suites "$WORKSHOP_ROOT/claude-code-config" ;;
+esac
 
 case "$TARGET" in
   config)  deploy "config"  "$WORKSHOP_ROOT/claude-code-config" "$LIVE_CONFIG" ;;

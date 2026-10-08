@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="R.Code for Claude Code">
-  <rect x="0" y="0" width="64" height="64" rx="8" fill="#0c0c0c"/>
-  <text x="32" y="35" font-family="'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace" font-weight="800" font-size="34" fill="#d97757" text-anchor="middle" dominant-baseline="central">R.</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="R.Code"><title>R.Code</title><rect width="64" height="64" rx="12" fill="#0c0c0c"/><g transform="translate(8.96 11.0545) scale(0.349091)"><rect x="1" y="1" width="22" height="118" rx="2" fill="#d97757"/><rect x="25" y="1" width="46" height="22" rx="2" fill="#d97757"/><rect x="73" y="13" width="22" height="46" rx="2" fill="#d97757"/><rect x="25" y="49" width="46" height="22" rx="2" fill="#d97757"/><rect x="49" y="73" width="22" height="22" rx="2" fill="#d97757"/><rect x="73" y="97" width="22" height="22" rx="2" fill="#d97757"/><rect x="109" y="97" width="22" height="22" rx="2" fill="#ececec"/></g></svg>

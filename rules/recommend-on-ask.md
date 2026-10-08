@@ -9,48 +9,15 @@
 1. **A concrete recommendation:** the specific choice Claude would make given the current context.
 2. **A one-line WHY:** a situationally specific reason, not a generic hedge.
 
-For `AskUserQuestion` calls: place the recommended option **first** in the options list and suffix it with **(Recommended)**. The `why` is embedded in the question text or as a separate sentence immediately before the options.
-
-For inline prose questions: state the recommendation before (or immediately after) posing the question. Never pose a bare "which do you prefer?" or "should we do X or Y?" without a stated preference.
-
-## Why
-
-A bare option-set forces the user to re-derive tradeoffs Claude already has, costing avoidable back-and-forth turns and deliberation time. Leading with a recommendation lets them decide in one glance.
+A bare option-set forces the user to re-derive tradeoffs Claude already has; a recommendation lets them decide in one glance (IMP-053).
 
 ## How to Apply
 
-### AskUserQuestion tool
-```
-question: "I need to pick a state-management approach. I recommend Zustand (Recommended) because it has
-  minimal boilerplate and matches the project's existing lightweight pattern. Which do you prefer?"
-options:
-  - "Zustand (Recommended)"
-  - "Redux Toolkit"
-  - "React Context"
-```
-
-### Inline prose question
-❌ Bare:
-> "Should we use a monorepo or separate repos for the new service?"
-
-✅ With recommendation:
-> "I'd go with a monorepo here — the service shares 3 packages with the main app and keeping them in sync across separate repos adds overhead. Want to proceed with that, or do you prefer separate repos?"
-
-### The WHY must be situational
-The reason must reference something concrete about this task, file, or codebase — not a generic best-practice recitation.
-
-- ❌ Generic: "Zustand is popular and has good performance."
-- ✅ Situational: "Zustand matches the two existing stores already in `src/stores/` — adding Redux here would be a second pattern."
+- **`AskUserQuestion`:** place the recommended option **first** in the options list and suffix it with **(Recommended)**; the WHY goes in the question text or in a separate sentence immediately before the options.
+- **Inline prose:** state the recommendation before (or immediately after) posing the question. Never pose a bare "which do you prefer?" or "should we do X or Y?" without a stated preference.
+- **The WHY must be situational** — it references something concrete about this task, file, or codebase, not a generic best-practice recitation. ❌ "Zustand is popular and has good performance." ✅ "Zustand matches the two existing stores already in `src/stores/` — adding Redux here would be a second pattern."
 
 ## Exceptions
 
-1. **Genuinely open-ended personal preference** — when there is no technical basis to prefer one option (e.g. "do you want the button label to say 'Submit' or 'Send'?"), state explicitly that both are equivalent and you have no basis to recommend: *"Both work equally well here — no technical preference. Which feels right to you?"* Do not invent a recommendation.
-
-2. **Safety / irreversible-operation confirmations** — when asking the user to confirm an ESCALATE-band irreversible op (per `[[agency-bands]]`), state the **safe default** (e.g. "I'd skip this unless you need it"), but do not use recommendation framing to pressure a 'yes'. The confirmation remains a genuine y/n. Example: *"This will drop the production table — the safe default is to abort. Proceed? (y/n)"*
-
-## References
-
-- Companion rule: `[[agency-bands]]` — governs the y/n confirmation case for irreversible ops
-- Motivation: reduces round-trip overhead identified in session-end-check signals (IMP-053)
-
-> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/recommend-on-ask.md`
+1. **Genuinely open-ended personal preference** — no technical basis to prefer one option: state explicitly that both are equivalent and you have no basis to recommend (*"Both work equally well here — no technical preference. Which feels right to you?"*). Do not invent a recommendation.
+2. **Safety / irreversible-operation confirmations** — for an ESCALATE-band irreversible op (per `[[agency-bands]]`) state the **safe default**, but do not use recommendation framing to pressure a 'yes'; the confirmation remains a genuine y/n: *"This will drop the production table — the safe default is to abort. Proceed? (y/n)"*

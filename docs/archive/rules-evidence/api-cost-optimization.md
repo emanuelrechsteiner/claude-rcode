@@ -45,3 +45,34 @@ If you toggle 5 times in a 30-call session, you pay full price on 5 calls = ~10x
 - Two-phase email triage pipeline (Apps Script): reference implementation in your own scripts directory (historical, Claude 4.x era)
 
 the old Claude-4-era "haiku ≈ 1/10 sonnet ≈ 1/50 opus" is historical, not current
+
+## Moved from the rule on 2026-09-29 (IMP-234)
+
+> Moved out verbatim while the rule was condensed to its normative core. Each block names the heading it sat under; the normative content of each block is still stated in the rule.
+
+### Title blockquote
+
+> Model-selection heuristics for Anthropic API calls. Refreshed for the Claude 5.x era 2026-09-27 (IMP-080, IMP-220). Always loaded.
+
+### Model-Selection Decision Matrix — intro
+
+Use when choosing between Haiku 4.5 / Sonnet 5 / Opus 5.5 / Fable 5.1 for a given task.
+
+> **Applied per-spawn via `agents/control-agent.md` §2 (IMP-091).** This matrix is the Model axis of the canonical dispatch spec — the control-agent (or the main-thread planner form) reads it once per atomic task to assign Model alongside Agent, Effort, and dependencies. This file stays the single source for the Model criteria; it is not re-derived in `foundation.md` or `parallel-by-default.md`.
+
+### Cheapest per Successful Outcome — framing
+
+**The 2024 framing** ("pick the cheapest model that does the job" — historical) underweighted **turn count**. The 2026 reframe:
+
+### Cache Discipline — ladder sentence
+
+This applies across the whole Claude 5 ladder: toggling Sonnet 5 ↔ Opus 5.5 ↔ Fable 5.1 mid-session flushes just like the old Opus/Sonnet toggle did.
+
+### ❌ Cache TTL ignorance
+
+Cache expires after 5 minutes of idle. If your session has ~5min gaps (thinking pauses, screen distractions), cache expires mid-conversation. Either keep a steady cadence or accept the miss.
+
+### References
+
+- Anthropic pricing: **verify current per-token rates and tier ratios at docs.claude.com/pricing** — ratios change per model generation; the 2026-09-27 review is `docs/model-era-review-2026-09-27.md`
+- IMP-011 in improvement-ledger.json; model-era refresh: IMP-080 (2026-07-03), IMP-220 (2026-09-27)

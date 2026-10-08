@@ -22,3 +22,24 @@ Agents dropped into a project without a shared language use 20 words where 1 wou
 ### CONTEXT.md — "When to coin a term" worked example (verbatim)
 
 ("The problem when a lesson inside a section is given a spot in the file system" → "the **materialization cascade**".)
+
+## Moved from the rule on 2026-09-29 (IMP-234)
+
+> Moved out verbatim while the rule was condensed to its normative core. The normative content of each block is still stated in the rule; the dates, the project-scope summary sentence and the full References list are kept here.
+
+### ADRs — R.Code exception (verbatim)
+
+- **R.Code exception:** project-level ADRs written from R.Code's own template may use the `ADR-` prefix (`ADR-NNNN-slug.md`) and a two-tier model — an inline `### ADR-NNN` entry in `ARCHITECTURE.md` at design time, filed to `docs/adr/` only once implemented/final — both remain valid alongside the bare-`NNNN` immutable form above (adopted 2026-09-23, `docs/adr/0002-rcode-plan-follows-practice.md`).
+
+### Enforcement — first paragraph (verbatim)
+
+**On the FIRST "NIE X" / "IMMER X" (or "NEVER X" / "ALWAYS X") correction from the user, persist it IN THE SAME TURN** — project scope: CONTEXT.md invariant or mini-ADR, plus a test case where checkable; user-global scope: one overlay line (step 1a). This is the default action, not an offer and not a question back to the user ("should I persist this?" is itself the violation). A correction that only lives in the chat transcript has not been enforced; it has to land in an artifact the next session actually reads.
+
+### Enforcement — step 1a setup line (verbatim)
+
+   Setup: copy `templates/preferences.local.md.template` to `~/.claude/rules/preferences.local.md`. Carve-out from CLAUDE.md rule 1: git-ignored `*.local.md` overlays in `~/.claude/rules/` are machine-local by design and edited in place; everything tracked is edited in the workshop.
+
+### References (verbatim)
+
+- Companions: [[planning-doc-convention]], [[documentation]], `skills/grilling` (closes into these artifacts), `skills/prototype` (verdicts land here)
+- Origin: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) `domain-modeling` conventions + `.agents/adr/` practice (MIT); adopted as IMP-124 (2026-08-03)

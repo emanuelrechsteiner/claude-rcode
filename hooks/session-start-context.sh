@@ -52,6 +52,9 @@ fi
 # CLAUDE_HAUS_ROOT stays overridable via env for regression tests so the
 # suite doesn't depend on this machine's real absolute paths.
 BAUHOF_RESOLVED=1
+# Remember the library dir as the ENVIRONMENT had it: sourcing env.local.sh below
+# would overwrite it, and the environment must win (library hint, IMP-248).
+KDIR_ENV="${CLAUDE_KNOWLEDGE_DIR:-}"
 if [[ -z "${CLAUDE_BAUHOF_ROOT:-}" ]]; then
     # shellcheck disable=SC1091
     [[ -f "$HOME/.claude/env.local.sh" ]] && . "$HOME/.claude/env.local.sh"
@@ -124,6 +127,23 @@ if [[ "${CLAUDE_SESSION_NUDGE:-1}" != "0" ]]; then
     echo "🤖 Subagents available — pick the right one instead of doing everything yourself:"
     echo "   control-agent(3+ domains) · planning-agent · backend-agent · testing-agent · ui-agent"
     echo "   · code-reviewer-agent(read-only) · cleanup-agent · research-agent · Explore(codebase search)."
+fi
+
+# ── Cross-project library hint (IMP-248): one line, ONLY when the mirror exists ──
+# Deliberately OUTSIDE the CLAUDE_SESSION_NUDGE gate: the only condition is that
+# the library exists. Fail-open by design: no CLAUDE_KNOWLEDGE_DIR / no
+# mirror/README.md -> prints nothing, no error.
+# CLAUDE_KNOWLEDGE_DIR: environment first, else ~/.claude/env.local.sh (subshell, -u/-e off).
+KDIR="$KDIR_ENV"
+if [[ -z "$KDIR" && -f "$HOME/.claude/env.local.sh" ]]; then
+    # shellcheck disable=SC1091
+    KDIR=$( set +u +e; . "$HOME/.claude/env.local.sh" >/dev/null 2>&1; printf '%s' "${CLAUDE_KNOWLEDGE_DIR:-}" )
+fi
+KDIR="${KDIR%/}"
+if [[ -n "$KDIR" && -f "$KDIR/mirror/README.md" ]]; then
+    KNOTES=$(find "$KDIR/mirror/memory" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+    KDATE=$(sed -n 's/^.*Last run: \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\).*$/\1/p' "$KDIR/mirror/README.md" | head -n 1)
+    echo "📚 Library: $KNOTES cross-project memory notes mirrored ${KDATE:-(date unknown)}; before implementing in an unfamiliar area run: bash ~/.claude/scripts/knowledge-lookup.sh --stack"
 fi
 
 exit 0

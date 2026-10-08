@@ -255,6 +255,7 @@ check depends on the literal `**Agent:** team-lead` line to recognize a
 **Directive:** "<verbatim directive>"
 **Branch:** <work branch>
 **Units:** <IDs with state>
+**Review:** <agent> — <verdict> — <pointer>   (per unit; Develop Stage)
 **Decisions:** …
 **Next action:** <task brief one-liner or 'none'>
 ```

@@ -26,8 +26,10 @@ or via the `/test-team` alias) once R.Code Mode has selected this Stage.
 | PR Review | Directive names one specific PR (github tracker) or branch diff (plan tracker) | `~/.claude/commands/rcode-review.md` |
 
 **Distinction:** this Stage validates a milestone-wide file-set, not a
-single PR (Develop already reviews single PRs/diffs inside its own Core
-loop). This Stage sets validation *strategy*, not the pass/fail gate
+single PR. Develop already has the lead run a fresh-context
+`code-reviewer-agent` review per unit inside its own Core loop; this Stage
+adds the milestone-wide view across units and the validation strategy for
+it. This Stage sets validation *strategy*, not the pass/fail gate
 checklist — that stays `~/.claude/commands/phase-gate.md`'s job, and belongs
 to the project Phase (milestone), not this Stage.
 

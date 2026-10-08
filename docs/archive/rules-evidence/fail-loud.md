@@ -37,3 +37,13 @@ Three documented cases in the same August-2026 window, all traced to this exact 
 - Danilo Campos — "LLM codegen fails" (PostHog Wizard postmortem)
 - Mario Zechner — "Building pi in a World of Slop"
 - Cluster source: see author's knowledge base (private)
+
+## Moved from the rule on 2026-09-29 (IMP-234)
+
+> Moved out verbatim while the rule was condensed to its normative core. The rule now states this section in one paragraph; the "Why This Matters" list and the 0.95^20 math were already archived above.
+
+### Repetition Without Escalation Is Also Silence (IMP-164, 2026-08-24) — original two paragraphs (verbatim)
+
+**A message that recurs unchanged eight times is functionally a non-message.** Fail-loud is not satisfied by a routine that prints a warning every run if the warning never changes shape when nobody acts on it — the reader habituates, and an unresolved 20-day-old condition becomes visually identical to a fresh one-day condition. This is a distinct failure mode from the ones above: the failure *was* reported, every single time, and it was still effectively silent.
+
+**The fix is escalation, not volume.** A message-class that fires N times in a row must change its own presentation at a threshold (see `hooks/session-end-check.sh`'s `alarm_repeat_count` helper, wired into the IMP-138 staleness reminder: 3rd consecutive occurrence switches from an informational line to an explicit "ESKALATION" form; 5th adds a note that a ledger entry is due). This is deliberately **not an auto-fix** — the human stays the gate — it only makes the N-th occurrence impossible to mistake for the 1st.

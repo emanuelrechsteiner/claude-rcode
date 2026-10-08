@@ -24,3 +24,35 @@ The original thresholds (100K soft / 250K hard) were tuned for the Opus-4.x-era 
 - Dex Horthy — "No Vibes Allowed: Solving Hard Problems in Complex Codebases" — 40% dumb-zone empirical
 - Jared Zoneraich — "How Claude Code Works" — 92% auto-compact mechanism, H2A buffer (local override: `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=90`)
 - Cluster source: see author's knowledge base (private)
+
+## Moved from the rule on 2026-09-29 (IMP-234)
+
+> Moved out verbatim while the rule was condensed to its normative core. The rule keeps the thresholds table without its "Source" column (the provenance lives here) and states the enforcement and anti-pattern items in one line each.
+
+### The Thresholds (Reconciled, window-relative) — original table with sources (verbatim)
+
+| Threshold (% of window) | Event | Worked example (historical 200K window) | Source |
+|-------------------------|-------|------------------------------------------|--------|
+| **~40–60% fill** | Onset of degradation ("dumb zone" begins) | ~80–120K tokens | Dex Horthy "No Vibes Allowed" |
+| **~50% fill (soft ceiling)** | Smart-zone exit — proactive action needed | ~100K tokens | Matt Pocock "Full Walkthrough for AI Coding" |
+| **~75–80% fill (hard ceiling)** | No new heavy work | ~150–160K tokens | Practitioner consensus |
+| **Beyond the hard ceiling** | Hallucination risk climbs steeply | ~250K tokens (cited on larger-window models) | Cole Medin "2000+ Hours CC" / WHISK |
+| **Auto-compact margin (90%)** | Last-resort process failure | ~180K tokens | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=90` in `settings.json` (Claude Code stock default: 92%) |
+
+### Anti-Patterns (verbatim items)
+
+### ❌ Loading entire codebases at session start
+Anti-pattern from older RAG workflows. Use agentic search — read only what you need when you need it.
+
+### ❌ Skipping the phase-boundary `/context` check
+This is when you have a clean moment to recalibrate. Skipping = drift.
+
+### Enforcement (verbatim)
+
+- This rule is always loaded — reminder is in-context
+- `session-end-check.sh` hook can warn when session crossed the hard ceiling (75–80% of the window; ~150–160K on the historical 200K window)
+- Phase-gate command in R.Code workflow should add `/context` check before advancing
+
+### References (verbatim)
+
+- Model-era conversion to window-relative: IMP-080 (2026-07-03)

@@ -1,7 +1,7 @@
 <h1 align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/banner-dark.svg">
-    <img src="docs/assets/brand/banner-light.svg" alt="R.Code for Claude Code — Build smarter. Build better." width="800">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/lockup-horizontal-dark.svg">
+    <img src="docs/assets/brand/lockup-horizontal-light.svg" alt="R.Code for Claude Code" width="420">
   </picture>
 </h1>
 

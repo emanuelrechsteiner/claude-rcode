@@ -154,7 +154,11 @@ AGENT_LIST=$(printf '%s\n' "$ROSTER" | grep -v '^$' | paste -sd, - | sed 's/,/, 
 # ── Rationale detection ──────────────────────────────────────────────────
 # German aliases kept: the owner writes German (AGENTENWAHL, BEGRUENDUNG/
 # BEGRÜNDUNG AGENTENWAHL); AGENT-RATIONALE is the English equivalent.
-MARKER_RE='^[[:space:]]*(AGENTENWAHL|AGENT-RATIONALE|BEGR(UE|Ü)NDUNG[[:space:]]+AGENTENWAHL)[[:space:]]*:.*'
+# Both cases of the umlaut are listed explicitly: grep -i folds non-ASCII case
+# only under a UTF-8 locale. A hook process started without LANG/LC_ALL runs in
+# the C locale, where Ü does not match ü and a lowercase "Begründung" marker
+# was silently refused (found by the regression suite, 2026-10-08).
+MARKER_RE='^[[:space:]]*(AGENTENWAHL|AGENT-RATIONALE|BEGR(UE|Ü|ü)NDUNG[[:space:]]+AGENTENWAHL)[[:space:]]*:.*'
 MATCH=$(printf '%s' "$PROMPT" | grep -oiE "$MARKER_RE" 2>/dev/null | head -1)
 RATIONALE_TEXT="${MATCH#*:}"
 RATIONALE_TEXT=$(printf '%s' "$RATIONALE_TEXT" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')

@@ -265,6 +265,18 @@ should_process "pre-commit" && backup_if_foreign "pre-commit"
 should_process "pre-merge-commit" && backup_if_foreign "pre-merge-commit"
 
 # ── Pass 3: write all in-scope hooks. ───────────────────────────────────
+# Logged override for the "gate script missing" branches below (IMP-240): the
+# generated hooks never recommend --no-verify; a deliberate skip needs a reason,
+# which is appended to <git-common-dir>/vault-bypass.log before the hook exits 0.
+BYPASS_SNIPPET=$(cat <<'SNIP'
+if [ -n "$(printf '%s' "${VAULT_PRECOMMIT_BYPASS:-}" | tr -d '[:space:]')" ]; then
+  printf '%s\t__NAME__\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$VAULT_PRECOMMIT_BYPASS" >> "$(cd "$(git rev-parse --git-common-dir)" && pwd)/vault-bypass.log" || exit 1
+  echo "__NAME__: gate script missing, BYPASSED via VAULT_PRECOMMIT_BYPASS (logged)" >&2
+  exit 0
+fi
+SNIP
+)
+
 PRE_PUSH_CONTENT=$(cat <<HOOK
 #!/usr/bin/env bash
 # ${HOOK_MARKER} — do not edit by hand, re-run
@@ -280,9 +292,10 @@ if [ -x "\$REPO_ROOT/scripts/scrub-check.sh" ]; then
     exit 1
   }
 else
+${BYPASS_SNIPPET//__NAME__/pre-push}
   echo "pre-push: BLOCKED — scripts/scrub-check.sh not found or not executable." >&2
-  echo "  Restore it, or if you deliberately want to skip the scrub gate for" >&2
-  echo "  this push, say so explicitly: git push --no-verify" >&2
+  echo "  Restore it (git checkout -- scripts/scrub-check.sh), or for a deliberate, logged skip:" >&2
+  echo "  VAULT_PRECOMMIT_BYPASS=\"<reason>\" git push ..." >&2
   exit 1
 fi
 HOOK
@@ -301,10 +314,11 @@ REPO_ROOT="\$(git rev-parse --show-toplevel)"
 if [ -x "\$REPO_ROOT/scripts/git-hooks/pre-commit" ]; then
   exec "\$REPO_ROOT/scripts/git-hooks/pre-commit"
 else
+${BYPASS_SNIPPET//__NAME__/pre-commit}
   echo "" >&2
   echo "pre-commit: BLOCKED — scripts/git-hooks/pre-commit not found or not executable." >&2
-  echo "  Restore it, or if you deliberately want to skip the commit gate for" >&2
-  echo "  this commit, say so explicitly: git commit --no-verify" >&2
+  echo "  Restore it (git checkout -- scripts/git-hooks/pre-commit), or for a deliberate, logged skip:" >&2
+  echo "  VAULT_PRECOMMIT_BYPASS=\"<reason>\" git commit ..." >&2
   exit 1
 fi
 HOOK
@@ -324,10 +338,11 @@ REPO_ROOT="\$(git rev-parse --show-toplevel)"
 if [ -x "\$REPO_ROOT/scripts/git-hooks/pre-commit" ]; then
   exec "\$REPO_ROOT/scripts/git-hooks/pre-commit"
 else
+${BYPASS_SNIPPET//__NAME__/pre-merge-commit}
   echo "" >&2
   echo "pre-merge-commit: BLOCKED — scripts/git-hooks/pre-commit not found or not executable." >&2
-  echo "  Restore it, or if you deliberately want to skip the merge-commit gate for" >&2
-  echo "  this merge, say so explicitly: git merge --no-verify" >&2
+  echo "  Restore it (git checkout -- scripts/git-hooks/pre-commit), or for a deliberate, logged skip:" >&2
+  echo "  VAULT_PRECOMMIT_BYPASS=\"<reason>\" git merge ..." >&2
   exit 1
 fi
 HOOK

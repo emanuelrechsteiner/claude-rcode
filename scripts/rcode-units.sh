@@ -242,7 +242,9 @@ function process_checkbox_row(l,    state, id, rest, title, phase) {
   id = substr(l, RSTART, RLENGTH)
   rest = substr(l, RSTART + RLENGTH)
   rest = ltrim(rest)
-  if (rest ~ /^[—–-][ \t]+/) sub(/^[—–-][ \t]+/, "", rest)
+  # Alternation, NOT a bracket set: BWK awk is byte-based, so [—–-] would
+  # be a set of single bytes and never match the 3-byte em/en dash.
+  if (rest ~ /^(—|–|-)[ \t]+/) sub(/^(—|–|-)[ \t]+/, "", rest)
   title = trim(rest)
   phase = extract_phase_prefix(title)
   if (phase == "") phase = heading_phase
@@ -278,7 +280,7 @@ BEGIN { heading_phase = ""; heading_phase_name = ""; status_col = 0; local_id_ta
           # heading carries no name (e.g. a bare "### Phase 4").
           hrest = substr(line, RSTART + RLENGTH)
           hrest = ltrim(hrest)
-          if (hrest ~ /^[—–-][ \t]+/) sub(/^[—–-][ \t]+/, "", hrest)
+          if (hrest ~ /^(—|–|-)[ \t]+/) sub(/^(—|–|-)[ \t]+/, "", hrest)
           heading_phase_name = trim(hrest)
         }
       }

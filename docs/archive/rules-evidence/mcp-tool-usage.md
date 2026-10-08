@@ -42,3 +42,82 @@ project mobility at the price of activating by hand at every single session star
 
 > …verify with `claude plugin list`, which is what the 2026-08-15
 > double-installation finding turned on.
+
+## Moved from the rule on 2026-09-29 (IMP-234)
+
+> Moved out verbatim while the rule was condensed to its normative core. The rule now states each of these once (path-convention table, one parameter-format example per tool, the error strings inline); the original blocks are kept here.
+
+### Project Boundary Restrictions
+
+MCP tools cannot write outside project directory:
+
+```
+❌ Cannot create file outside of the project directory
+   got relative_path='/Users/.../.claude/plans/...'
+```
+
+**Solution:** Use Claude's native `Write` tool for files outside project.
+
+### Error Prevention Checklist
+
+Before using MCP tools:
+
+- [ ] **Path format** - Using relative for MCP, absolute for native?
+- [ ] **Array parameters** - Using arrays where required (paths, edits)?
+- [ ] **Required fields** - All required parameters provided?
+- [ ] **Project boundary** - File within project directory?
+- [ ] **Read first** - Read file before editing (for native Edit)?
+
+### Common Error Patterns
+
+#### Pattern 1: Wrong path format
+```
+Error: File does not exist
+```
+→ Check if using relative vs absolute correctly for the tool
+
+#### Pattern 2: Wrong parameter type
+```
+Invalid input: expected array, received string
+```
+→ Wrap single items in arrays: `["item"]` not `"item"`
+
+#### Pattern 3: Missing required parameter
+```
+The required parameter `old_string` is missing
+```
+→ You're using wrong tool (MCP vs native) or missing fields
+
+#### Pattern 4: Path outside project
+```
+AssertionError - Cannot create file outside of project directory
+```
+→ Use Claude's native Write tool for external files
+
+### Common Parameter Formats — the ❌ examples and the second Context7 example (verbatim)
+
+#### mcp__filesystem__read_multiple_files
+
+**Wrong:**
+```json
+{
+  "paths": "file1.ts"  // ❌ String instead of array
+}
+```
+
+#### mcp__filesystem__edit_file
+
+**Wrong:**
+```json
+{
+  "path": "/absolute/path/file.ts",
+  "edits": "find this -> replace with"  // ❌ String instead of array
+}
+```
+
+#### Context7 resolve-library-id parameter names
+
+**Correct (the other server):**
+```json
+{ "query": "react" }
+```

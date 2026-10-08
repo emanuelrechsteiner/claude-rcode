@@ -285,7 +285,7 @@ fi
 # com.user.claude-audit.plist.template; IMP-219, generic since 2026-09-25)
 # and is the liveness backstop for
 # exactly that gap. Declared max-silence intervals per routine's own cadence
-# (see CLAUDE.md "Scheduled Tasks" table) plus a missed-run buffer:
+# (see docs/FRAMEWORK-REFERENCE.md §Scheduled Tasks) plus a missed-run buffer:
 #   daily-docs (07:10 daily)        → 48h  (one missed day + margin)
 #   nightly-observation (02:05 daily) → 48h  (one missed day + margin)
 #   weekly-improve (Sunday 22:06)   → 240h = 10 days (one missed week + margin)

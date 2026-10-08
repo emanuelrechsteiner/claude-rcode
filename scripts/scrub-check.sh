@@ -423,7 +423,24 @@ rebrand_out=""
 # torvaldsen/VERSION) — the old name IS its detection logic, not prose.
 # Owner decision 2026-09-23 (the name has been public in MIGRATION.md since
 # v1.0.0); same carve-out class, no new class.
-REBRAND_CARVEOUT=(':!MIGRATION.md' ':!commands/rcode-upgrade.md')
+#
+# Five more files are chronicle: they record what the project was called when
+# the entry was written, and rewriting them would falsify history. Owner
+# decision 2026-10-01 (after the first real CI run showed this scan red since
+# 2026-09-25 on exactly these 47 reviewed, accepted mentions: 20 in
+# CHANGELOG.md, 23 in the ledger, 4 in the other three). The scrub-allowlist
+# is NOT an option here: §6 never consults it. Cost, accepted: a NEW mention of
+# the old name in one of these five files is no longer reported, in full-tree
+# mode or under --staged (both read this list).
+REBRAND_CARVEOUT=(
+  ':!MIGRATION.md'
+  ':!commands/rcode-upgrade.md'
+  ':!CHANGELOG.md'
+  ':!global-observation/improvement-ledger.json'
+  ':!docs/superpowers/specs/2026-05-27-claude-config-portability-design.md'
+  ':!ops/awesome-claude-code/HANDOFF-coding-agent.json'
+  ':!ops/decisions/2026-08-13-publisher-stilllegung.md'
+)
 #
 # --staged counts ADDED LINES ONLY (2026-09-25, IMP-219). The `else` branch
 # below (full-tree mode, used by CI and scripts/publish.sh's staging-tree
@@ -433,8 +450,8 @@ REBRAND_CARVEOUT=(':!MIGRATION.md' ':!commands/rcode-upgrade.md')
 # reviewed, accepted pre-rebrand mentions sitting in files nearly every
 # commit touches (CHANGELOG.md, global-observation/improvement-ledger.json,
 # three others) — a whole-blob scan there would re-flag that same accepted
-# debt on any unrelated staged edit to those files, forcing a routine `git
-# commit --no-verify`, which ALSO disables this hook's separate vault check
+# debt on any unrelated staged edit to those files, forcing a routine
+# bypass of the whole commit gate, which ALSO disables this hook's separate vault check
 # (scripts/git-hooks/pre-commit runs both checks in one invocation). So under
 # --staged, a finding only counts if it sits on a line the staged diff ADDS —
 # a file whose only occurrences sit on untouched pre-existing lines reports

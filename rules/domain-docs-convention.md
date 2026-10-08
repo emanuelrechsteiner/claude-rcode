@@ -4,16 +4,14 @@
 
 ## CONTEXT.md — the shared language
 
-- **Location:** project root, `CONTEXT.md`. One file per project.
-- **Content:** a glossary — each entry is `**Term** — one-sentence meaning`, optionally with a pointer to the module that implements it. Nothing else; it is not a README and not a planning doc.
-- **When to coin a term:** the third time the same multi-word circumlocution appears in conversation, commits, or docs, coin a term for it and add the entry.
-- **Binding effect:** once a term exists, use it — in conversation, in identifiers, in file names, in commit messages. New code that paraphrases around an existing glossary term is a naming violation, same class as inconsistent casing.
-- **Maintenance:** edits, not rewrites (same discipline as [[planning-doc-convention]]). Remove entries whose concept left the codebase.
+- One `CONTEXT.md` at the project root: a glossary, each entry `**Term** — one-sentence meaning`, optionally pointing to the module that implements it. Nothing else — not a README, not a planning doc.
+- **Coin a term** the third time the same multi-word circumlocution appears in conversation, commits, or docs, and add the entry.
+- **Binding:** once a term exists, use it in conversation, identifiers, file names, commit messages. New code that paraphrases around an existing glossary term is a naming violation, same class as inconsistent casing.
+- **Maintenance:** edits, not rewrites (as in [[planning-doc-convention]]); remove entries whose concept left the codebase.
 
 ## ADRs — atomic decision records
 
-- **Location:** `docs/adr/NNNN-kebab-slug.md`, zero-padded sequential numbering (`0001-…`).
-- **Scope:** exactly ONE decision per file. Bulk analyses and multi-finding reports stay in `plans/` — an ADR is the distilled, citable outcome, not the investigation.
+- `docs/adr/NNNN-kebab-slug.md`, zero-padded sequential numbering (`0001-…`); exactly ONE decision per file. Bulk analyses and multi-finding reports stay in `plans/` — an ADR is the distilled, citable outcome, not the investigation.
 - **Format** (four sections, all required):
   ```markdown
   # NNNN — <decision title>
@@ -24,33 +22,22 @@
   ## Decision     <!-- what was decided, one paragraph -->
   ## Consequences <!-- what becomes easier, what becomes harder, known trade-offs -->
   ```
-- **Immutability:** an accepted ADR is never edited in substance. Changed your mind? Write a new ADR and mark the old one `superseded-by`. The history of reversals is itself the value.
-- **When to write one:** any decision someone might later ask "why?" about — architecture choices, rejected alternatives after a `grilling` session or `prototype` verdict, deliberate rule exceptions.
-- **R.Code exception:** project-level ADRs written from R.Code's own template may use the `ADR-` prefix (`ADR-NNNN-slug.md`) and a two-tier model — an inline `### ADR-NNN` entry in `ARCHITECTURE.md` at design time, filed to `docs/adr/` only once implemented/final — both remain valid alongside the bare-`NNNN` immutable form above (adopted 2026-09-23, `docs/adr/0002-rcode-plan-follows-practice.md`).
+- **Immutable:** an accepted ADR is never edited in substance — a changed mind is a new ADR, the old one marked `superseded-by`; the history of reversals is itself the value.
+- **Write one** for any decision someone might later ask "why?" about — architecture choices, rejected alternatives after a `grilling` session or `prototype` verdict, deliberate rule exceptions.
+- **R.Code exception:** project-level ADRs from R.Code's own template may use the `ADR-` prefix (`ADR-NNNN-slug.md`) and a two-tier model — inline `### ADR-NNN` in `ARCHITECTURE.md` at design time, filed to `docs/adr/` only once implemented/final — both valid alongside the bare-`NNNN` immutable form (`docs/adr/0002-rcode-plan-follows-practice.md`).
 
 ## Enforcement — a correction becomes law immediately
 
-**On the FIRST "NIE X" / "IMMER X" (or "NEVER X" / "ALWAYS X") correction from the user, persist it IN THE SAME TURN** — project scope: CONTEXT.md invariant or mini-ADR, plus a test case where checkable; user-global scope: one overlay line (step 1a). This is the default action, not an offer and not a question back to the user ("should I persist this?" is itself the violation). A correction that only lives in the chat transcript has not been enforced; it has to land in an artifact the next session actually reads.
+**On the FIRST "NIE X" / "IMMER X" (or "NEVER X" / "ALWAYS X") correction from the user, persist it IN THE SAME TURN** — the default action, not an offer and not a question back ("should I persist this?" is itself the violation). A correction that only lives in the chat transcript is not enforced; it has to land in an artifact the next session actually reads. **The SECOND occurrence of the identical correction is a process failure, not a reminder**: the first was heard but not persisted — treat it as a signal (per the observation pipeline), not as "say it again, more firmly."
 
-**The SECOND occurrence of the identical correction is a process failure, not a reminder.** It means the first correction was heard but not persisted — treat it as a signal (per the observation pipeline), not just as "say it again, more firmly."
-
-**How to apply:**
-1. Recognize the pattern: a categorical, non-negotiable statement of a rule ("NIE X", "IMMER X", "NEVER X", "ALWAYS X" or their unambiguous equivalents).
-1a. **Classify scope before persisting.** A correction about *this codebase* (a file, term, vendor, invariant of this project) → CONTEXT.md / ADR / project memory. A correction about *how the user works with the agent* (who tests, which model tier, branch naming, report format) is **user-global** → one line in `~/.claude/rules/preferences.local.md` (git-ignored, auto-loaded everywhere), never project memory. Before writing a project memory, grep `~/.claude/projects/*/memory/` for the same stance; a hit elsewhere means it is user-global — consolidate, and leave a one-line pointer in the project copy.
-   Setup: copy `templates/preferences.local.md.template` to `~/.claude/rules/preferences.local.md`. Carve-out from CLAUDE.md rule 1: git-ignored `*.local.md` overlays in `~/.claude/rules/` are machine-local by design and edited in place; everything tracked is edited in the workshop.
-2. Project scope, same turn: add/amend the CONTEXT.md entry if it names a term or invariant, or write a mini-ADR if it records a decision — using the formats defined above.
-3. If the correction is mechanically checkable, add a test case that would have caught the violation before it recurs.
-4. Proceed with the original task afterward — persisting the correction is a side-effect of the same turn, not a separate task requiring confirmation.
+1. Recognize a categorical, non-negotiable rule statement ("NIE X", "IMMER X", "NEVER X", "ALWAYS X" or their unambiguous equivalents).
+1a. **Classify scope before persisting.** About *this codebase* (a file, term, vendor, invariant of this project) → CONTEXT.md / ADR / project memory. About *how the user works with the agent* (who tests, which model tier, branch naming, report format) → **user-global**: one line in `~/.claude/rules/preferences.local.md` (git-ignored, auto-loaded everywhere; copied from `templates/preferences.local.md.template`; edited in place per the `*.local.md` exception in `CLAUDE.md`), never project memory. Before writing a project memory, grep `~/.claude/projects/*/memory/` for the same stance; a hit elsewhere means user-global — consolidate, leaving a one-line pointer in the project copy.
+2. Project scope, same turn: add/amend the CONTEXT.md entry for a term or invariant, or write a mini-ADR for a decision (formats above).
+3. If mechanically checkable, add a test case that would have caught the violation before it recurs.
+4. Then proceed with the original task — persisting is a side-effect of the same turn, not a separate task requiring confirmation.
 
 ## What this is NOT
 
-- Not a replacement for [[planning-doc-convention]] — planning docs describe *intended current state* and evolve; ADRs record *point-in-time decisions* and freeze.
-- Not a replacement for the `documentation` rule's ACTIVE/ARCHIVED split — ADRs are the canonical home of the "WHY / history" category that rule defines.
-- Not retroactive homework: no backfill obligation for old projects. Start at the next decision.
+Not a replacement for [[planning-doc-convention]] (planning docs describe *intended current state* and evolve; ADRs record *point-in-time decisions* and freeze), nor for the [[documentation]] rule's ACTIVE/ARCHIVED split (ADRs are the canonical home of its "WHY / history" category). No backfill obligation for old projects — start at the next decision.
 
-## References
-
-- Companions: [[planning-doc-convention]], [[documentation]], `skills/grilling` (closes into these artifacts), `skills/prototype` (verdicts land here)
-- Origin: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) `domain-modeling` conventions + `.agents/adr/` practice (MIT); adopted as IMP-124 (2026-08-03)
-
-> Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/domain-docs-convention.md`
+Origin: mattpocock/skills (MIT), IMP-124.

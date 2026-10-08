@@ -103,6 +103,14 @@ settings.local.json
 /vault/
 env.local.sh
 
+# --- Obsidian per-vault state (2026-10-08) --------------------------------
+# .obsidian/ is gitignored (unanchored, any depth) and so structurally cannot
+# survive `git archive HEAD`; this line is belt-and-braces like the two
+# above, in case the ignore entry is ever narrowed. Unanchored deliberately:
+# it names a dot-directory no tracked tool uses, so the basename-at-any-depth
+# match (the "vault/" bug class) cannot swallow anything publishable.
+.obsidian/
+
 # --- Plugin install-state — machine-specific absolute cache paths --------
 plugins/installed_plugins.json
 plugins/known_marketplaces.json

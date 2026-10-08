@@ -19,6 +19,8 @@ logbook/
 logbook-backup-*/
 global-observation/archives/
 plugins/.last_inuse_sweep
+# Local R.Codex Cockpit assignments and request ledger
+/.rcodex/cockpit/
 
 # Plugin-Laufzeitzustand (2026-08-04): Claude Code schreibt hier bei jedem
 # Plugin-Update maschinenspezifische Pfade und Commit-SHAs hinein. Versioniert
@@ -165,3 +167,12 @@ publish-pseudonyms.local.tsv
 # versioned: the whole design assumes real values never sit in a tracked
 # file, and a tracked vault/ directory would defeat that immediately.
 /vault/
+
+# Obsidian per-vault state (2026-10-08). Obsidian writes .obsidian/ into any
+# folder opened as an Obsidian vault: workspace layout, per-user settings, plugin
+# caches — machine- and user-local, rewritten on every app close. Unanchored
+# on purpose: it must never be tracked at any depth. NOTE the name collision:
+# an Obsidian "vault" is simply the opened folder; the framework's /vault/
+# above is the PII pseudonym store (IMP-219) — an Obsidian vault folder must
+# never be named vault/.
+.obsidian/
