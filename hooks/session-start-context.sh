@@ -143,7 +143,7 @@ KDIR="${KDIR%/}"
 if [[ -n "$KDIR" && -f "$KDIR/mirror/README.md" ]]; then
     KNOTES=$(find "$KDIR/mirror/memory" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
     KDATE=$(sed -n 's/^.*Last run: \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\).*$/\1/p' "$KDIR/mirror/README.md" | head -n 1)
-    echo "📚 Library: $KNOTES cross-project memory notes mirrored ${KDATE:-(date unknown)}; before implementing in an unfamiliar area run: bash ~/.claude/scripts/knowledge-lookup.sh --stack"
+    echo "📚 Library: $KNOTES cross-project memory notes mirrored ${KDATE:-(date unknown)}; before implementing in an unfamiliar area run: bash ~/.claude/scripts/knowledge-lookup.sh --stack  (or 2–4 keyword sets: --alt \"…\")"
 fi
 
 exit 0

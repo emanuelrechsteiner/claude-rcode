@@ -63,7 +63,7 @@ Before moving to the next phase: all agents reported completion · `npx tsc --no
 
 Never try to load all project documents at once — read only what the current task needs. Use `/clear` between unrelated tasks to prevent context contamination. Prefer project-level rules (`.claude/rules/`) for project-specific patterns.
 
-Before implementing in an area you have not worked in during this session, run `bash ~/.claude/scripts/knowledge-lookup.sh --stack` (or with explicit keywords) and read the hits — it searches the cross-project library (`docs/OBSIDIAN.md`, Stage 2) so earlier lessons are found on demand instead of loaded into every session.
+Before implementing in an area you have not worked in during this session, run `bash ~/.claude/scripts/knowledge-lookup.sh --stack` (or `--alt` with 2–4 keyword sets in one call: your own words, the German/English translation, the technical terms), judge by the `»` lines, open only the top note's section — it searches the cross-project library (`docs/OBSIDIAN.md`, Stage 2) so earlier lessons are found on demand instead of loaded into every session.
 
 ## Error Recovery
 

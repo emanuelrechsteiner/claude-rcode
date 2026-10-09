@@ -16,7 +16,14 @@
 # tree), not via the script's own counters. Never touches the real ~/.claude.
 # The sentinel is a fixture string, not real private content.
 #
-# bash 3.2 compatible. Usage: bash scripts/tests/knowledge-mirror-regression.sh
+# bash 3.2 compatible. Usage: /bin/bash scripts/tests/knowledge-mirror-regression.sh
+# Every child shell is /bin/bash (3.2 on macOS) whatever bash is first in PATH, so
+# 3.2 behaviour (set -e after a false `[ ] && cmd`, no assoc arrays) is what runs.
+#
+# LAYOUT — this file holds the harness, the real-run and frontmatter cases; the
+# fixtures and the remaining cases live in scripts/tests/lib/km-*.sh, sourced in
+# order (one shell, shared variables), so no file passes the 250-line limit (rules/code-quality.md).
+# shellcheck disable=SC2016 # single quotes are intended: the bash -c / eval bodies expand at run time, not here
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,49 +54,8 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/km-regress.XXXXXX")" || { echo "ERROR: mktemp fa
 trap 'rm -rf "$T"' EXIT
 H="$T/home"; C="$H/.claude"; K="$T/know"
 
-# ---- fixtures (invented values; frontmatter SHAPE only) ----------------------
-mkdir -p "$C/logbook" "$C/projects/-proj-a/memory" "$C/projects/-proj-b/memory" \
-         "$C/projects/vault/memory" "$C/plans" "$C/rules" "$C/vault" "$C/global-observation"
-printf '# Log one\nbody\n' > "$C/logbook/2026-01-01.md"
-printf '# Log two\nbody\n' > "$C/logbook/2026-01-02.md"
-printf '{"a":1}\n' > "$C/logbook/noise.jsonl"
-printf -- '---\nname: sample-memory\ndescription: invented description\nmetadata:\n  type: feedback\n---\nBody text.\n' \
-  > "$C/projects/-proj-a/memory/sample.md"
-printf -- '- [sample](sample.md) - index\n' > "$C/projects/-proj-a/memory/MEMORY.md"
-printf -- '%s\n' "$SENTINEL" > "$C/projects/-proj-a/memory/secret.local.md"
-printf '# Plan\n' > "$C/plans/meta-proposal-2026-01-01.md"
-printf '# Other plan\n' > "$C/plans/not-a-proposal.md"
-printf '# Rule A\n' > "$C/rules/a.md"
-printf '# Rule B\n' > "$C/rules/b.md"
-printf '%s\n' "$SENTINEL" > "$C/rules/zz-private.local.md"
-# REACHABLE vault decoy: matches projects/*/memory/*.md, so only the /vault/
-# hard exclude keeps it out. ($C/vault/decoy.md below is outside every glob and
-# only a bystander.)
-printf '%s\n' "$VSENTINEL" > "$C/projects/vault/memory/decoy.md"
-printf '%s\n' "$VSENTINEL" > "$C/vault/decoy.md"
-cat > "$C/global-observation/improvement-ledger.json" <<'EOF'
-{
-  "batchA": {"entries": [
-    {"id": "IMP-001", "status": "proposed", "title": "Dup first"},
-    {"id": "IMP-002", "status": "implemented", "title": "Second"}]},
-  "batchB": {"entries": [
-    {"id": "IMP-001", "status": "implemented", "title": "Dup last"}]},
-  "improvementQueue": {"priority_high": [
-    {"id": "IMP-900", "status": "queued", "title": "Queue item"}]}
-}
-EOF
-
-# run <args...> — runs the real script; sets RC, OUT, ERR. Env: K as target.
-run() {
-  ( cd "$RUN_CWD" && env -u CLAUDE_BAUHOF_ROOT HOME="$H" CLAUDE_KNOWLEDGE_DIR="$K" "${EXTRA_ENV[@]}" \
-    bash "$KM" "$@" >"$T/out" 2>"$T/err" )
-  RC=$?; OUT="$(cat "$T/out")"; ERR="$(cat "$T/err")"
-}
-EXTRA_ENV=(A=1)
-RUN_CWD="$T"
-tree_count() { find "$T" -mindepth 1 | grep -v -e '/out$' -e '/err$' | wc -l | tr -d ' '; }
-first_err_ok() { printf '%s\n' "$ERR" | head -1 | grep -q '^knowledge-mirror: refuse:'; }
-no_leak_names() { ! printf '%s\n%s\n' "$OUT" "$ERR" | grep -E '\.local\.md|vault/|\.jsonl' >/dev/null; }
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-fixtures.sh"
 
 echo "== help =="
 run --help
@@ -100,165 +66,161 @@ run --dry-run
 check "dry-run exits 0" "rc=$RC err=$ERR" test "$RC" -eq 0
 for t in mirror/logbook/2026-01-01.md mirror/logbook/2026-01-02.md \
          mirror/memory/-proj-a/sample.md mirror/memory/-proj-a/MEMORY.md \
-         mirror/plans/meta-proposal-2026-01-01.md mirror/rules/a.md mirror/rules/b.md mirror/ledger.md; do
+         mirror/plans/meta-proposal-2026-01-01.md mirror/rules/a.md mirror/rules/b.md mirror/rules/refs.md \
+         mirror/evidence/a.md mirror/adr/0001-x.md mirror/docs/top.md mirror/docs/CONTEXT.md mirror/ledger.md; do
   check "dry-run lists $t" "output: $OUT" grep -qF "$t" <<<"$OUT"
 done
-check "dry-run does not list non-allowlisted plan" "$OUT" bash -c '! grep -qF not-a-proposal <<<"$1"' _ "$OUT"
-check "dry-run prints TOTAL 8" "$OUT" grep -qx 'TOTAL 8' <<<"$OUT"
+for id in $LEDGER_IDS; do
+  check "dry-run lists ledger/$id.md exactly once" "output: $OUT" \
+    /bin/bash -c '[ "$(grep -cF "mirror/ledger/$1.md" <<<"$2")" = 1 ]' _ "$id" "$OUT"
+done
+check "dry-run lists no note for OTHER-7 / IMP-077 (outside the contract scope)" "$OUT" \
+  /bin/bash -c '! grep -qE "OTHER-7|IMP-077" <<<"$1"' _ "$OUT"
+check "dry-run lists the file with a space exactly once" "$OUT" \
+  /bin/bash -c '[ "$(grep -cF "mirror/rules/with space.md <-" <<<"$1")" = 1 ]' _ "$OUT"
+check "dry-run does not list non-allowlisted plan" "$OUT" /bin/bash -c '! grep -qF not-a-proposal <<<"$1"' _ "$OUT"
+check "dry-run does not list nested doc (top level only)" "$OUT" /bin/bash -c '! grep -qF skip.md <<<"$1"' _ "$OUT"
+check "dry-run prints TOTAL $EXPECT_TOTAL (fixture-derived)" "$OUT" grep -qx "TOTAL $EXPECT_TOTAL" <<<"$OUT"
 check "dry-run prints CHANGED line" "$OUT" grep -qE '^CHANGED [0-9]+$' <<<"$OUT"
 check "dry-run writes nothing (no mirror/, no notes/)" "$(ls -A "$K" 2>&1)" \
-  bash -c '[ ! -e "$1/mirror" ] && [ ! -e "$1/notes" ]' _ "$K"
+  /bin/bash -c '[ ! -e "$1/mirror" ] && [ ! -e "$1/notes" ]' _ "$K"
 check "dry-run output has no .local.md / vault/ / .jsonl" "$OUT $ERR" no_leak_names
 
 echo "== real run =="
 run
 check "real run exits 0" "rc=$RC err=$ERR" test "$RC" -eq 0
 check "real run output has no .local.md / vault/ / .jsonl" "$OUT $ERR" no_leak_names
-check "real run prints TOTAL 8 and CHANGED > 0" "$OUT" \
-  bash -c 'grep -qx "TOTAL 8" <<<"$1" && grep -qE "^CHANGED [1-9][0-9]*$" <<<"$1"' _ "$OUT"
+check "real run prints TOTAL $EXPECT_TOTAL and CHANGED > 0" "$OUT" \
+  /bin/bash -c 'grep -qx "TOTAL $2" <<<"$1" && grep -qE "^CHANGED [1-9][0-9]*$" <<<"$1"' _ "$OUT" "$EXPECT_TOTAL"
+check "real run prints the LINKS summary line (graph health signal)" "$OUT" \
+  grep -qxE 'LINKS total=[0-9]+ resolved=[0-9]+ ambiguous=[0-9]+ dangling=[0-9]+' <<<"$OUT"
+check "real run LINKS line has the expected totals" "$(grep '^LINKS' <<<"$OUT")" \
+  grep -qx "LINKS total=$EXP_LINKS" <<<"$OUT"
 check "grep -r sentinel in target finds nothing" "$(grep -rl "$SENTINEL" "$K" 2>/dev/null)" \
-  bash -c '! grep -rq "$1" "$2"' _ "$SENTINEL" "$K"
+  /bin/bash -c '! grep -rq "$1" "$2"' _ "$SENTINEL" "$K"
 check "reachable vault decoy (projects/vault/memory) content absent from target" "$(grep -rl "$VSENTINEL" "$K" 2>/dev/null)" \
-  bash -c '! grep -rq "$1" "$2"' _ "$VSENTINEL" "$K"
+  /bin/bash -c '! grep -rq "$1" "$2"' _ "$VSENTINEL" "$K"
 check "no mirror/memory/vault dir" "present" test ! -e "$K/mirror/memory/vault"
 check "no *.local.md / vault path in target tree" "$(find "$K" 2>/dev/null | grep -E 'local\.md|vault')" \
-  bash -c '! find "$1" | grep -qE "local\.md|vault"' _ "$K"
+  /bin/bash -c '! find "$1" | grep -qE "local\.md|vault"' _ "$K"
 check "no .jsonl in target: unreachable by allowlist (defense in depth)" "$(find "$K" -name '*.jsonl' 2>/dev/null)" \
-  bash -c '[ -z "$(find "$1" -name "*.jsonl")" ]' _ "$K"
+  /bin/bash -c '[ -z "$(find "$1" -name "*.jsonl")" ]' _ "$K"
 check "mirror/rules/a.md exists" "missing" test -f "$K/mirror/rules/a.md"
 check "mirror/rules/b.md exists" "missing" test -f "$K/mirror/rules/b.md"
 check "mirror/rules has no zz-private copy" "present" test ! -e "$K/mirror/rules/zz-private.local.md"
 check "memory .local.md absent from copy" "present" test ! -e "$K/mirror/memory/-proj-a/secret.local.md"
 check "empty memory dir yields no copy dir content" "$(ls -A "$K/mirror/memory/-proj-b" 2>&1)" \
-  bash -c '[ -z "$(ls -A "$1/mirror/memory/-proj-b" 2>/dev/null)" ]' _ "$K"
+  /bin/bash -c '[ -z "$(ls -A "$1/mirror/memory/-proj-b" 2>/dev/null)" ]' _ "$K"
 check "non-allowlisted plan not copied" "present" test ! -e "$K/mirror/plans/not-a-proposal.md"
 
+echo "== new sources: evidence / adr / docs =="
+check "evidence/a.md copied" "missing" test -f "$K/mirror/evidence/a.md"
+check "evidence/orphan.md copied" "missing" test -f "$K/mirror/evidence/orphan.md"
+check "adr/0001-x.md copied" "missing" test -f "$K/mirror/adr/0001-x.md"
+check "docs/top.md copied" "missing" test -f "$K/mirror/docs/top.md"
+check "docs/CONTEXT.md copied (from ~/.claude/CONTEXT.md)" "missing" test -f "$K/mirror/docs/CONTEXT.md"
+check "nested doc docs/nested/skip.md NOT copied (top level only)" "$(find "$K" -name skip.md)" \
+  /bin/bash -c '[ -z "$(find "$1" -name skip.md)" ] && ! grep -rq NESTED-MUST-NOT-COPY "$1"' _ "$K"
+check "no copy of the .local.md decoys in new folders" "$(find "$K" -name '*.local.md')" \
+  /bin/bash -c '[ -z "$(find "$1" -name "*.local.md")" ]' _ "$K"
+
+echo "== kind/origin frontmatter + provenance =="
+# <mirror rel>|<kind>|<source rel under ~/.claude>
+for row in "logbook/2026-01-01.md|logbook|logbook/2026-01-01.md" \
+           "memory/-proj-a/sample.md|memory|projects/-proj-a/memory/sample.md" \
+           "memory/-proj-a/MEMORY.md|memory|projects/-proj-a/memory/MEMORY.md" \
+           "plans/meta-proposal-2026-01-01.md|plan|plans/meta-proposal-2026-01-01.md" \
+           "rules/a.md|rule|rules/a.md" "rules/refs.md|rule|rules/refs.md" "rules/unclosed.md|rule|rules/unclosed.md" \
+           "evidence/a.md|evidence|docs/archive/rules-evidence/a.md" "adr/0001-x.md|adr|docs/adr/0001-x.md" \
+           "docs/top.md|doc|docs/top.md" "docs/CONTEXT.md|doc|CONTEXT.md"; do
+  IFS='|' read -r rel ty sr <<<"$row"
+  f="$K/mirror/$rel"
+  check "$rel: line 1 is ---, line 2 'kind: $ty'" "$(head -3 "$f" 2>&1)" \
+    /bin/bash -c '[ "$(sed -n 1p "$1")" = "---" ] && [ "$(sed -n 2p "$1")" = "kind: $2" ]' _ "$f" "$ty"
+  check "$rel: line 3 origin: \"~/.claude/$sr\" (double-quoted scalar)" "$(head -3 "$f" 2>&1)" \
+    /bin/bash -c '[ "$(sed -n 3p "$1")" = "origin: \"~/.claude/$2\"" ]' _ "$f" "$sr"
+  check "$rel: provenance directly after the closing ---" "$(head -8 "$f" 2>&1)" prov_after_fm "$f"
+done
+for id in $LEDGER_IDS; do
+  check "ledger/$id.md: kind imp + provenance after frontmatter" "$(head -14 "$K/mirror/ledger/$id.md" 2>&1)" \
+    /bin/bash -c 'sed -n 2p "$1" | grep -qx "kind: imp" && "$2" "$1"' _ "$K/mirror/ledger/$id.md" prov_after_fm
+done
+check "ledger.md (index): kind imp, origin, provenance directly after the frontmatter" "$(head -6 "$K/mirror/ledger.md" 2>&1)" \
+  /bin/bash -c '[ "$(sed -n 1p "$1")" = "---" ] && [ "$(sed -n 2p "$1")" = "kind: imp" ] && [ "$(sed -n 3p "$1")" = "origin: \"~/.claude/global-observation/improvement-ledger.json\"" ] && "$2" "$1"' _ "$K/mirror/ledger.md" prov_after_fm
+
 SM="$K/mirror/memory/-proj-a/sample.md"
-check "frontmatter copy starts with --- on line 1" "$(head -1 "$SM" 2>&1)" \
-  bash -c '[ "$(head -1 "$1")" = "---" ]' _ "$SM"
-check "frontmatter copy: provenance comment right after closing ---" "$(cat "$SM" 2>&1)" \
-  bash -c 'awk '"'"'/^---$/{n++; if(n==2){getline l; exit !(l ~ /^<!-- knowledge-mirror: copied from ~\//)}} END{if(n<2)exit 1}'"'"' "$1"' _ "$SM"
+SMSRC="$C/projects/-proj-a/memory/sample.md"
+check "existing frontmatter: original keys byte-identical, after the inserted kind/origin" "$(cat "$SM" 2>&1)" \
+  /bin/bash -c '[ "$(sed -n $((4+GM)),$((7+GM))p "$1")" = "$(sed -n 2,5p "$2")" ] && [ "$(sed -n $((8+GM))p "$1")" = "---" ]' _ "$SM" "$SMSRC"
+check "existing frontmatter: no second frontmatter block, exactly one kind: line at top level" "$(cat "$SM")" \
+  /bin/bash -c '[ "$(grep -c "^kind: " "$1")" = 1 ]' _ "$SM"
 check "frontmatter copy keeps body" "body lost" grep -q 'Body text.' "$SM"
+check "frontmatter line with backtick path is NOT rewritten" "$(sed -n 5p "$SM")" \
+  grep -qF 'description: invented see `rules/a.md` here' "$SM"
 MM="$K/mirror/memory/-proj-a/MEMORY.md"
-check "MEMORY.md copy: provenance comment on line 1" "$(head -1 "$MM" 2>&1)" \
-  bash -c 'head -1 "$1" | grep -q "^<!-- knowledge-mirror: copied from ~/"' _ "$MM"
+check "MEMORY.md copy: generated frontmatter (--- / kind / origin / dated / dated_from / ---) then provenance on line 5+GM" "$(head -5 "$MM" 2>&1)" \
+  /bin/bash -c '[ "$(sed -n $((4+GM))p "$1")" = "---" ] && sed -n $((5+GM))p "$1" | grep -q "^<!-- knowledge-mirror: copied from ~/"' _ "$MM"
+RF="$K/mirror/rules/refs.md"
+check "horizontal rule in body is not treated as frontmatter (one kind: line, rule kept)" "$(cat "$RF")" \
+  /bin/bash -c '[ "$(grep -c "^kind: " "$1")" = 1 ] && [ "$(sed -n $((4+GM))p "$1")" = "---" ] && [ "$(sed -n $((6+GM))p "$1")" = "# Refs" ] && [ "$(grep -c "^---$" "$1")" = 3 ]' _ "$RF"
+UC="$K/mirror/rules/unclosed.md"
+check "source with unclosed --- counts as no frontmatter (generated block, original --- kept)" "$(cat "$UC")" \
+  /bin/bash -c '[ "$(sed -n $((4+GM))p "$1")" = "---" ] && [ "$(sed -n $((6+GM))p "$1")" = "---" ] && [ "$(sed -n $((7+GM))p "$1")" = "no closing marker here" ]' _ "$UC"
+# Real shape: live memory notes carry top-level type:/source: keys of their own. Ours
+# are kind:/origin: under every source shape, so there is never a clash (a duplicate
+# top-level key would be invalid YAML: Obsidian drops the whole properties block).
+RM="$K/mirror/memory/-proj-a/real.md"
+check "real memory note: source keys type:/source: stay byte-identical" "$(cat "$RM")" \
+  /bin/bash -c 'grep -qxF "type: feedback" "$1" && grep -qxF "source: web" "$1"' _ "$RM"
+check "real memory note: our keys are plain kind: / origin: right after the opening --- (same as every other copy)" "$(head -4 "$RM")" \
+  /bin/bash -c '[ "$(sed -n 2p "$1")" = "kind: memory" ] && [ "$(sed -n 3p "$1")" = "origin: \"~/.claude/projects/-proj-a/memory/real.md\"" ]' _ "$RM"
+check "no copy and no ledger note contains the retired key names (mirror_type, mirror_source, generated type:/source:)" "$(grep -rlE '^(mirror_type|mirror_source):' "$K/mirror" 2>&1)" \
+  /bin/bash -c '! grep -rqE "^(mirror_type|mirror_source):" "$1" && ! grep -rlE "^(type|source):" "$1" | grep -vE "/memory/-proj-a/real.md$"' _ "$K/mirror"
+check "every written copy (hashes.tsv rows incl. ledger index and notes = TOTAL $EXPECT_TOTAL) has exactly one kind: line" "$(every_copy_one_kind 2>&1)" every_copy_one_kind
+check "real memory note: original keys keep their order after ours, provenance after the closing ---" "$(head -9 "$RM")" \
+  /bin/bash -c '[ "$(sed -n $((4+GM)),$((6+GM))p "$1" | tr "\n" "|")" = "name: real-memory|type: feedback|source: web|" ] && [ "$(sed -n $((7+GM))p "$1")" = "---" ]' _ "$RM"
+check "NO mirror copy has a duplicate top-level frontmatter key" "$(no_dup_keys 2>&1)" no_dup_keys
+CR="$K/mirror/rules/crlf.md"
+check "CRLF frontmatter: line 1 and our two inserted lines end in CR, kind rule" "$(head -3 "$CR" | od -c | head -5)" \
+  /bin/bash -c 'crline "$1" 1 && crline "$1" 2 && crline "$1" 3 && crline "$1" $((3+GM)) && [ "$(sed -n 2p "$1" | tr -d "\r")" = "kind: rule" ]' _ "$CR"
+check "CRLF frontmatter: original key and closing --- keep their CR, provenance follows" "$(head -6 "$CR" | od -c | head -8)" \
+  /bin/bash -c '[ "$(sed -n $((4+GM))p "$1" | tr -d "\r")" = "name: crlf" ] && [ "$(sed -n $((5+GM))p "$1" | tr -d "\r")" = "---" ] && sed -n $((6+GM))p "$1" | grep -q "^<!-- knowledge-mirror: copied from ~/"' _ "$CR"
+check "CRLF body: backtick path linked and the line's CR is kept" "$(sed -n $((7+GM))p "$CR" | od -c | head -3)" \
+  /bin/bash -c 'sed -n $((7+GM))p "$1" | grep -qF "[[rules/a]]" && crline "$1" $((7+GM))' _ "$CR"
+FO="$K/mirror/rules/fmonly.md"; FE="$K/mirror/rules/fmempty.md"
+check "frontmatter-only file: exactly --- / kind / origin / dated / dated_from / name / --- / provenance, nothing else" "$(cat "$FO")" \
+  /bin/bash -c '[ "$(wc -l < "$1" | tr -d " ")" = $((6+GM)) ] && [ "$(sed -n 2p "$1")" = "kind: rule" ] && [ "$(sed -n $((4+GM))p "$1")" = "name: fmonly" ] && [ "$(sed -n $((5+GM))p "$1")" = "---" ]' _ "$FO"
+check "empty frontmatter (--- / ---): our keys inside it, provenance after, 5+GM lines" "$(cat "$FE")" \
+  /bin/bash -c '[ "$(wc -l < "$1" | tr -d " ")" = $((5+GM)) ] && [ "$(sed -n $((4+GM))p "$1")" = "---" ] && prov_after_fm "$1"' _ "$FE"
+PT="$K/mirror/rules/partial.md"
+check "partial path matches stay exactly as written (scripts/rules/a.md, docs/adr/top.md, docs/0001-x.md, rules/a.md.bak, xrules/a.md)" "$(tail -n 1 "$PT")" \
+  grep -qxF '`scripts/rules/a.md` `docs/adr/top.md` `docs/0001-x.md` `rules/a.md.bak` `xrules/a.md`' "$PT"
+check "file name with a space: copied under its exact name and hashed; bare [[with space]] is qualified like the path-qualified one" "$(ls "$K/mirror/rules")" \
+  /bin/bash -c '[ -f "$1/mirror/rules/with space.md" ] && grep -qF "rules/with space.md$(printf "\t")" "$1/mirror/.state/hashes.tsv" && grep -qxF "Bare [[rules/with space]] and [[rules/with space]]." "$1/mirror/docs/spaced-ref.md"' _ "$K"
 
-LG="$K/mirror/ledger.md"
-check "ledger lists duplicate id exactly once" "count=$(grep -c 'IMP-001' "$LG" 2>/dev/null)" \
-  bash -c '[ "$(grep -c "IMP-001" "$1")" = 1 ]' _ "$LG"
-check "ledger duplicate id carries LAST status (implemented)" "$(grep IMP-001 "$LG" 2>&1)" \
-  bash -c 'grep "IMP-001" "$1" | grep -q implemented && ! grep "IMP-001" "$1" | grep -q proposed' _ "$LG"
-check "ledger includes priority-queue id IMP-900" "$(cat "$LG" 2>&1)" grep -q 'IMP-900' "$LG"
-check "ledger lists 3 unique ids" "$(grep -c 'IMP-' "$LG")" \
-  bash -c '[ "$(grep -c "^- IMP-" "$1")" = 3 ]' _ "$LG"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-ledger.sh"
 
-HT="$K/mirror/.state/hashes.tsv"
-check "hashes.tsv has one line per copied file (8)" "$(cat "$HT" 2>&1)" \
-  bash -c '[ "$(grep -vc "README" "$1")" = 8 ]' _ "$HT"
-check "hashes.tsv rows are <path><TAB><sha256>" "$(head -2 "$HT" 2>&1)" \
-  bash -c '! grep -vE "^[^	]+	[0-9a-f]{64}$" "$1" | grep -q .' _ "$HT"
-check "mirror/README.md exists" "missing" test -f "$K/mirror/README.md"
-check "notes/ exists and is empty" "$(ls -A "$K/notes" 2>&1)" \
-  bash -c '[ -d "$1/notes" ] && [ -z "$(ls -A "$1/notes")" ]' _ "$K"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-links.sh"
 
-echo "== idempotence and notes safety =="
-printf 'mine\n' > "$K/notes/keep.md"
-run
-check "second run exits 0" "rc=$RC err=$ERR" test "$RC" -eq 0
-check "second run prints CHANGED 0" "$OUT" grep -qx 'CHANGED 0' <<<"$OUT"
-check "notes/keep.md survives rerun" "gone" test -f "$K/notes/keep.md"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-kind.sh"
 
-echo "== hand-edit refusal (drift check precedes every write) =="
-# Source of b.md changes AND the copy of a.md is hand-edited: the run must
-# refuse for a.md and must not have refreshed b.md meanwhile.
-printf '# Rule B changed\nSOURCE-CHANGED-B\n' > "$C/rules/b.md"
-printf 'HAND-EDITED-IN-OBSIDIAN\n' >> "$K/mirror/rules/a.md"
-run
-check "hand-edited copy: exit 3" "rc=$RC err=$ERR" test "$RC" -eq 3
-check "hand-edit refusal: other changed copy NOT written (b.md keeps OLD content)" "$(cat "$K/mirror/rules/b.md")" \
-  bash -c 'grep -q "# Rule B" "$1" && ! grep -q SOURCE-CHANGED-B "$1"' _ "$K/mirror/rules/b.md"
-check "hand-edit refusal stderr has a hint: line" "$ERR" grep -q 'hint:' <<<"$ERR"
-check "hand-edit refusal stderr starts with prefix" "$ERR" \
-  bash -c 'head -1 <<<"$1" | grep -q "^knowledge-mirror: refuse: hand-edited copy:"' _ "$ERR"
-check "hand-edit refusal names the edited file" "$ERR" grep -q 'rules/a.md' <<<"$ERR"
-check "edited content still present (not overwritten)" "lost" grep -q HAND-EDITED-IN-OBSIDIAN "$K/mirror/rules/a.md"
-check "hand-edit refusal does not name untouched file" "$ERR" bash -c '! grep -q "rules/b.md" <<<"$1"' _ "$ERR"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-rerun.sh"
 
-echo "== documented recovery: delete hashes.tsv, rerun =="
-rm -f "$K/mirror/.state/hashes.tsv"
-run
-check "recovery run exits 0" "rc=$RC err=$ERR" test "$RC" -eq 0
-check "recovery run refreshed b.md from source" "$(cat "$K/mirror/rules/b.md")" grep -q SOURCE-CHANGED-B "$K/mirror/rules/b.md"
-check "recovery run restored state file" "missing" test -s "$K/mirror/.state/hashes.tsv"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-refusals.sh"
 
-echo "== target refusals =="
-refuse() { # refuse <label> <expected-absent-path> [<stderr-substring>]; uses current K / EXTRA_ENV
-  local before after; before="$(tree_count)"
-  run
-  after="$(tree_count)"
-  check "$1: exit 1" "rc=$RC err=$ERR" test "$RC" -eq 1
-  check "$1: stderr starts with 'knowledge-mirror: refuse:'" "$ERR" first_err_ok
-  check "$1: nothing written" "tree $before -> $after" test "$before" = "$after"
-  [ -n "${2:-}" ] && check "$1: target absent" "exists: $2" test ! -e "$2"
-  [ -n "${3:-}" ] && check "$1: stderr contains '$3'" "$ERR" grep -qF -- "$3" <<<"$ERR"
-  return 0
-}
-SAVE_K="$K"
-K="$C/k";               refuse "target inside ~/.claude" "$C/k"
-K="$C";                 refuse "target equal to ~/.claude" ""
-K="$T/vault";           refuse "target basename vault" "$T/vault"
-# Relative target: run from an EMPTY temp cwd; a regressed script would create
-# relative/dir/... there (not under $T), so the cwd itself is the sink.
-mkdir -p "$T/cwd"; RUN_CWD="$T/cwd"
-K="relative/dir";       refuse "relative target" ""
-check "relative target: nothing created in the caller's cwd" "$(ls -A "$T/cwd")" \
-  bash -c '[ -z "$(ls -A "$1")" ]' _ "$T/cwd"
-RUN_CWD="$T"
-K="";                   refuse "empty target" ""
-# Protected roots CONTAINED in the target (target is an ancestor of the root).
-K="$H";                 refuse "target contains ~/.claude (target = HOME)" "" "target contains a protected root"
-run_bh() { # run_bh <bauhof-root>; uses current K
-  ( cd "$T" && env HOME="$H" CLAUDE_KNOWLEDGE_DIR="$K" CLAUDE_BAUHOF_ROOT="$1" bash "$KM" >"$T/out" 2>"$T/err" )
-  RC=$?; OUT="$(cat "$T/out")"; ERR="$(cat "$T/err")"
-}
-bh_case() { # bh_case <label> <bauhof-root> <stderr-substring>; uses current K
-  local b a; b="$(tree_count)"; run_bh "$2"; a="$(tree_count)"
-  check "$1: exit 1" "rc=$RC err=$ERR" test "$RC" -eq 1
-  check "$1: refuse prefix" "$ERR" first_err_ok
-  check "$1: nothing written" "$b -> $a" test "$b" = "$a"
-  [ -z "${3:-}" ] || check "$1: stderr contains '$3'" "$ERR" grep -qF -- "$3" <<<"$ERR"
-  return 0
-}
-BH="$T/bauhof"; mkdir -p "$BH"
-K="$BH/sub";            bh_case "target inside CLAUDE_BAUHOF_ROOT" "$BH" ""
-K="$H";                 bh_case "target = HOME, CLAUDE_BAUHOF_ROOT=HOME/ws" "$H/ws" "target contains a protected root"
-# Isolating variant: the target here does NOT contain ~/.claude, so only the
-# BAUHOF root can trigger the refusal (the case above would also fire on ~/.claude).
-K="$T/outer";           bh_case "target contains CLAUDE_BAUHOF_ROOT (isolated)" "$T/outer/ws" "target contains a protected root"
-K="$SAVE_K"
-
-echo "== symlink inside mirror/ =="
-# K is populated by the runs above; replace the real mirror/rules with a symlink
-# to an empty dir elsewhere. A write through it would land outside mirror/.
-rm -rf "$K/mirror/rules"; mkdir -p "$T/elsewhere"; ln -s "$T/elsewhere" "$K/mirror/rules"
-run
-check "symlink in mirror/: exit 1" "rc=$RC err=$ERR" test "$RC" -eq 1
-check "symlink in mirror/: stderr starts 'knowledge-mirror: refuse: symlink inside mirror/:'" "$ERR" \
-  bash -c 'head -1 <<<"$1" | grep -q "^knowledge-mirror: refuse: symlink inside mirror/:"' _ "$ERR"
-check "symlink in mirror/: elsewhere stays empty" "$(ls -A "$T/elsewhere")" \
-  bash -c '[ -z "$(ls -A "$1")" ]' _ "$T/elsewhere"
-run --dry-run
-check "symlink in mirror/ + --dry-run: exit 1" "rc=$RC err=$ERR" test "$RC" -eq 1
-check "symlink in mirror/ + --dry-run: elsewhere stays empty" "$(ls -A "$T/elsewhere")" \
-  bash -c '[ -z "$(ls -A "$1")" ]' _ "$T/elsewhere"
-rm -f "$K/mirror/rules"
-
-echo "== unset CLAUDE_KNOWLEDGE_DIR =="
-b="$(tree_count)"
-env -u CLAUDE_KNOWLEDGE_DIR -u CLAUDE_BAUHOF_ROOT HOME="$H" bash "$KM" >"$T/out" 2>"$T/err"; RC=$?
-ERR="$(cat "$T/err")"; a="$(tree_count)"
-check "unset target: exit 1" "rc=$RC err=$ERR" test "$RC" -eq 1
-check "unset target: refuse prefix on stderr" "$ERR" first_err_ok
-check "unset target: nothing created" "$b -> $a" test "$b" = "$a"
+# v3: generated dated keys, link hygiene, graph export, Mentions (own fixture home; default flags)
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-fixtures-v3.sh"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-v3-meta.sh"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-v3-links.sh"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/lib/km-cases-v3-graph.sh"
 
 summary

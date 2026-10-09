@@ -12,6 +12,82 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-09
+
+Knowledge library v3: the agent-facing library is measured before it is tuned.
+An evaluation harness, a ranked lookup, a justification graph with freshness
+and supersession keys, a note-quality lint, and pipeline contracts so that new
+knowledge arrives already linked. ADR 0008 fixes the boundary between
+owner-authored curation keys (in source notes) and everything generated (in
+mirror copies only). ADR 0009 settles retrieval: agentic over a lexical
+lookup, no vector index.
+
+### Added
+
+- `docs/adr/0009-agentic-retrieval-over-lexical-lookup.md`: the retrieval
+  protocol — the calling agent runs 2–4 keyword sets in one call (its own
+  words, the German/English translation, the technical terms), judges by the
+  description lines, opens only the top note's section. Measured on 56
+  judge-confirmed held-out questions: lookup alone 22/56 in the top 3; the
+  protocol 56/56 live and 50/56 (hit@10 55/56) when the frozen keyword sets
+  are replayed deterministically. Dense retrieval and hosted embeddings stay
+  documented fallbacks with a stated trigger.
+- `knowledge-lookup.sh --alt "<keywords>"` (repeatable): several keyword sets
+  in one call, fused best-rank-first (`--fuse best|rrf`); the retrieval
+  protocol is in `--help`.
+- `knowledge-eval.sh --alts` replays frozen keyword sets (`alts` column) and
+  reports `hit@10`, the window the agent sees.
+- `rules/foundation.md` and the session-start library hint carry the protocol
+  in one sentence each.
+
+- `scripts/knowledge-eval.sh`: scores `knowledge-lookup.sh` against a
+  tab-separated question file (`<K>/eval/questions.tsv`: dev and held-out test
+  sets) — hit@1, hit@3, MRR@10 and a tokens-to-answer proxy — and appends to
+  `<K>/eval/history.tsv`. A missing question file is an explicit `EVAL SKIP`
+  with exit 3, never a silent pass. Regression suite included.
+- `scripts/knowledge-lint.sh`: read-only note-quality report over the mirror
+  (description, claim line, Why, How to apply, date, size, dangling links,
+  status vocabulary), plus `--contradictions`, `--refs`, `--orphans`,
+  `--superseded` and `--rules-without-evidence` over the graph export.
+  Regression suite included.
+- Knowledge mirror v3: generated `dated`, `dated_from` and `origin_session`
+  keys; bare memory links resolved inside their project folder; `MEMORY.md`
+  index links rewritten to wikilinks; every dangling link reported with a cause
+  (`slug`, `missing`, `excluded-by-design`, `template`); a generated
+  `## Mentions` section (reverse edges); `graph/nodes.tsv` and
+  `graph/edges.tsv` for structural questions; `--no-v3-links` reproduces the
+  v2 edge set as the exporter's grader check.
+- `docs/adr/0008-curation-keys-authored-generated-in-mirror.md`: `status`,
+  `superseded_by`, `valid_from` and `backfilled` are owner-authored in source
+  notes; everything derived lives in mirror copies only (extends ADR 0007).
+- Pipeline contracts: daily-docs lists the day's memory-note paths under a
+  `### Memory notes` heading; meta-observer and weekly-improve write
+  provisional ids as `P-IMP-NNN`, never a bare `IMP-NNN`; `/lessons` writes one
+  pointer memory note per ADR or pattern it adds.
+- `rules/foundation.md` already sends agents to the lookup before implementing
+  in an unfamiliar area (1.7.0); the lookup now writes a local usage log
+  (`<K>/eval/lookup-log.tsv`, off with `--no-log` or
+  `KNOWLEDGE_LOOKUP_LOG=0`) as the source of real evaluation questions.
+
+### Changed
+
+- `scripts/knowledge-lookup.sh` v3: BM25F-style ranking (idf, saturated tf,
+  length normalisation; basename and frontmatter name/description ×3, headings
+  ×2), word-boundary matching with opt-in `--prefix`, a tracked collision list
+  (`scripts/lib/knowledge-lookup-collisions.tsv`, modes `cs` and `code`),
+  `--kind` and `--project` filters, `--max` default 8, `ledger.md` out of the
+  default result set, logbook down-weighted. Output shows `~<n> tok`, the
+  note's description, section anchors per hit (`L<n> § <heading>: <text>`) and
+  a `[superseded → <path>]` flag with successor-first ordering; `## Mentions`
+  text is ignored for matching. Measured on the 12 dev queries: expected note in
+  the top 3 for 10/10 instead of 5/10; on 25 held-out questions 10/25 instead of
+  3/25; cross-language queries remain a lexical limit (1 of 8).
+- Ledger copies in the mirror carry `ledger_status` instead of `status`, so the
+  authored `status` vocabulary stays memory-only.
+- `docs/OBSIDIAN.md` Contract v3 and the Lookup v3 / evaluation / lint sections
+  describe every key, flag, file and output format, including the deviations
+  confirmed by two adversarial reviews.
+
 ## [1.7.0] - 2026-10-08
 
 Obsidian as a read window over the distilled knowledge layer, a machine-local
@@ -309,7 +385,9 @@ developer's machine; the framework carries tokens. Decision record:
 
 Superseded. Their history was replaced by 1.1.0 and is no longer available.
 
-[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.4.1...v1.5.0

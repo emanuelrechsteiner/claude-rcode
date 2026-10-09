@@ -1,6 +1,6 @@
 <!--
 Status: ACTIVE
-Last Updated: 2026-10-08
+Last Updated: 2026-10-09
 Purpose: Framework glossary for claude-code-config — terms coined once (rules/domain-docs-convention.md), reused everywhere
 -->
 
@@ -38,8 +38,30 @@ Purpose: Framework glossary for claude-code-config — terms coined once (rules/
 
 **Knowledge folder** — the machine-local directory that `CLAUDE_KNOWLEDGE_DIR` points to, outside `~/.claude`, the workshop and any synced folder, holding `mirror/` (owned by the script, overwritten on each run) and `notes/` (the owner's, never touched); opened in Obsidian as its own Obsidian vault. Written `<KNOWLEDGE>` in docs.
 
-**Knowledge mirror** — the read-only copy of the distilled knowledge layer (logbook, per-project memory, meta-proposals, tracked rules, a rendered ledger index) that `scripts/knowledge-mirror.sh` writes into `<KNOWLEDGE>/mirror/`; a snapshot that is stale until the script runs again.
+**Knowledge mirror** — the read-only copy of the distilled knowledge layer (logbook, per-project memory, meta-proposals, tracked rules, rule evidence, ADRs, top-level docs and `CONTEXT.md`, plus one note per ledger entry and the ledger index) that `scripts/knowledge-mirror.sh` writes into `<KNOWLEDGE>/mirror/`, each copy with generated `kind`/`origin` frontmatter and generated links (see **Justification graph**); a snapshot that is stale until the script runs again.
 
 **Rule link** — the token form `[[name]]`: a bare basename, with no path and no extension, pointing to `rules/<name>.md` (or `skills/<name>/`); a pointer for readers that nothing in the framework resolves or checks, which Obsidian makes clickable. See `docs/OBSIDIAN.md` § Link convention.
 
 **Library lookup** — `scripts/knowledge-lookup.sh`: the agent's on-demand search over the knowledge mirror by keywords or `--stack` (keywords derived from the project's dependency files). It serves the third knowledge layer — true across projects, needed only sometimes — which is searched when needed and never loaded into every session (the always-loaded layer is `rules/`, the per-project layer is `CONTEXT.md`/ADRs/project memory). See `docs/OBSIDIAN.md` § Stage 3.
+
+**Justification graph** — the link structure the knowledge mirror generates into its copies, never into the sources: claim → ground edges (a rule to its evidence twin, a ledger note to the mirrored files it names) between copies that carry generated `kind` and `origin` frontmatter (never `type`/`source`, which authored notes may own), read by colour class because Obsidian's edges are untyped (v2: built and deployed 2026-10-09; amended 2026-10-09: v3 adds `dated`, `dated_from`, `origin_session` and, on ledger notes, `ledger_status`). See `docs/adr/0007-justification-graph-in-the-mirror.md`, `docs/OBSIDIAN.md` § Stage 2 and § Graph legend.
+
+**Link check** — `scripts/knowledge-mirror.sh --check-links`: a report (exit 0) that prints `LINKS total= resolved= ambiguous= dangling=` plus up to 30 dangling and up to 30 ambiguous lines (each dangling line carries a cause: `slug`, `missing`, `excluded-by-design`, `template`), the fail-loud signal for decay of the justification graph; a real mirror run ends with the same `LINKS` line (built 2026-10-09; amended 2026-10-09: last real run `total=2673 resolved=2657 ambiguous=0 dangling=16`). See `docs/OBSIDIAN.md` § Stage 2.
+
+**Curation key** — an owner-authored frontmatter key in a source memory note (`status`, `superseded_by`, `valid_from`, `backfilled`) that no script derives or writes, except that the owner-gated backfill applier stamps `backfilled`. See `docs/adr/0008-curation-keys-authored-generated-in-mirror.md`.
+
+**Generated key** — a frontmatter key the mirror writes into a copy only, never into a source (`kind`, `origin`, `dated`, `dated_from`, `origin_session`; plus `ledger_status` on ledger notes, which therefore carry no authored `status`), so it can never collide with an authored key. See `docs/OBSIDIAN.md` § Stage 2 "Contract v3".
+
+**Mentions** — the generated `## Mentions` section at the end of a mirror copy: up to 10 notes that link to it, ordered memory, rule, adr, logbook, plan, newest first, which the lookup ignores. See `docs/OBSIDIAN.md` § Stage 2 "Contract v3".
+
+**Graph export** — the two TSV files `mirror/graph/nodes.tsv` and `mirror/graph/edges.tsv` that each mirror run writes so structural questions are answerable with awk or jq; not `.md`, so Obsidian draws no nodes for them. See `docs/OBSIDIAN.md` § Stage 2 "Contract v3".
+
+**Eval set** — the machine-local question file `<KNOWLEDGE>/eval/questions.tsv` (a `dev` and a frozen, owner-confirmed `test` set) that `scripts/knowledge-eval.sh` scores the library lookup against. See `docs/OBSIDIAN.md` § Stage 3.
+
+**Tokens-to-answer** — the deterministic proxy for read cost in the eval: lookup output size plus the size of each listed file up to the first expected one, in tokens (bytes/4), capped at the top 5; it assumes the agent reads in rank order. See `docs/OBSIDIAN.md` § Stage 3.
+
+**Knowledge lint** — `scripts/knowledge-lint.sh`: a read-only report (exit 0) over the knowledge mirror that flags memory notes lacking a description, Why/How, a date or a resolving link, plus contradiction, reference and graph queries (built 2026-10-09; the write-time advisory hook is wave B, not built). See `docs/OBSIDIAN.md` § Stage 3.
+
+**Retrieval protocol** — the fixed way an agent searches the knowledge mirror: rewrite the question into 2–4 keyword sets (own words, translation, technical terms), run them in one `--alt` lookup call, judge by the `»` description lines, open only the top note's section; the lookup stays lexical and no vector index exists. See `docs/adr/0009-agentic-retrieval-over-lexical-lookup.md`, `docs/OBSIDIAN.md` § Stage 3.
+
+**Collision list** — `scripts/lib/knowledge-lookup-collisions.tsv`: the tracked keyword-to-mode table (`cs` or `code`) that stops the library lookup matching a package name against an everyday word, such as `zustand` against the German noun. See `docs/OBSIDIAN.md` § Stage 3.

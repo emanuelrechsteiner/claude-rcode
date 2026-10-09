@@ -104,6 +104,16 @@ One JSON object per line, fields: `finding` (F-001), `title`, `category`, `riskL
 dedups on `<proposal>#<finding>` (so a re-run appends nothing), and gates on valid
 JSON + unique ids.
 
+**Knowledge-library contract (2026-10-09, `docs/OBSIDIAN.md` § Contract v3):** never
+write a bare `IMP-NNN` for a finding before the script has assigned it — in the
+proposal file a future entry is `P-IMP-NNN` (provisional; the knowledge mirror links
+every bare `IMP-NNN` to the ledger note of that number, a `P-` prefix stops it).
+`evidence` cites files as backtick paths relative to `~/.claude` (`logbook/<day>.md`,
+`projects/<folder>/memory/<file>.md`), never a session id alone, so the mirror can
+link them. A finding that replaces an earlier ledger entry says so in
+`recommendation` (`supersedes IMP-NNN`). A finding without a recommendation is not
+written: an empty entry is a dangling node in the library (16 of 238 on 2026-10-09).
+
 **Pseudonymization (IMP-219):** whatever goes into versioned files carries tokens
 instead of real names/paths — `ledger-append-proposed.sh` tokenizes every text field
 as a net (`scripts/vault/vault.sh`) and refuses to write on a remaining structural

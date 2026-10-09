@@ -194,6 +194,20 @@ doesn't have an ADR:
    (`# | Title | Status | Filed ADR`) — the index must list every inline and
    filed ADR
 
+### Pointer memory note (knowledge library, 2026-10-09)
+
+For every ADR filed in this step and every pattern or anti-pattern added in
+Step 3, write ONE pointer note into this project's auto-memory folder,
+`~/.claude/projects/<encoded cwd>/memory/<kebab-slug>.md` (the encoding replaces
+every `/` of the cwd with `-`), plus its one-line entry in that folder's
+`MEMORY.md`. Project docs are not mirrored into the cross-project knowledge
+library (`docs/OBSIDIAN.md`: Stage 2b is gated), so the memory note is what
+makes the decision findable from another project. Format: frontmatter `name`,
+`description` (the claim in one line), `metadata: type: project`; body = the
+claim first, then `**Why:**`, `**How to apply:**`, and the backtick path of the
+ADR or CONVENTIONS section it points to. Never copy the ADR body: one claim,
+one path.
+
 ### ADR Updates
 
 Existing ADRs are NEVER rewritten retroactively (A5 — immutable once filed):

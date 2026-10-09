@@ -139,7 +139,7 @@ mcp__memory__search_nodes({ query: "<aggregated theme>" })
 For each recurring pattern (≥3 signals of same intent in same file area), check if a corresponding Memory entity already exists. Avoid duplicate entries.
 
 ### Step 4 — Load existing ledger
-Read `improvement-ledger.json`. Identify the next IMP-XXX number. Exclude candidates that overlap with `status: proposed` entries.
+Read `improvement-ledger.json`. Exclude candidates that overlap with `status: proposed` entries. Do NOT pre-assign ledger numbers: a candidate carries a PROVISIONAL id `P-IMP-NNN` (NNN = the next free number at the time of writing — a guess, unique only inside this proposal, never a bare `IMP-NNN`); the ledger assigns the real `IMP-NNN` at write time (`ledger-append-proposed.sh`). Why (2026-10-09): the provisional `IMP-254` in `meta-proposal-2026-10-08.md` collided with the next real entry, and the knowledge mirror (`docs/OBSIDIAN.md` § Contract v3) links every bare `IMP-NNN` token to the ledger note of that number, so a provisional id becomes a wrong edge the moment the number is taken; a `P-` prefix stops that linker.
 
 ### Step 5 — Generate proposal
 
@@ -156,8 +156,11 @@ Write to `~/.claude/plans/meta-proposal-YYYY-MM-DD.md` with sections:
 
 ## Improvement Candidates
 
-### IMP-XXX: <Title>
+### P-IMP-NNN: <Title>
 - **Source evidence**: <N signals from files X, Y>
+- **Evidence paths**: every cited file as a backtick path relative to `~/.claude`
+  (`projects/<folder>/memory/<file>.md`, `logbook/<day>.md`, `rules/<name>.md`), so the
+  knowledge mirror can turn the citation into a link; a session id alone is not a path
 - **Transkript-Beleg** (Pflichtfeld, Quellen-Doktrin): <Pfad + Zitat/Ereignis, ODER
   an explicit justification for why none exists>
 - **Proposed category**: orchestration | compliance | integrity | efficiency | safety | automation | context
@@ -173,7 +176,7 @@ Write to `~/.claude/plans/meta-proposal-YYYY-MM-DD.md` with sections:
 ```
 
 ### Step 6 — Append ledger entry (optional, status: proposed)
-If the user explicitly requests immediate ledger entry (rare), append a `proposed` IMP-XXX to `improvement-ledger.json` with a `sourceProposal` field pointing to the proposal file.
+If the user explicitly requests immediate ledger entry (rare), append a `proposed` entry to `improvement-ledger.json` with a `sourceProposal` field pointing to the proposal file; the script assigns the `IMP-NNN` id, the proposal keeps its `P-IMP-NNN`.
 
 **Pseudonymization (IMP-219):** whatever goes into a versioned file carries tokens
 instead of real names/paths — pipe findings through `ledger-append-proposed.sh`, which

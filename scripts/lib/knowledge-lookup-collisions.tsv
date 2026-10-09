@@ -1,0 +1,8 @@
+# knowledge-lookup collision list (tracked, no private data). Read by scripts/lib/knowledge-lookup-rank.sh.
+# Header: keyword<TAB>mode. Lines starting with # and blank lines are ignored; a malformed row aborts the lookup.
+# cs   = case-sensitive match (the keyword is compared in the exact case written here).
+# code = matched only inside backtick code spans, fenced code, or import-like lines.
+# The list applies to explicit keywords and to --stack keywords alike (keywords are lowercased first).
+keyword	mode
+zustand	cs
+immer	code

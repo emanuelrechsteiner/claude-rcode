@@ -217,6 +217,17 @@ mechanism (the script, `items_total`).
    field entirely). A file without this field is a PROSE SOURCE WITHOUT A DATE
    RECORD — it may be cited, but not claimed as "changed yesterday"; mtime does not
    substitute for the missing record.
+
+   **Knowledge-library contract (2026-10-09, `docs/OBSIDIAN.md` § Contract v3):** the
+   logbook entry lists every memory note identified here under a heading
+   `### Memory notes`, one per line, as a backtick path in the exact form
+   `~/.claude/projects/<folder>/memory/<file>.md` (write `### Memory notes: none` when
+   nothing qualifies — the heading is mandatory either way, so a missing list is
+   visible). The knowledge mirror rewrites that path form into a link to the mirrored
+   note, which turns the day's logbook into a graph edge into the note instead of
+   prose about it. For this list scan ALL project folders
+   (`~/.claude/projects/*/memory/*.md`) with the same content-based `modified:` test —
+   the `$HOME` folder above is only the one a `cwd=$HOME` session writes to.
 4. **Session metrics:** `~/.claude/session-env/*` from yesterday
 
 ## Categorization
