@@ -85,6 +85,7 @@ In Worker mode, run only:
   subagents, the lead reviews after the report-back.
 - **Step 5** — commit ON THE BRANCH THE LEAD NAMED (commit ref format in
   Step 5); do NOT create a branch, do NOT push, do NOT open a PR.
+- **Interactive units (games, apps, UIs):** a "Done" verdict must satisfy the "Interactive hand-off" block in Step 7 (referenced, not copied) before it goes to the lead.
 
 A worker in Worker mode NEVER writes `PROJECT-STATUS.md`, `BRAINSTORM.md`, or
 `.rcode/agent-log.md` — Steps 2, 6, 7, 8, 9 belong to the lead (branching,
@@ -142,7 +143,7 @@ Before touching any code, verify readiness:
 7. **Env-key preflight (IMP-169, A11)** — run the env-key preflight defined
    in `~/.claude/rcode/stages/develop.md` "## Env-key preflight" for this
    unit's `Requires env:` keys. Missing keys → list the missing NAMES ONLY
-   (never values) with a recommendation before proceeding.
+   (never values) with a recommendation before proceeding. Before asking the owner about any precondition (env key, webhook, upload), check it yourself with a read tool first and ask only about what cannot be checked (P-IMP-265).
 
 **STOP if:** the unit is blocked, a predecessor is open, the unit is from a
 future Phase, or a required env key is missing and unresolved. (Worker mode:
@@ -381,6 +382,12 @@ decision after the wave, ESCALATE per `~/.claude/rules/agency-bands.md`)*
 
    [2-3 bullet points: what was implemented]
 
+   ## Merge Danger
+
+   - **Door:** [reversible | hard-to-reverse | irreversible] — [one-line reason, per the criteria below]
+   - **Blast radius:** [local-only | shared-remote | external-or-production] — [what breaks if this change is wrong]
+   - **Evidence:** [RED and GREEN lines from Step 4.1, copied verbatim — no new check]
+
    ## Scope Verification
 
    **Unit:** #<N>
@@ -420,6 +427,14 @@ decision after the wave, ESCALATE per `~/.claude/rules/agency-bands.md`)*
    )"
    ```
 
+   **Merge Danger criteria** (fixed, so the author does not grade its own risk generously; axes R and S of `~/.claude/rules/agency-bands.md`, "The Three Axes"):
+   - Door `irreversible`: the diff contains a migration, a DROP or TRUNCATE, deleted data or files, a removed public API or endpoint, a publish, or rewritten history.
+   - Door `hard-to-reverse`: `git revert` would not undo the effect (e.g. data written in a new format, config read outside this repo).
+   - Door `reversible`: `git revert` restores the prior state. Everything else.
+   - Blast radius describes the effect of the change once merged: `local-only` = this checkout; `shared-remote` = other branches, CI, other clones; `external-or-production` = users, deployed services, third-party systems.
+
+   *Merge Danger adapted from [mattpocock/skills](https://github.com/mattpocock/skills) `pr` (MIT License, © 2026 Matt Pocock); license text in `~/.claude/skills/THIRD-PARTY-NOTICES.md` (IMP-256).*
+
 ---
 
 ## Step 7: Verify
@@ -438,6 +453,13 @@ remote)*
    ```
 
 3. If CI fails, fix issues and push again. Do not merge with failing CI.
+
+**Interactive hand-off (games, apps, UIs):** applies to every "Done" verdict on an interactive unit, not only when Step 7 runs (Step 7 itself needs a PR). "Done: yes" requires all three:
+1. **Input→effect trace** from the REAL build: input event logged → state changed → screenshot after. A render screenshot alone is not proof (`rules/slop-prevention.md` Trigger 3).
+2. **No self-referential test:** the test must not itself open, inject or set up the path it checks. Such a test is void and does not count.
+3. **No helper still running:** before the verdict, list YOUR OWN still-open subagents and background shells (task list, background-task notifications) and state "0 running" with that evidence. The Stop-hook `NOTE (P-IMP-260)` is only an owner-facing backstop after the turn: its stdout is not fed back to you, and it sees Task/Agent dispatches only, not background Bash shells.
+
+Without all three the verdict is `Done: no — missing: <item>`. A `/human-testing` pass (`skills/human-testing/SKILL.md`) precedes every owner hand-off.
 
 ---
 

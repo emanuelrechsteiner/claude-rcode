@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Quality Review (Layer 3 — Milestone Review)
 
-This skill dispatches **6 parallel specialist sub-agents** for a deep multi-angle review at milestone time. Adapted from claudekit's `/code-review` 6-agent pattern.
+This skill dispatches **6 parallel specialist sub-agents** for a deep multi-angle review at milestone time. Adapted from claudekit (https://github.com/carlrannaberg/claudekit): its `/code-review` 6-agent pattern.
 
 ## When to use
 

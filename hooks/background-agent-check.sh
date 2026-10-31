@@ -28,6 +28,9 @@
 #     (established pattern: parallel-analyze-prompt.sh, controller-first-prompt-gate.sh)
 #   - anything else (Stop) → plain stdout lines
 #     (established pattern: session-end-check.sh)
+#     Since P-IMP-260 (2026-10-31) the Stop branch also prints one NOTE line
+#     whenever open > 0 for this session — not age-gated, because any open
+#     helper invalidates a "Done: yes" verdict. UserPromptSubmit never gets it.
 #
 # ALARM-WORTHY SELECTION (M22/A8, 2026-09-23): subagent-watchdog.sh now
 # writes a `status` field (normal|abnormal|unknown) alongside the legacy
@@ -56,8 +59,11 @@
 #     above) — the AGE reported can be wrong by however much re-ordering
 #     actually happened, though `open` itself (a pure count) is not affected.
 #
-# Always exits 0. Never blocks. Reads at most the last 500 lines of each log
-# (tail) to keep cost bounded regardless of log size.
+# Always exits 0. Never blocks. Each log is prefiltered with `grep -F` on this
+# session's id across the WHOLE file, and only those rows are parsed. The old
+# `tail -n 500` window dropped whole sessions on a busy machine (measured
+# 2026-10-31: most sessions with rows in the real logs had 0 rows in the last
+# 500 lines), so OPEN read 0 and the P-IMP-260 NOTE never fired.
 set -u
 
 INPUT=$(cat 2>/dev/null || true)
@@ -83,19 +89,22 @@ case "$STALE_MIN" in ''|*[!0-9]*) STALE_MIN=20 ;; esac
 
 NOW_EPOCH=$(date -u +%s)
 
-DISPATCH_TAIL=$(tail -n 500 "$DISPATCH_LOG" 2>/dev/null)
-STOPS_TAIL=$(tail -n 500 "$STOPS_LOG" 2>/dev/null)
+# Fixed-string prefilter over the whole file (no tail window). grep exits 1 when
+# nothing matches: that is a session with no rows, not an error.
+DISPATCH_ROWS=$(grep -F -- "$SESSION_ID" "$DISPATCH_LOG" 2>/dev/null || true)
+STOPS_ROWS=$(grep -F -- "$SESSION_ID" "$STOPS_LOG" 2>/dev/null || true)
 
 # `-R` + `fromjson?` parses each line independently — one malformed line
 # (partial write, mid-append truncation) drops out silently instead of
-# aborting the whole read.
-DISPATCH_TS=$(printf '%s\n' "$DISPATCH_TAIL" | jq -R -r --arg sid "$SESSION_ID" \
+# aborting the whole read. The jq `select` below is the exact session match;
+# the grep prefilter only narrows the input.
+DISPATCH_TS=$(printf '%s\n' "$DISPATCH_ROWS" | jq -R -r --arg sid "$SESSION_ID" \
     'fromjson? | select(type=="object") | select(.session_id == $sid) | (.ts // empty)' \
     2>/dev/null | sort)
 DISPATCH_COUNT=0
 [ -n "$DISPATCH_TS" ] && DISPATCH_COUNT=$(printf '%s\n' "$DISPATCH_TS" | grep -c .)
 
-STOP_TS=$(printf '%s\n' "$STOPS_TAIL" | jq -R -r --arg sid "$SESSION_ID" \
+STOP_TS=$(printf '%s\n' "$STOPS_ROWS" | jq -R -r --arg sid "$SESSION_ID" \
     'fromjson? | select(type=="object") | select(.session_id == $sid) | (.ts // empty)' \
     2>/dev/null | sort)
 STOP_COUNT=0
@@ -126,7 +135,7 @@ LINE2=""
 # rationale (IMP-229: bare 429/529 in a character count flagged a finished
 # troop abnormal) lives there. Applied to the lowercased preview.
 ABNORMAL_MARKER_RE='(^|[^a-z0-9_])rate[ _]limit(s|ed|_error|_exceeded)?([^a-z0-9_]|$)|(^|[^a-z0-9_])too many requests([^a-z0-9_]|$)|(^|[^a-z0-9_])overloaded(_error)?([^a-z0-9_]|$)|(^|[^a-z0-9_])quota[^a-z0-9]{0,3}(exceeded|exhausted|limit|reached)|(exceeded|exhausted)[a-z ]{0,25}quota|(^|[^a-z0-9_])api error[^a-z0-9]{0,3}([:(]|[45][0-9][0-9])|(error|status|http|code)[^a-z0-9]{0,15}(429|529)([^0-9]|$)|(^|[^0-9])(429|529)[^a-z0-9]{0,5}(too many|overloaded|rate[ _]limit)'
-LATEST_ABNORMAL=$(printf '%s\n' "$STOPS_TAIL" | jq -R -c --arg sid "$SESSION_ID" --arg re "$ABNORMAL_MARKER_RE" '
+LATEST_ABNORMAL=$(printf '%s\n' "$STOPS_ROWS" | jq -R -c --arg sid "$SESSION_ID" --arg re "$ABNORMAL_MARKER_RE" '
     def is_alarm_worthy:
         if has("status") then
             .status == "abnormal"
@@ -155,7 +164,14 @@ if [ -n "$LATEST_ABNORMAL" ]; then
     fi
 fi
 
-[ -n "$LINE1" ] || [ -n "$LINE2" ] || exit 0
+# ── Line 3 (Stop only, P-IMP-260): any helper of THIS session still open ───
+# Not age-gated: an open helper alone invalidates a "Done: yes" verdict.
+NOTE_LINE=""
+if [ "$OPEN" -gt 0 ] && [ "$HOOK_EVENT" != "UserPromptSubmit" ]; then
+    NOTE_LINE="NOTE (P-IMP-260): ${OPEN} helper(s) of this session may still be running — a \"Done: yes\" verdict is not valid until they have stopped."
+fi
+
+[ -n "$LINE1" ] || [ -n "$LINE2" ] || [ -n "$NOTE_LINE" ] || exit 0
 
 case "$HOOK_EVENT" in
     UserPromptSubmit)
@@ -173,6 +189,7 @@ $LINE2"
     *)
         [ -n "$LINE1" ] && printf '%s\n' "$LINE1"
         [ -n "$LINE2" ] && printf '%s\n' "$LINE2"
+        [ -n "$NOTE_LINE" ] && printf '%s\n' "$NOTE_LINE"
         ;;
 esac
 

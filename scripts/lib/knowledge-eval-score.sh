@@ -120,5 +120,6 @@ ke_stats() {
     function nr(p,  k) { k = p * n; if (k > int(k)) k = int(k) + 1; return (k < 1) ? 1 : k }
     END {
       for (i = 2; i <= n; i++) { v = t[i]; j = i - 1; while (j >= 1 && t[j] > v) { t[j + 1] = t[j]; j-- } t[j + 1] = v }
-      printf "%d %d %d %.3f %d %d\n", h1, h3, h10, rr / n, t[nr(0.5)], t[nr(0.9)] }' "$1"
+      mrr = sprintf("%.3f", rr / n); gsub(/,/, ".", mrr) # %f follows LC_NUMERIC; the EVAL line keeps a point under any locale
+      printf "%d %d %d %s %d %d\n", h1, h3, h10, mrr, t[nr(0.5)], t[nr(0.9)] }' "$1"
 }

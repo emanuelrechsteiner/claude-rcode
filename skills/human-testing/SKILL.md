@@ -223,6 +223,11 @@ Use TodoWrite to track testing progress:
     [ ] Tablet layout works
     [ ] No horizontal scroll
     [ ] Touch targets adequate
+
+[ ] Done-verdict proof (P-IMP-260)
+    [ ] One input→effect trace per interactive function (input → state change → screenshot after)
+    [ ] No self-referential test (no test that opens or sets up the path it checks)
+    [ ] Own subagents and background shells listed (task list / notifications): 0 running
 ```
 
 ## Best Practices
@@ -237,6 +242,8 @@ Use TodoWrite to track testing progress:
 8. **Test as a real user would** - think about user goals
 
 ## Output Format
+
+**Done-verdict proof (P-IMP-260):** a "Done: yes" on an interactive surface needs (1) at least one input→effect trace from the real build (input event → state change → screenshot after; a render screenshot alone is not proof, see `rules/slop-prevention.md` Trigger 3), (2) no test that itself opens or sets up the path it checks, and (3) the agent itself lists its own still-running subagents and background shells (task list, background-task notifications) and states 0 running; the Stop-hook NOTE is an owner-facing backstop after the turn, not a check the agent can read. Otherwise the verdict is `Done: no — missing: <item>`.
 
 After testing, provide a comprehensive report:
 
@@ -266,8 +273,16 @@ After testing, provide a comprehensive report:
 ## Recommendations
 [Suggestions for improvement]
 
+## Done Verdict (P-IMP-260)
+- **Input→effect traces**: N (each: input event → state changed → screenshot after, from the real build)
+- **Self-referential tests found**: N (tests that open or set up the path they check; void, not counted as passes)
+- **Own subagents and background shells still running**: N, listed by name from the task list / notifications (must be 0 for a Done verdict)
+
 ## Screenshots
 [List of all screenshots taken with descriptions]
+
+Done: yes
+<!-- Or, as the final line instead: Done: no — missing: <item>, <item> -->
 ```
 
 ## Quick Start Command

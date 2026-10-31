@@ -304,6 +304,40 @@ cat "$SCRUB_OUTPUT"
 echo "publish.sh: scrub-check clean on staging tree"
 
 # ---------------------------------------------------------------------------
+# 5b. Third-party provenance gate (P-IMP-262) AGAINST THE STAGING TREE
+# ---------------------------------------------------------------------------
+# Every shipped file that names a third-party upstream (marker list in
+# provenance-check.sh) must be covered by a ## section of skills/THIRD-PARTY-
+# NOTICES.md that names the upstream and carries its full license text and a
+# copyright line. Same abort semantics as scrub-check: any miss aborts, and
+# the miss names the upstream. --all-files: the staging index only holds the
+# files that were not git-ignored, so the gate scans every file on disk.
+PROVENANCE_SCRIPT="$REPO_ROOT/scripts/provenance-check.sh"
+if [[ ! -f "$PROVENANCE_SCRIPT" ]]; then
+  echo "publish.sh: ABORT — $PROVENANCE_SCRIPT is missing from the private repo." >&2
+  echo "  Without the provenance gate this pipeline refuses to publish." >&2
+  exit 1
+fi
+echo "publish.sh: running provenance-check.sh against the staging tree"
+PROVENANCE_OUTPUT="$WORKDIR/provenance-output.txt"
+if ! bash "$PROVENANCE_SCRIPT" --root "$STAGING" --all-files > "$PROVENANCE_OUTPUT" 2>&1; then
+  echo "" >&2
+  echo "publish.sh: ABORT — provenance-check found third-party material without a" >&2
+  echo "  full license notice in the staging tree:" >&2
+  echo "" >&2
+  cat "$PROVENANCE_OUTPUT" >&2
+  echo "" >&2
+  echo "publish.sh: WHAT TO FIX — add a ## section to skills/THIRD-PARTY-NOTICES.md" >&2
+  echo "  that names each MISSING upstream and carries its full license text and a" >&2
+  echo "  Copyright line (IMP-259 is the model), or remove the origin marker if the" >&2
+  echo "  text does not come from that upstream." >&2
+  echo "  Nothing was published; the public dir at $PUBLIC_DIR was not touched." >&2
+  exit 1
+fi
+cat "$PROVENANCE_OUTPUT"
+echo "publish.sh: provenance-check clean on staging tree"
+
+# ---------------------------------------------------------------------------
 # 6 / 7. dry-run vs publish
 # ---------------------------------------------------------------------------
 echo ""

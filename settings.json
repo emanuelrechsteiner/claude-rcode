@@ -55,7 +55,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
+  "model": "opus",
   "hooks": {
     "SessionStart": [
       {
@@ -467,7 +467,11 @@
       "effortLevel": "high"
     },
     "claude-sonnet-5-5": {
-      "effortLevel": "xhigh"
+      "effortLevel": "high"
+    },
+    "claude-haiku-5-5": {
+      "effortLevel": "medium"
     }
-  }
+  },
+  "switchModelsOnFlag": true
 }

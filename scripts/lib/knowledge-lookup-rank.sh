@@ -216,7 +216,8 @@ END {
     for (k = 1; k <= K; k++) if ((f, k) in XACT) sc += XB * idf[k]
     for (j = 1; j <= NCO[f]; j++) { m = split(COS[f, j], a, " "); s = 0; for (i = 1; i <= m; i++) s += idf[a[i]]; sc += CO * s }
     if (substr(PATH[f], 1, 8) == "logbook/") sc *= LOGW
-    printf "%d\t%.6f\t%s\t%d\t%s\t%s\t%s%s\n", D[f], sc, PATH[f], BYTES[f], STAT[f], SUP[f], DESC[f], HITS[f]
+    scs = sprintf("%.6f", sc); gsub(/,/, ".", scs) # %f follows LC_NUMERIC: de_DE writes "0,5", which sort -n reads as 0 (IMP-254)
+    printf "%d\t%s\t%s\t%d\t%s\t%s\t%s%s\n", D[f], scs, PATH[f], BYTES[f], STAT[f], SUP[f], DESC[f], HITS[f]
   }
 }
 AWK

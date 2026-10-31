@@ -1,0 +1,27 @@
+<!--
+Status: ACTIVE
+Last Updated: 2026-10-31
+Purpose: Review-page skeleton for presenting items the owner asked for with a
+universal quantifier (alle / all / jede / every). Coverage line first, footer
+total last. Referenced by skills/scope-check/SKILL.md § Presentation Mode.
+Origin: P-IMP-261 (41 of 355 lessons presented as "alle neuen", 2026-10-10).
+-->
+
+# Review — [what was requested]
+
+shown N of M — excluded: [groups + reason, or none]
+
+Request (verbatim): "[owner's words, including the universal quantifier]"
+
+## [Group 1] (n items)
+
+- [ ] [item] — [decision placeholder]
+- [ ] [item] — [decision placeholder]
+
+## [Group 2] (n items)
+
+- [ ] [item] — [decision placeholder]
+
+---
+
+total: M

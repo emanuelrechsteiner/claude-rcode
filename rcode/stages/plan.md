@@ -14,6 +14,8 @@ slicing. Loaded by `~/.claude/commands/team-lead.md` (directly, or via the
 | `project-planning` | skill | Roadmap structuring, dependency mapping |
 | `project-bootstrap` | skill | Repo exploration, docs audit, project setup |
 | `scope-check` | skill | Scope-creep verification against the plan |
+| `grilling` | skill | Interview that resolves open decisions with the user before a plan or unit set is fixed (run by the `/brainstorm` decision gate; standalone for an existing plan) |
+| `prototype` | skill | Throwaway build for a question talking cannot settle; the verdict returns to the interview |
 
 ## Operating modes
 

@@ -108,6 +108,23 @@ Output as a comprehensive markdown document following the RESEARCH-FINDINGS temp
 
 ---
 
+## Phase 1b: DECISION GATE (Grilling — before features or architecture are fixed)
+
+Phases 2 and 3 fix features and architecture. Resolve the open decision branches with the user first, so agents do not decide them silently.
+
+1. **Run the `grilling` skill** in the main thread (sub-agents never ask the user), on "$ARGUMENTS" plus RESEARCH_FINDINGS.md. One question at a time, each with a recommendation. Facts the code or docs can answer are looked up, not asked.
+2. **Questions talking cannot settle** (how it should look or behave) go to the `prototype` skill. Take the user's one-line verdict back into the interview.
+3. **Stop** when the user confirms the shared understanding, or the decision tree is empty.
+4. **Record the outcomes** as the first section of `SPECIFICATION.md`, which Phase 2 writes:
+   - `Decisions (user-resolved)`: each decision, with the rejected alternative.
+   - `Assumptions (not confirmed)`: each unresolved branch, marked as the agent's assumption.
+   Phase 2 derives features only from these entries; anything else is listed as an assumption. Terms coined here count toward the CONTEXT.md seed (Phase 5f). Hard-to-reverse architecture choices become inline ADRs in Phase 3.
+5. **Skip path:** if the user declines, or no human can answer (headless or scheduled run), skip the interview. Write every open branch under `Assumptions (not confirmed)`; never settle one silently. Log the skip in `.rcode/agent-log.md`.
+
+*Decision gate adapted from [mattpocock/skills](https://github.com/mattpocock/skills) `grilling` and `grill-with-docs` (MIT License, © 2026 Matt Pocock); license text in `~/.claude/skills/THIRD-PARTY-NOTICES.md` (IMP-257).*
+
+---
+
 ## Phase 2: SPECIFICATION (Sequential — Depends on Research)
 
 After research completes, create the product specification in three sub-phases:

@@ -12,6 +12,71 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-31
+
+Six improvements from a meta-proposal of 2026-10-31, each traced to observed
+sessions: completion claims that outran their evidence, answers that silently
+narrowed a request, a publish path that could ship adapted third-party code
+without its license, unreported drift on the live install, and repeated
+security findings. Two independent reviews found five defects in the first
+implementation; all five are fixed in this release.
+
+### Added
+
+- `scripts/provenance-check.sh`: every file with an adapted-from marker needs a
+  section in `skills/THIRD-PARTY-NOTICES.md` that names the upstream and carries
+  the full license text and a copyright line. `scripts/publish.sh` runs it on
+  the staging tree (step 5b) and aborts the release on a miss.
+- `skills/THIRD-PARTY-NOTICES.md`: notices for HCOM and claudekit, and a
+  `## Non-adoptions (provenance annotations)` section that registers the
+  annotation tokens the gate accepts.
+- Live-drift report: `claude-deploy config` lists untracked paths under the
+  governed directories of the live install (report only, never blocks).
+  `live-only-manifest.txt` lists the installer- and vendor-owned exemptions;
+  `scripts/deploy-to-live.sh --drift-check` runs the report alone.
+- `templates/review-page.md.template`: review-page layout with the coverage
+  line first and the total last.
+- `commands/issue.md` "Interactive hand-off" block and a final `Done: yes/no`
+  verdict in `skills/human-testing/SKILL.md`: an interactive build counts as
+  done only with an input-to-effect trace from the real build, no
+  self-referential test and no helper still running.
+- `skills/scope-check/SKILL.md` Presentation Mode: an answer to an "all items"
+  request opens with `shown N of M — excluded: …`.
+- `hooks/background-agent-check.sh`: a Stop-time `NOTE` when a helper of the
+  session is still open; suite `hooks/tests/background-agent-check-regression.sh`.
+
+### Changed
+
+- `scripts/security-review-findings.sh` and `hooks/security-findings-check.sh`:
+  repeats are marked `duplicate_of` and skipped, and vendor-owned rows are
+  summarized as upstream findings. Limits: the dedup key is a hash of path,
+  category and normalized summary, so reworded repeats are not collapsed; and
+  while the SessionStart scan exceeds its time budget the findings feed is not
+  refreshed. An incremental scan is tracked as IMP-266.
+- `hooks/background-agent-check.sh` reads the whole session log instead of a
+  fixed tail window, so later lines no longer hide an open helper.
+- `commands/issue.md` Step 0: a precondition is checked with a read tool first;
+  the user is asked only about what cannot be checked.
+
+### Fixed
+
+- Security-findings feed: each session is committed rows first, state last
+  (temp file and move), so an interrupted run cannot mark a session resolved
+  without its rows.
+- Security-findings feed: `--since` no longer poisons the cache, and the feed,
+  seen and ack lists are passed by stdin or file instead of argv, so large
+  feeds no longer fail with "Argument list too long".
+- Security-findings feed: the upstream-token line prints only when the upstream
+  list gained rows; `--to-ledger` fails loud instead of continuing.
+- Provenance gate: an internal origin token (a ledger id instead of an upstream name) no
+  longer hides an external upstream named on the same line; an annotation
+  applies only when registered in the notices file, and an unregistered one
+  fails the gate.
+- Live drift: nested git repositories are listed once as skipped, never
+  counted or escalated.
+- Third-party notices: adapted material shipped in 1.8.0 without its full
+  license text; the provenance gate now blocks such a release before publish.
+
 ## [1.8.0] - 2026-10-09
 
 Knowledge library v3: the agent-facing library is measured before it is tuned.
@@ -385,7 +450,8 @@ developer's machine; the framework carries tokens. Decision record:
 
 Superseded. Their history was replaced by 1.1.0 and is no longer available.
 
-[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/emanuelrechsteiner/claude-rcode/compare/v1.6.0...v1.6.1

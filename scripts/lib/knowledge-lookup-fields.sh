@@ -39,7 +39,9 @@ kl_fuse() {
     { p = $3; r = FNR; rrf[p] += 1 / (60 + r); m[p]++
       if (!(p in br) || r < br[p] || (r == br[p] && $1 > bd[p])) {
         br[p] = r; bd[p] = $1; bn[p] = N[si]; rest[p] = substr($0, index($0, "\t") + 1) } }
-    END { for (p in rrf) printf "%d\t%.9f\t%d\t%s\t%d:%d:%d\t%s\n", (mode == "best" ? br[p] : 0), rrf[p], bd[p], p, bd[p], bn[p], m[p], rest[p] }' "$@" \
+    END { for (p in rrf) {
+            rs = sprintf("%.9f", rrf[p]); gsub(/,/, ".", rs) # %f follows LC_NUMERIC (see kl_rank): sort -n needs a point
+            printf "%d\t%s\t%d\t%s\t%d:%d:%d\t%s\n", (mode == "best" ? br[p] : 0), rs, bd[p], p, bd[p], bn[p], m[p], rest[p] } }' "$@" \
     | LC_ALL=C sort -t "$TAB" -k1,1n -k2,2nr -k3,3nr -k4,4 | cut -f5-
 }
 

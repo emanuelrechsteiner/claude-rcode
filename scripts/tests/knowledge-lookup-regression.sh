@@ -29,12 +29,14 @@ HOOK="$REPO_ROOT/hooks/session-start-context.sh"
 
 PASS=0
 FAIL=0
+SKIP=0
 ok()  { PASS=$((PASS+1)); printf '  \xe2\x9c\x85 %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf '  \xe2\x9d\x8c %s\n     %s\n' "$1" "$2"; }
 check() { local l="$1" d="$2"; if eval "$3"; then ok "$l"; else bad "$l" "$d"; fi; }
 summary() {
   echo
   echo "knowledge-lookup-regression: $PASS passed, $FAIL failed"
+  [ "$SKIP" -eq 0 ] || echo "knowledge-lookup-regression: $SKIP skipped (see NOTE above)"
   [ "$FAIL" -eq 0 ] && exit 0 || exit 1
 }
 
@@ -228,5 +230,29 @@ check "unclosed frontmatter is no frontmatter: its lines match" "rc=$RC out=$(ca
 . "$SCRIPT_DIR/lib/kl-cases-output.sh"
 # shellcheck source=/dev/null
 . "$SCRIPT_DIR/lib/kl-cases-alt.sh"
+
+# ---- locale: the ranking must not depend on LC_NUMERIC (awk %f wrote "0,5" under de_DE) --------
+# Own library, four files, all containing "localetok": idf is then about 0.1, every score is below 1,
+# and a score truncated to its integer part ties at 0 -> path order (aa-few first). The correct order
+# puts zz-many (three matching lines) first.
+echo "-- lookup: ranking under a comma-decimal locale --"
+LOC_DE=""
+LOCALES=$(locale -a 2>/dev/null) || LOCALES=""   # here-string, not a pipe: grep -q under pipefail would SIGPIPE locale
+for cand in de_DE.UTF-8 de_DE.utf8; do
+  if grep -qx "$cand" <<< "$LOCALES"; then LOC_DE=$cand; break; fi
+done
+LM="$T/locale-lib"; mkdir -p "$LM/mirror/memory/proj"
+w "$LM/mirror/memory/proj/zz-many.md" "# Z" "localetok one" "localetok two" "localetok three"
+w "$LM/mirror/memory/proj/aa-few.md" "# A" "localetok one"
+w "$LM/mirror/memory/proj/mm-mid.md" "# M" "localetok one"
+w "$LM/mirror/memory/proj/nn-end.md" "# N" "localetok one"
+loc_top() { KNOWLEDGE_LOOKUP_LOG=0 HOME="$H" CLAUDE_KNOWLEDGE_DIR="$LM" LC_ALL="$1" /bin/bash "$LK" localetok 2>"$ERR" </dev/null | grep '^== ' | head -n 1 | sed 's/^== //; s/ .*$//'; }
+check "localetok: C locale ranks zz-many first (score order, not path order)" "$(loc_top C)" 'test "$(loc_top C)" = "memory/proj/zz-many.md"'
+if [ -n "$LOC_DE" ]; then
+  check "localetok: $LOC_DE (decimal comma) ranks zz-many first too" "$(loc_top "$LOC_DE")" 'test "$(loc_top "$LOC_DE")" = "memory/proj/zz-many.md"'
+else
+  SKIP=$((SKIP + 1))
+  echo "  NOTE: no de_DE UTF-8 locale installed (locale -a); the decimal-comma ranking case is NOT exercised"
+fi
 
 summary

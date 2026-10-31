@@ -2,7 +2,7 @@
 # Parallel Claim Utility — File-Lock Registry for Multi-Agent Coordination
 # ─────────────────────────────────────────────────────────────────────────
 # Implements file-level locking using directory atomicity (mkdir is POSIX-
-# atomic). Adapted from HCOM's coordination pattern. Used by:
+# atomic). Adapted from HCOM's coordination pattern (https://github.com/aannoo/hcom). Used by:
 #   - hooks/parallel-lock-check.sh    (PreToolUse: enforce locks)
 #   - hooks/subagent-lock-release.sh  (SubagentStop: auto-release)
 #   - skills/parallel-dispatch        (orchestrator: claim then dispatch)

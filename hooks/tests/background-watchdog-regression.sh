@@ -114,14 +114,18 @@ else
     bad "0 open dispatches → silent" "(nothing)" "$OUT"
 fi
 
-# 6. Open but YOUNG (below the staleness threshold) → still silent
+# 6. Open but YOUNG (below the staleness threshold) → no age-gated 'troop'
+#    line (Line 1 stays silent). Since P-IMP-260 the Stop branch always prints
+#    the un-aged NOTE for any open helper, so the expected output is exactly
+#    that NOTE line and nothing else.
 reset_logs
 printf '{"ts":"%s","session_id":"sess-6","tool":"Task","subagent_type":"x"}\n' "$T5" >> "$CLAUDE_DISPATCH_LOG"
 OUT=$(printf '{"hook_event_name":"Stop","session_id":"sess-6"}' | bash "$CHECKER" 2>/dev/null)
-if [ -z "$OUT" ]; then
-    ok "open dispatch younger than threshold → silent"
+EXPECT_NOTE='NOTE (P-IMP-260): 1 helper(s) of this session may still be running — a "Done: yes" verdict is not valid until they have stopped.'
+if [ "$OUT" = "$EXPECT_NOTE" ]; then
+    ok "open dispatch younger than threshold → only the P-IMP-260 NOTE (no troop line)"
 else
-    bad "open dispatch younger than threshold → silent" "(nothing)" "$OUT"
+    bad "open dispatch younger than threshold → only the P-IMP-260 NOTE" "$EXPECT_NOTE" "$OUT"
 fi
 
 # 7. Open AND older than threshold → fires with correct N and M

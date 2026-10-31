@@ -23,8 +23,19 @@ Determine the mode based on context:
 - **Per-Unit Mode:** When called during `/issue`, during `~/.claude/commands/rcode-review.md`'s scope-verification step, or with a specific work unit ID (`#N` github, `P-NNN` plan)
 - **Per-Phase Mode:** When called during `/phase-gate` or with a Phase number. **Phase** here is the glossary term — a project milestone (1..N) — never `/issue`'s Steps 0–9 or a `/team-lead` Stage.
 - **General Mode:** When called without specific context — check the current branch/PR
+- **Presentation Mode (shown N of M):** A list, review page, table or report answers a request with a universal quantifier (alle / all / jede / every / sämtliche). Applies on top of the modes above — see § Presentation Mode.
 
 Tracker (`github` or `plan`) comes from `.rcode/config.json` → `tracker`. If unset, infer it: `github` iff a git remote exists AND `gh auth status` succeeds AND at least one GitHub issue exists, else `plan` — and say so in the output ("tracker not set in .rcode/config.json — inferred `<x>`").
+
+---
+
+## Presentation Mode (shown N of M)
+
+A list, review page, table or report that answers a universal-quantifier request must show its coverage first:
+
+- **First line:** `shown N of M — excluded: <groups + reason>` (`excluded: none` when N = M).
+- **Narrowing is a decision:** if N < M because the agent chose to narrow, ask BEFORE building, not after. Silent narrowing at presentation time is scope shrinkage that per-unit and per-phase checks do not see.
+- **Footer:** a review-server page carries `total: M`, mechanically checkable against the item count (template: `templates/review-page.md.template`).
 
 ---
 
@@ -98,6 +109,8 @@ Flag:
 
 ```markdown
 # Scope Check — Unit [#N or P-NNN]
+
+shown N of M — excluded: [groups + reason, or none]
 
 ## Files Analyzed: [N]
 
@@ -190,6 +203,8 @@ For any scope change or architectural deviation flagged above, check for an ADR 
 
 ```markdown
 # Phase Scope Check — Phase [N] (tracker: github | plan)
+
+shown N of M — excluded: [groups + reason, or none]
 
 ## Features Planned: [N]
 ## Features Complete: [N]

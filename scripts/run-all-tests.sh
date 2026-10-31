@@ -76,6 +76,7 @@ SKIP_RULES="hooks/tests/background-watchdog-regression.sh|linux|BSD-only 'date -
 hooks/tests/routine-liveness-regression.sh|linux|BSD-only 'date -j/-v' in suite or hook
 hooks/tests/session-end-staleness-regression.sh|linux|BSD-only 'date -v' (suite builds timestamps with it)
 scripts/tests/logbook-count-symlink-regression.sh|linux|macOS symlink/firmlink semantics (exit 1 instead of 19 on Linux, not diagnosed further)
+hooks/tests/background-agent-check-regression.sh|linux|BSD-only 'date -j' (suite exits 2 by design)
 ${CLAUDE_TEST_SKIP_RULES:-}"
 
 # Per-suite environment overrides that point a suite at the files of $ROOT

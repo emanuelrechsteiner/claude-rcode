@@ -42,7 +42,7 @@ Known issues inherited from the source and not fixed in this round (out of scope
 |---|---|---|---|
 | `postgres-patterns` | Supabase Agent Skills (credited in the source skill: "Supabase team", MIT License) | MIT | Supabase Agent Skills, MIT, copyright line not available offline; verify against the upstream LICENSE before relying on it. |
 
-## License text (applies to the adapted portions)
+## License text for ECC — everything-claude-code (affaan-m/ECC) (applies to the adapted portions)
 
 MIT License
 
@@ -65,3 +65,113 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+# Third-Party Notices (mattpocock/skills)
+
+Parts of this framework are adapted from the open-source repository
+[`mattpocock/skills`](https://github.com/mattpocock/skills) (license MIT, Copyright (c) 2026 Matt Pocock).
+They are rewritten for this framework, not installed or copied verbatim. Each adapted file carries an
+attribution line naming the upstream skill. Adopted 2026-08-03 (IMP-124, IMP-125); extended 2026-10-27
+(IMP-256 to IMP-258). Although some files live outside `skills/`, this notice covers all of them.
+
+| File in this framework | Upstream skill | License | What was changed |
+|---|---|---|---|
+| `skills/grilling/SKILL.md` | `grilling`, `grill-with-docs` | MIT | Integrated with this framework's recommend-on-ask, planning-doc, and domain-docs conventions; one question at a time kept; facts the code or docs answer are looked up first; questions talking cannot settle go to `prototype`. |
+| `skills/prototype/SKILL.md` | `prototype` | MIT | Capture step aligned with this framework's agency-bands and domain-docs conventions. |
+| `skills/prototype/LOGIC.md` | `prototype` (`LOGIC.md`) | MIT | Rewritten 2026-10-27 to one self-contained HTML page, following the current upstream version; pure logic module rule tightened. |
+| `skills/prototype/UI.md` | `prototype` (`UI.md`) | MIT | Adapted for this framework on 2026-08-03; not changed since. |
+| `skills/resolving-merge-conflicts/SKILL.md` | `resolving-merge-conflicts` | MIT | Trunk gate and verification wired to this framework's workflow-git and slop-prevention rules. |
+| `rules/domain-docs-convention.md` | CONTEXT.md glossary and ADR conventions | MIT | Merged into one always-loaded rule with this framework's R.Code ADR exception and correction-persistence step. |
+| `agents/code-reviewer-agent.md` | `code-review` | MIT | Selection and compression of review checks, merged into this framework's reviewer agent. |
+| `commands/issue.md` (Merge Danger block) | `pr` | MIT | Idea adapted, wording new: Door and Blast radius scored against the R and S axes of `rules/agency-bands.md`, with fixed criteria. |
+| `commands/brainstorm.md` (Phase 1b, Decision Gate) | `grilling`, `grill-with-docs` | MIT | Idea adapted, wording new: grilling as a gate before specification, outcomes recorded as decisions and assumptions, skip path for headless runs. |
+
+## License text for mattpocock/skills (applies to the adapted portions)
+
+MIT License
+
+Copyright (c) 2026 Matt Pocock
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+# Third-Party Notices (HCOM)
+
+Parts of this framework are adapted from the open-source repository [`aannoo/hcom`](https://github.com/aannoo/hcom) (license MIT, Copyright (c) 2025 aannoo).
+Adapted portion: the pre-planned disjoint-fileset and claim-before-dispatch coordination pattern, used by `scripts/parallel-claim.sh` (header, line 5) and `skills/parallel-dispatch/SKILL.md` (line 8). It is pattern inspiration only; no code was copied. Source commit e8b14ed (2026-05-26). License text fetched 2026-10-31.
+
+## License text for HCOM (aannoo/hcom) (applies to the adapted portions)
+
+MIT License
+
+Copyright (c) 2025 aannoo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+# Third-Party Notices (claudekit)
+
+Parts of this framework are adapted from the open-source repository [`carlrannaberg/claudekit`](https://github.com/carlrannaberg/claudekit) (license MIT, Copyright (c) 2024 claudekit contributors).
+Adapted portion: the six-specialist-agent `/code-review` pattern, used by `skills/quality-review/SKILL.md` (line 9). It is pattern inspiration only; no code was copied. License text fetched 2026-10-31.
+
+## License text for claudekit (carlrannaberg/claudekit) (applies to the adapted portions)
+
+MIT License
+
+Copyright (c) 2024 claudekit contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Non-adoptions (provenance annotations)
+
+Each line registers one file and one `[provenance: ...]` token used on a marker line (see `scripts/provenance-check.sh`, header). An annotation counts only when its file and token are listed here; an unlisted annotation is reported as `UNREGISTERED ANNOTATION` and suppresses nothing. This section records decisions; it is not a waiver for an adopted upstream, which still needs a notice section above.
+
+- CLAUDE.md — [provenance: not-adopted] — karst (Moin105/karst) named as a candidate in the collaboration note; nothing from it is in this repo — 2026-10-31
+- ops/decisions/2026-10-06-kooperation-karst-impact-gate.md — [provenance: not-adopted] — karst (Moin105/karst) named as a candidate in the decision record; nothing from it is in this repo — 2026-10-31
+- docs/superpowers/specs/2026-05-27-claude-config-portability-design.md — [provenance: own] — the project's own former LICENSE (claude-code-framework, MIT), not a third-party adoption — 2026-10-31

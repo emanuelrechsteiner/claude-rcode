@@ -16,6 +16,8 @@ Loaded by `~/.claude/commands/team-lead.md` (directly, or via the
 | `kokonutui-pro` | skill | Component index for pre-built UI patterns |
 | `human-testing` | skill | Visual acceptance / click-through review |
 | `visual-qa-agent` | agent (sonnet, read-only) | Rendered check of a design-system demo/Storybook story against the spec before handoff |
+| `grilling` | skill | Interview on open design decisions (flows, states, scope) before component specs are written |
+| `prototype` | skill | Throwaway UI variants or state-model build when "how should it look or behave" cannot be settled in discussion; the verdict goes into the design spec |
 
 ## Core loop
 
@@ -29,6 +31,11 @@ artifact, `visual-qa-agent` (per `~/.claude/rules/slop-prevention.md`
 Trigger 3: compare against the SOURCE spec, never a paraphrase of it). Tasks
 with disjoint file-sets may run in parallel per
 `~/.claude/rules/parallel-by-default.md`.
+
+Open design decisions go through `grilling` first, one question at a time. A
+question that discussion cannot settle (layout, interaction feel, a state
+model's edge cases) goes to `prototype` before any component spec is written;
+the verdict is recorded in the spec.
 
 ## Idle case
 

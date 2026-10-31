@@ -19,6 +19,21 @@
 # Override (logged in deploy-skips.log and the deploy checklist): CLAUDE_DEPLOY_SKIP_TESTS=1
 # together with CLAUDE_DEPLOY_SKIP_REASON="<why>" - the reason is mandatory.
 #
+# Live drift (P-IMP-263, report-only, never a block): untracked paths that external
+# installers wrote into the live install under the governed directories are listed on
+# every config deploy, unless they match an entry in the workshop's tracked
+# live-only-manifest.txt (shell globs, one per line, '#' comments). Nested git repos are
+# not drift: an untracked governed directory that holds its own .git (file or dir) is a
+# separately deployed repo (cockpit, via `claude-deploy cockpit`). It is printed once in a
+# sub-list, never counted, never escalated, never written to the state file, and needs no
+# manifest entry (the manifest is also the security-findings vendor list, so it must not
+# hide them). The governed set is
+# the classifier's, hooks/lib/governing-path-classify.py (same set as
+# hooks/governing-path-guard.sh). State file: <live>/global-observation/live-drift-state.tsv,
+# one "<consecutive-count><TAB><path>" line per unlisted path, rewritten on every run; a path
+# unlisted on the 3rd consecutive run gets the ESCALATION: prefix (IMP-164).
+# Check without a deploy:  deploy-to-live.sh --drift-check <live-dir> <workshop-dir> [state-file]
+#
 # Usage:  deploy-to-live.sh [config|cockpit|all]   (default: all)
 set -euo pipefail
 
@@ -99,7 +114,7 @@ TARGET="${1:-all}"
 #                                     is runtime churn — permissions.allow/deny/ask
 #                                     stay protected and still trigger an ABORT
 #                                     on divergence.
-RUNTIME_KEYS_JSON='[["model"],["effortLevel"],["theme"],["permissions","defaultMode"],["modelSettings"]]'
+RUNTIME_KEYS_JSON='[["model"],["effortLevel"],["theme"],["permissions","defaultMode"],["modelSettings"],["switchModelsOnFlag"]]'
 
 # Live-install-only keys: exist ONLY in the live install, NEVER move to the
 # workshop (no pull-back, no workshop commit) and NEVER trigger an abort
@@ -296,6 +311,127 @@ write_pending_verification() {
   note "config: checklist written → $out"
 }
 
+# ── Live drift (P-IMP-263) ─────────────────────────────────────────────────────
+# External installers (e.g. `rea.mjs setup`) write UNTRACKED paths straight into the
+# live install; the tracked-file checks in deploy() cannot see them. The governed set
+# is NOT copied here: membership is decided by the classifier's governed(), invoked
+# once per candidate path with a PreToolUse-shaped JSON on stdin.
+LIVE_DRIFT_ESCALATE_AT=3
+LIVE_DRIFT_HINT="adopt (copy into the workshop + THIRD-PARTY notice) or list in live-only-manifest.txt"
+
+# Is <path> (live-relative, no trailing slash) covered by a manifest entry? Entries are
+# shell globs; a trailing slash on an entry is optional; blank lines and '#' lines are ignored.
+drift_listed() { # drift_listed <manifest> <path> -> 0 when listed
+  local manifest="$1" path="$2" line pat
+  [ -f "$manifest" ] || return 1
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    case "$line" in ''|'#'*) continue ;; esac
+    pat="${line%/}"
+    case "$path" in $pat|$pat/*) return 0 ;; esac
+  done < "$manifest"
+  return 1
+}
+
+# Is <path> (live-relative, no trailing slash) a nested git repo, i.e. a directory holding
+# its own .git (directory or file, as in worktrees and submodules)? -> 0 when it is.
+drift_nested_repo() { # drift_nested_repo <live> <path>
+  [ -d "$1/$2" ] && [ -e "$1/$2/.git" ]
+}
+
+# Classifier verdict for one live-relative path: 0 = governed, 1 = not governed,
+# 2 = the classifier itself failed (a failure is never read as "not governed").
+drift_governed() { # drift_governed <classifier> <live> <path>
+  local verdict
+  verdict=$(jq -cn --arg f "$2/$3" --arg c "$2" '{tool_input: {file_path: $f}, cwd: $c}' \
+    | python3 "$1" "$2" 2>/dev/null) || return 2
+  case "$verdict" in HIT*) return 0 ;; esac
+  return 1
+}
+
+# Prints the drift report for <live> against <workshop>'s manifest and classifier.
+# $3 (optional) = escalation state file; without it nothing is counted across runs.
+# Always returns 0: drift is reported, never a failure. Tool failures print UNCHECKED.
+live_drift_report() { # live_drift_report <live> <workshop> [state-file]
+  local live="$1" workshop="$2" state="${3:-}"
+  local classifier="$workshop/hooks/lib/governing-path-classify.py"
+  local manifest="$workshop/live-only-manifest.txt"
+  local listing entry path rc unlisted="" nested="" newstate="" out="" header skipped_out=""
+  local p prev n count=0 escalated=0
+  command -v python3 >/dev/null 2>&1 \
+    || { warn "live drift: UNCHECKED - python3 not found (needed to read the governed set)"; return 0; }
+  [ -f "$classifier" ] || { warn "live drift: UNCHECKED - classifier not found: $classifier"; return 0; }
+  [ -f "$manifest" ] || warn "live drift: no live-only-manifest.txt in $workshop - nothing is exempt from the check"
+  listing=$(git -C "$live" status --porcelain -z --untracked-files=normal | tr '\0' '\n') \
+    || { warn "live drift: UNCHECKED - git status failed in $live"; return 0; }
+
+  while IFS= read -r entry; do
+    case "$entry" in '?? '*) ;; *) continue ;; esac
+    path="${entry:3}"
+    path="${path%/}"
+    drift_listed "$manifest" "$path" && continue
+    rc=0
+    drift_governed "$classifier" "$live" "$path" || rc=$?
+    case "$rc" in
+      0) ;;
+      1) continue ;;
+      *) warn "live drift: UNCHECKED - classifier failed on '$path' (run it by hand: python3 $classifier $live)"; return 0 ;;
+    esac
+    if drift_nested_repo "$live" "$path"; then
+      nested="${nested}${path}"$'\n'
+    else
+      unlisted="${unlisted}${path}"$'\n'
+    fi
+  done <<< "$listing"
+
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    skipped_out="${skipped_out}  ${p} - nested git repo, skipped (separate deploy target)"$'\n'
+  done <<< "$nested"
+
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    prev=""
+    if [ -n "$state" ] && [ -f "$state" ]; then
+      prev=$(awk -F '\t' -v path="$p" '$2 == path { print $1; exit }' "$state") \
+        || { warn "live drift: cannot read $state - counting '$p' from 0"; prev=""; }
+    fi
+    prev="${prev:-0}"
+    case "$prev" in *[!0-9]*) warn "live drift: non-numeric count for '$p' in $state - restarting at 0"; prev=0 ;; esac
+    n=$((prev + 1))
+    newstate="${newstate}${n}"$'\t'"${p}"$'\n'
+    count=$((count + 1))
+    if [ "$n" -ge "$LIVE_DRIFT_ESCALATE_AT" ]; then
+      escalated=1
+      out="${out}  ESCALATION: ${p} - unlisted for ${n} consecutive deploys (IMP-164) - ${LIVE_DRIFT_HINT}"$'\n'
+    else
+      out="${out}  ${p} - ${LIVE_DRIFT_HINT}"$'\n'
+    fi
+  done <<< "$unlisted"
+
+  if [ "$count" -eq 0 ]; then
+    printf 'live drift: none\n'
+  else
+    header="live drift: ${count} untracked path(s) under governed dirs"
+    if [ "$escalated" -eq 1 ]; then header="ESCALATION: ${header}"; fi
+    printf '%s\n%s' "$header" "$out"
+  fi
+  # Sub-list: informational only, outside N, never escalated, never in the state file.
+  if [ -n "$skipped_out" ]; then
+    printf 'nested git repo(s) under governed dirs, skipped (not counted):\n%s' "$skipped_out"
+  fi
+
+  if [ -n "$state" ]; then
+    if mkdir -p "$(dirname "$state")" && printf '%s' "$newstate" > "$state.tmp" && mv -f "$state.tmp" "$state"; then
+      :
+    else
+      warn "live drift: escalation state NOT written to $state - counts are unreliable for this run"
+    fi
+  fi
+  return 0
+}
+
 deploy() {
   local name="$1" workshop="$2" live="$3"
   [ -d "$workshop/.git" ] || fail "$name: no repo in the workshop ($workshop)"
@@ -325,6 +461,12 @@ deploy() {
   if [ ${#remaining[@]} -gt 0 ]; then
     printf '  %s\n' "${remaining[@]}"
     fail "$name: the live install has local changes to tracked files (above). These belong in the workshop — rebuild them there, discard them here."
+  fi
+
+  # P-IMP-263: untracked governed-dir paths that installers wrote into the live install.
+  # Config only; report-only (live_drift_report never aborts the deploy).
+  if [ "$name" = "config" ]; then
+    live_drift_report "$live" "$workshop" "$live/global-observation/live-drift-state.tsv"
   fi
 
   # Preserve runtime churn across the deploy: the fast-forward removes the
@@ -394,6 +536,16 @@ deploy() {
     fi
   fi
 }
+
+# Drift check without a deploy (P-IMP-263): report only, always exit 0 on a report.
+# Without a state file nothing is counted across runs (no ESCALATION).
+if [ "$TARGET" = "--drift-check" ]; then
+  [ "$#" -ge 3 ] && [ "$#" -le 4 ] \
+    || fail "usage: deploy-to-live.sh --drift-check <live-dir> <workshop-dir> [state-file]"
+  [ -d "$2/.git" ] || fail "--drift-check: live install is not a git repo: $2"
+  live_drift_report "$2" "$3" "${4:-}"
+  exit 0
+fi
 
 # Test gate before anything is touched (sync_runtime_prefs commits, deploy() checks).
 case "$TARGET" in

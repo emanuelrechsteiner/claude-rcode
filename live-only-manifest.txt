@@ -1,0 +1,20 @@
+# live-only-manifest.txt — untracked paths in the LIVE install that are deliberately NOT workshop material.
+#
+# Read by scripts/deploy-to-live.sh (live drift, P-IMP-263). On every config deploy, an untracked
+# path under a governed directory (agents/ skills/ commands/ hooks/ rcode/ scheduled-tasks/ scripts/
+# cockpit/ output-styles/ templates/, rules/*.md, CLAUDE.md, settings*.json) is REPORTED unless a line
+# here matches it. Report-only: a listed path is never a failure, an unlisted one is never a block.
+#
+# Format: one shell glob per line (matched with case), relative to the live install root.
+# A trailing slash is optional. '#' lines and blank lines are ignored.
+# List only installer- or vendor-owned paths (synced by a plugin/installer, overwritten on sync).
+# Anything else is adopt-or-ignore material: copy it into the workshop (plus a THIRD-PARTY
+# notice if it is third-party code), or leave it unlisted so the report keeps showing it.
+# Nested git repos (an untracked directory holding its own .git) are NOT listed here: the
+# drift check skips them automatically as separate deploy targets (e.g. cockpit, deployed by
+# `claude-deploy cockpit`). Do not list them: this file is also the security-findings vendor list.
+#
+# Vendor/installer-owned, live-only today:
+skills/synced/
+plugins/synced/
+plugins/store/
