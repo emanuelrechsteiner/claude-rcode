@@ -2,7 +2,7 @@
 # 50-pseudonymize.sh — replace every real vault term with its token across
 # the staging tree, using the SAME matcher every other vault consumer uses
 # (scripts/vault/lib.sh's vault_matcher_run, "tokenize" mode —
-# rules/testing-quality.md "Verify Via the Same Code Path", no second,
+# rules/slop-prevention.md "Verification principles": "Verify Via the Same Code Path", no second,
 # independently-written substitution routine).
 #
 # HISTORY (2026-09-25 rework round 5): this transform used to run TWO
@@ -72,7 +72,7 @@ is_self_excluded() {
 # `grep -I` samples the whole file, hits the NUL, and calls it binary,
 # while `git`'s classifier samples only a bounded prefix and agrees it's
 # text). scrub-check.sh's own leak checks scan with `git grep`, so both
-# sides must share one classifier (rules/testing-quality.md "Verify Via the
+# sides must share one classifier (rules/slop-prevention.md "Verification principles": "Verify Via the
 # Same Code Path") or a file one side calls text and the other calls binary
 # would silently go unrewritten yet still get flagged, or vice versa.
 # `git -C "$(dirname ...)"` (not a bare `git grep --no-index` from the

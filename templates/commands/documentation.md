@@ -1,7 +1,7 @@
 ---
 description: Generate comprehensive documentation suite based on codebase understanding from /start command
 argument-hint: [--format <md|html|pdf>] [--depth <basic|detailed|comprehensive>] [--update-only]
-model: claude-sonnet-4-20250514
+model: haiku
 allowed-tools: ["*"]
 ---
 

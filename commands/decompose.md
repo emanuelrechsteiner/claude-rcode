@@ -1,6 +1,7 @@
 ---
 description: "Convert BRAINSTORM.md into tracked work units — GitHub issues + milestones, or plan IDs (checkbox lines in BRAINSTORM.md) if no GitHub tracker. Run after /brainstorm."
-model: claude-fable-5-1[1m]
+disable-model-invocation: true
+model: fable
 allowed-tools:
   - Task
   - Read

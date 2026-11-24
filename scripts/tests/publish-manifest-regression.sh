@@ -22,7 +22,7 @@
 # scripts/vault/ files untouched.
 #
 # MECHANICS — mirrors scripts/publish.sh's own steps 2-3 exactly (same code
-# path, not a reimplementation, per rules/testing-quality.md "Verify Via the
+# path, not a reimplementation, per rules/slop-prevention.md "Verification principles" "Verify Via the
 # Same Code Path"): `git archive HEAD` into a throwaway dir, then a REAL
 # (non-dry-run) `rsync -a --exclude-from=<publish-manifest.txt>` — same two
 # flags publish.sh's own step 3 uses — into a second throwaway dir. The

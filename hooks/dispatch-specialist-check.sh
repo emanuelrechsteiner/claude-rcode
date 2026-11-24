@@ -1,7 +1,7 @@
 #!/bin/bash
 # dispatch-specialist-check.sh — IMP-159 (2026-08-24)
 # ─────────────────────────────────────────────────────────────────────────────
-# PreToolUse hook, matcher "Task|Agent". Enforces tool-discipline.md Rule 3
+# PreToolUse hook, matcher "Task|Agent". Enforces rules/foundation.md (Working directly or with helpers)
 # ("specify subagent_type on every Agent call") with a RECOVERABLE ask, not a
 # hard block — the user's explicit decision for IMP-159 (rationale requirement
 # via hook, NOT a hard block).
@@ -227,7 +227,7 @@ DENY_REASON=""
 if [ "$HAS_RATIONALE" != "true" ]; then
   DENY_REASON="general-purpose without a rationale."
 elif [ "$NAMES_SPECIALIST" != "true" ]; then
-  DENY_REASON="The rationale does not name a specialist agent. tool-discipline.md Rule 3 permits general-purpose ONLY when no specialist fits — that is a claim ABOUT the specialists and must name and reject at least one of them."
+  DENY_REASON="The rationale does not name a specialist agent. rules/foundation.md (Working directly or with helpers) permits general-purpose ONLY when no specialist fits — that is a claim ABOUT the specialists and must name and reject at least one of them."
 elif [ "$GRANTED_SO_FAR" -ge "$GP_MAX" ]; then
   DENY_REASON="general-purpose dispatch #${GP_COUNT} in this session (threshold ${GP_MAX}). Past this point the individual dispatch is no longer the question, the pattern is: a series of general-purpose troops is almost always a skipped decomposition, not a series of genuine exceptions."
 fi

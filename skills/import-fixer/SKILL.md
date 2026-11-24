@@ -1,6 +1,6 @@
 ---
 name: import-fixer
-description: Fix broken imports after file moves or renames. Scans for import errors, identifies broken paths, and updates all affected files. Use after moving files, renaming modules, or when seeing "Cannot find module" errors. Triggers on "fix imports", "broken imports", "cannot find module", "update imports", "import error", "imports reparieren", "kaputte imports", "modul nicht gefunden", "imports fixen", "importpfade aktualisieren", "import fehler".
+description: "Finds and fixes broken import paths after files are moved, renamed or restructured: scans for import errors, identifies the broken paths and updates every affected file. Use after a file move or rename, or on 'Cannot find module' errors."
 user-invocable: false
 allowed-tools: Read, Glob, Grep, Edit, Bash(npm *, npx tsc *)
 ---

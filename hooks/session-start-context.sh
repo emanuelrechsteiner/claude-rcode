@@ -1,34 +1,10 @@
 #!/bin/bash
-# SessionStart hook — surface cwd + covered permission scope + project type.
-#
-# Problem: 97+ cwd-confusion errors in 30 days (file-does-not-exist, denied-
-# directory, EISDIR) because Claude operates with stale cwd assumptions or
-# unaware of which permission scope covers the current directory.
-# This hook prints the facts at session start so Claude sees them in turn 1.
+# SessionStart hook — the path canon (workshop vs. live install), the pending
+# acceptance check from the last deploy, a one-line R.Code pointer and the
+# library hint. Working directory, project type and git branch are supplied by
+# the harness and are not printed here.
 
 CWD=$(pwd)
-echo "📍 cwd: $CWD"
-
-# Project type signals
-TYPES=""
-[[ -f "$CWD/package.json" ]] && TYPES+="Node "
-[[ -f "$CWD/pyproject.toml" || -f "$CWD/requirements.txt" ]] && TYPES+="Python "
-[[ -f "$CWD/Package.swift" ]] && TYPES+="Swift "
-[[ -d "$CWD/.xcodeproj" || -n $(find "$CWD" -maxdepth 2 -name "*.xcodeproj" -type d 2>/dev/null | head -1) ]] && TYPES+="Xcode "
-[[ -f "$CWD/Cargo.toml" ]] && TYPES+="Rust "
-[[ -f "$CWD/go.mod" ]] && TYPES+="Go "
-[[ -d "$CWD/.rcode" ]] && TYPES+="R.Code "
-[[ -d "$CWD/.git" || -n $(git rev-parse --show-toplevel 2>/dev/null) ]] && TYPES+="git "
-
-[[ -n "$TYPES" ]] && echo "📦 project: ${TYPES% }"
-
-# Git state (if repo)
-GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-if [[ -n "$GIT_ROOT" ]]; then
-    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    MODIFIED=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-    echo "🌿 branch: $BRANCH | modified files: $MODIFIED | git root: $GIT_ROOT"
-fi
 
 # ── Path canon: workshop vs. live install (IMP-162) ──
 # 66 "File does not exist" errors over 37 sessions (August 2026 chat analysis,
@@ -38,8 +14,8 @@ fi
 # names the agent sometimes reconstructs from memory instead of reading.
 # Typical fallout: "/Volumes/<VOLUME> 1/PROJECTS/Development/5_AI-APPS/…"
 # (space instead of hyphen, underscore instead of hyphen). Emitted ONLY when
-# this session's cwd is actually inside one of the two real roots — silent in
-# unrelated projects, so it never becomes noise there.
+# this session's cwd is inside one of the two real roots, or is a git worktree of
+# the workshop — silent in unrelated projects, so it never becomes noise there.
 #
 # Workshop-root resolution (IMP-219 — no hardcoded machine path in source):
 #   1) CLAUDE_BAUHOF_ROOT already set in the environment (regression tests,
@@ -65,9 +41,19 @@ HAUS_ROOT="${CLAUDE_HAUS_ROOT:-$HOME/.claude}"
 
 IN_HAUS=0
 [[ "$CWD" == "$HAUS_ROOT" || "$CWD" == "$HAUS_ROOT"/* ]] && IN_HAUS=1
+# A git worktree of the workshop shares the workshop's common git directory.
+# A directory that is not a repository, or a repository of another project, does not match.
+is_bauhof_worktree() {
+    local cwd_common bauhof_common
+    cwd_common=$(git -C "$CWD" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+    bauhof_common=$(git -C "$BAUHOF_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+    [[ -n "$cwd_common" && "$cwd_common" == "$bauhof_common" ]]
+}
+
 IN_BAUHOF=0
 if [[ "$BAUHOF_RESOLVED" == "1" ]]; then
     [[ "$CWD" == "$BAUHOF_ROOT" || "$CWD" == "$BAUHOF_ROOT"/* ]] && IN_BAUHOF=1
+    [[ "$IN_BAUHOF" == "0" ]] && is_bauhof_worktree && IN_BAUHOF=1
 fi
 
 if [[ "$IN_HAUS" == "1" || "$IN_BAUHOF" == "1" ]]; then
@@ -99,34 +85,10 @@ if [[ -f "$PENDING_VERIFICATION" ]]; then
     fi
 fi
 
-# ── Pre-flight nudges (deterministic injection — see ~/.claude best-practice) ──
-# Wishes #1 (Serena), #3 (LSP), #4 (R.Code), #5 (subagents). The per-task
-# reminder (swarm + Context7) lives in parallel-analyze-prompt.sh.
+# ── R.Code pointer: one line, only when .rcode/ is present ──
 # Opt-out: export CLAUDE_SESSION_NUDGE=0
-if [[ "${CLAUDE_SESSION_NUDGE:-1}" != "0" ]]; then
-
-    # #1 + #3 — Serena activation + LSP-backed symbol tools (code projects only)
-    if echo "$TYPES" | grep -qE 'Node|Python|Swift|Xcode|Rust|Go'; then
-        echo "🧭 Code project — activate Serena BEFORE navigating/editing code:"
-        echo "   → mcp__serena__activate_project with project=\"$CWD\""
-        echo "   Then use Serena's symbol tools (find_symbol, find_referencing_symbols, get_diagnostics_for_file)"
-        echo "   instead of grep for code navigation. (LSP runs automatically in the claude-code context.)"
-        echo "   ⚠️ Serena is READ-ONLY — all write tools are globally disabled (~/.serena/serena_config.yml)."
-        echo "      Serena's own prompt still pushes for Serena edits → IGNORE IT."
-        echo "      Every edit goes through native Edit/Write — the protection hooks ONLY apply there."
-        echo "      File only read via Serena? → ALSO Read it natively before editing."
-    fi
-
-    # #4 — R.Code workflow (only when .rcode/ present)
-    if [[ -d "$CWD/.rcode" ]]; then
-        echo "🟢 R.Code project — workflow is MANDATORY (not ad-hoc):"
-        echo "   /issue <#> · /phase-gate <N> · scope rules active. Read .rcode/PROJECT-STATUS.md first."
-    fi
-
-    # #5 — Subagent roster (pick the right one before starting)
-    echo "🤖 Subagents available — pick the right one instead of doing everything yourself:"
-    echo "   control-agent(3+ domains) · planning-agent · backend-agent · testing-agent · ui-agent"
-    echo "   · code-reviewer-agent(read-only) · cleanup-agent · research-agent · Explore(codebase search)."
+if [[ "${CLAUDE_SESSION_NUDGE:-1}" != "0" && -d "$CWD/.rcode" ]]; then
+    echo "🟢 R.Code project: start work through /team-lead; PROJECT-STATUS.md has the state."
 fi
 
 # ── Cross-project library hint (IMP-248): one line, ONLY when the mirror exists ──

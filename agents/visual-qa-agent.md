@@ -1,7 +1,7 @@
 ---
 name: visual-qa-agent
-description: "Read-only visual QA specialist for rendered output. Use when the user asks to 'check how this looks', 'verify the UI renders correctly', 'does this look right', 'take a screenshot and check', 'visually verify this page', 'compare against the design/mockup', or needs browser-based inspection of a rendered page, layout, or UI change. Distinct from testing-agent (writes Playwright/Jest test code) and code-reviewer-agent (static source review, no browser) — this agent drives a real browser, looks at the actual rendered pixels, and reports what it sees. Cannot edit files or fix anything it finds."
-model: sonnet
+description: "Read-only visual QA: drives a real browser to check how a rendered page or UI change looks against a design or mockup, and reports what it sees. Cannot edit or fix. Use for screenshots and layout checks, not test code (testing-agent) or static review (code-reviewer-agent)."
+model: haiku
 tools:
   - Read
   - Grep
@@ -46,7 +46,7 @@ what you find. You report it, with evidence, back to whoever dispatched you.**
 
 ## Core Mandate: Rendered Proof, Not Declaration
 
-This agent exists to enforce the rule in `rules/slop-prevention.md` Trigger 3,
+This agent exists to enforce the rule in `~/.claude/docs/reference/slop-prevention.md` Trigger 3,
 which governs every visual claim you make or verify:
 
 > A "fixed"/"done" claim about a VISIBLE state (UI, game graphics, layout, render

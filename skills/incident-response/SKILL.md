@@ -1,6 +1,6 @@
 ---
 name: incident-response
-description: "Incident-response runbook for production issues: observe via read-only diagnostics, form one falsifiable hypothesis, verify it against source before touching anything, ship a minimal hotfix, write a mandatory regression test, then postmortem. Diagnosis stays strictly read-only until the hypothesis is confirmed in code — jumping to a fix on a guess is the core failure mode this skill prevents. Production mutations are always ESCALATE-band, even mid-incident. Backs /launch-team's Run mode; also triggers directly. Triggers on 'incident response', 'production is down', 'prod is down', 'site is down', 'production incident', 'diagnose production issue', 'root cause analysis', 'postmortem', 'produktion ist down', 'seite ist down', 'produktionsvorfall', 'störung beheben', 'ausfall untersuchen'."
+description: "Incident runbook: read-only diagnosis, one falsifiable hypothesis checked in code before fixing, a minimal hotfix, a mandatory regression test, a postmortem. Production changes stay ESCALATE-band, even mid-incident. Backs /launch-team Run. Use when production breaks or for root-cause analysis."
 user-invocable: true
 ---
 
@@ -102,5 +102,5 @@ redeploys, rollbacks, and credential/key rotation are **ESCALATE-band** per
 `rules/agency-bands.md` — a mandatory verbatim y/n, never self-approved.
 Incident urgency is explicitly **not** an override; the band system is scored
 by reversibility and blast-radius, not by how much pressure the situation
-carries. See `rules/agency-bands.md` for the full matrix and enforcement
+carries. See `rules/agency-bands.md` for the bands and `~/.claude/docs/reference/agency-bands.md` for the full decision table and enforcement
 layers — not restated here.

@@ -1,7 +1,8 @@
 ---
 description: "Execute the atomic unit protocol (Steps 0-9) for one work unit, with scope enforcement, convention compliance, and status tracking. Runs standalone or as a /team-lead worker."
+disable-model-invocation: true
 argument-hint: "<unit-id>"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
   - Read
@@ -81,8 +82,7 @@ In Worker mode, run only:
 - **Step 1** — scope boundary ("I WILL / I will NOT").
 - **Step 3** — implement per CONVENTIONS.md / ARCHITECTURE.md.
 - **Step 4** — sub-steps 1-3 only: RED/GREEN evidence (sub-step 1) and the
-  check trio. Sub-step 4 (review) is Standalone only: a worker cannot spawn
-  subagents, the lead reviews after the report-back.
+  check trio. Sub-step 4 (review) is Standalone only: a worker does not review its own unit; the lead has it reviewed after the report-back.
 - **Step 5** — commit ON THE BRANCH THE LEAD NAMED (commit ref format in
   Step 5); do NOT create a branch, do NOT push, do NOT open a PR.
 - **Interactive units (games, apps, UIs):** a "Done" verdict must satisfy the "Interactive hand-off" block in Step 7 (referenced, not copied) before it goes to the lead.
@@ -207,7 +207,7 @@ branch for the wave; commit onto it in Step 5.)*
 
 ```bash
 # Ensure the project's trunk is up to date — the trunk is NOT always `main`
-# (read the branch policy per ~/.claude/rules/workflow-git.md "Trunk Is Not Always main").
+# (read the branch policy per ~/.claude/docs/reference/workflow-git.md "Trunk Is Not Always main").
 trunk="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##')"
 trunk="${trunk:-main}"   # no remote/origin HEAD (e.g. tracker plan, local-only repo) → confirm the trunk name with the user once if it is not main
 git checkout "${trunk}"
@@ -272,7 +272,7 @@ Use specialized agents via the Task tool as needed:
 
 *(Standalone + Worker)*
 
-1. **Write tests** — Spawn `testing-agent` via Task tool if needed:
+1. **Write tests** — Standalone: spawn `testing-agent` via Task tool if needed. Worker: write the tests yourself; the lead's wave decides whether a test agent is spawned:
    ```
    Write tests for unit <id>:
    - [List acceptance criteria to test]
@@ -305,7 +305,7 @@ Use specialized agents via the Task tool as needed:
    `code-reviewer-agent` (read-only: Read/Grep/Glob, it cannot run git) with
    no prior context. Pass absolute paths of the changed files and the unit
    body/brief, plus a scratch file holding `git diff` if it should see the
-   diff, never your summary (`~/.claude/rules/slop-prevention.md` "Copy,
+   diff, never your summary (`~/.claude/docs/reference/slop-prevention.md` "Copy,
    don't interpret"). `fix N issues first` blocks Step 5 until resolved or
    the user explicitly overrules. Record agent, verdict and findings
    pointer; they go into the Step 7 PR "Test Plan" and the Step 8 agent-log
@@ -368,7 +368,7 @@ decision after the wave, ESCALATE per `~/.claude/rules/agency-bands.md`)*
    ```bash
    # Re-resolve the trunk the same way Step 2 did — a fresh Bash invocation
    # does not inherit Step 2's $trunk, and the trunk is NOT always `main`
-   # (~/.claude/rules/workflow-git.md "Trunk Is Not Always main").
+   # (~/.claude/docs/reference/workflow-git.md "Trunk Is Not Always main").
    trunk="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##')"
    trunk="${trunk:-main}"
    git diff "${trunk}"...HEAD --stat  # Review all changed files
@@ -427,7 +427,7 @@ decision after the wave, ESCALATE per `~/.claude/rules/agency-bands.md`)*
    )"
    ```
 
-   **Merge Danger criteria** (fixed, so the author does not grade its own risk generously; axes R and S of `~/.claude/rules/agency-bands.md`, "The Three Axes"):
+   **Merge Danger criteria** (fixed, so the author does not grade its own risk generously; axes R and S of `~/.claude/docs/reference/agency-bands.md`, "The Three Axes"):
    - Door `irreversible`: the diff contains a migration, a DROP or TRUNCATE, deleted data or files, a removed public API or endpoint, a publish, or rewritten history.
    - Door `hard-to-reverse`: `git revert` would not undo the effect (e.g. data written in a new format, config read outside this repo).
    - Door `reversible`: `git revert` restores the prior state. Everything else.
@@ -455,11 +455,11 @@ remote)*
 3. If CI fails, fix issues and push again. Do not merge with failing CI.
 
 **Interactive hand-off (games, apps, UIs):** applies to every "Done" verdict on an interactive unit, not only when Step 7 runs (Step 7 itself needs a PR). "Done: yes" requires all three:
-1. **Input→effect trace** from the REAL build: input event logged → state changed → screenshot after. A render screenshot alone is not proof (`rules/slop-prevention.md` Trigger 3).
+1. **Input→effect trace** from the REAL build: input event logged → state changed → screenshot after. A render screenshot alone is not proof (`~/.claude/docs/reference/slop-prevention.md` Trigger 3).
 2. **No self-referential test:** the test must not itself open, inject or set up the path it checks. Such a test is void and does not count.
 3. **No helper still running:** before the verdict, list YOUR OWN still-open subagents and background shells (task list, background-task notifications) and state "0 running" with that evidence. The Stop-hook `NOTE (P-IMP-260)` is only an owner-facing backstop after the turn: its stdout is not fed back to you, and it sees Task/Agent dispatches only, not background Bash shells.
 
-Without all three the verdict is `Done: no — missing: <item>`. A `/human-testing` pass (`skills/human-testing/SKILL.md`) precedes every owner hand-off.
+Without all three the verdict is `Done: no — missing: <item>`. A `/human-testing` pass (`~/.claude/skills/human-testing/SKILL.md`) precedes every owner hand-off.
 
 ---
 

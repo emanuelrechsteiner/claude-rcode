@@ -164,8 +164,7 @@ things are true at once here — the **designed pipeline** and the
   hand-edited. See `docs/PUBLISHING.md` for the full pipeline and the
   PR-governance model for the public repo.
 - **Current operating mode.** `publish.sh` has been hard-disabled since
-  2026-08-12 (`PUBLISH_DISABLED=1`, mirror-layer protection — the private
-  `~/.claude/rules/*.local.md` overlay must never leave this machine). Re-activation
+  2026-08-12 (`PUBLISH_DISABLED=1`, owner decision). Re-activation
   requires a deliberate code edit to the script itself; there is no env-var
   bypass. While it stays disabled, public-surface changes (README numbers,
   quickstart, contributing, issue templates) go through the documented

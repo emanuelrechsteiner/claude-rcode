@@ -53,6 +53,7 @@ Class keep -> then (:39-48): transcripts 12 mo -> manual review, delete or encry
 signals 30 d (auto); metrics/agency/guard logs 12 mo; historical-signals, plans/ indefinite; file-history 90 d; logbook 12 mo
 Corpus 2026-08-22 (:25-33): projects 716 MB/102 dirs, chat-archives 818 MB/445 files, global-observation 913 MB, rest <=1 MB
 ## 6 Model era (MR; sources fetched 2026-09-27, IMP-220)
+Updated 2026-10-12 (IMP-255): Haiku 5.5 (`claude-haiku-5-5`) $0.10 in / $0.50 out per MTok, 1M context, effort low..max (default medium); Sonnet 5.5 $2/$10 (1:20). The default worker tier is now haiku, sonnet only on a recorded Haiku failure; the 'Sonnet 5 stays default' OPEN item below is superseded by that policy.
 $/MTok in/out/hit (window 1M, Haiku 200K): Haiku 4.5 1/5/.10; Sonnet 5 2/10/.20; Opus 5.5 4/20/.20; Fable 5.1 10/50/.25; 1:2:4:10 (:36)
 Cache (:77-88): 5-min TTL; write 1.25x (5m), 2x (1h); read 0.1x = <=10% of base (Opus 5.5 .05x, Fable .025x); no >200K premium
 MAX_THINKING_TOKENS=30000 inert on Sonnet 5/Opus 5.5/Fable 5.1 (adaptive), acts only on Haiku 4.5; real control = effortLevel (:54-61)

@@ -48,7 +48,7 @@ fi
 #   - Git email: `email`
 #   - Path patterns ...:
 #     - `pattern`
-# Semantics per identity.md: cwd matches pattern (case-insensitive substring)
+# Semantics per rules/workflow-git.md (Identity): cwd matches pattern (case-insensitive substring)
 # AND git email differs → warn (never block). <<TODO>> placeholders are skipped.
 if [[ -r "$PERSONAL_MAP" ]]; then
     CWD_LC=$(printf '%s' "$CWD" | tr '[:upper:]' '[:lower:]')

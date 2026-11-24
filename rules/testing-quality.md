@@ -1,3 +1,11 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,swift,go,rs,java,kt,kts,rb,php,vue,svelte,astro,sh,bash,zsh,c,h,cc,cpp,hpp,cs,m,mm,dart,gd,lua,ex,exs,scala,sql,prisma,html,css,scss}"
+  - "**/tests/**"
+  - "**/__tests__/**"
+  - "**/*.{test,spec}.*"
+---
+
 # Testing & Quality Rules
 
 > Universal testing patterns, validation gates, and quality assurance.
@@ -22,6 +30,8 @@ Line ≥80%, branch ≥75%, function ≥80%; every public function has at least 
 - **Python (pytest):** co-locate or use a `tests/` directory mirroring `src/`; fixtures for shared setup (`conftest.py`); `@pytest.mark.asyncio` for async tests; mock external services, never call real APIs in unit tests.
 
 ## Validation Gates
+
+Verification principles — rendered proof for visible claims, verify at the sink, verify via the same code path, automatic check results belong to their trigger — live in `rules/slop-prevention.md` (always loaded; long form in `~/.claude/docs/reference/slop-prevention.md`).
 
 ### Before Every Commit (REQUIRED)
 ```
@@ -51,22 +61,6 @@ black --check .        # Formatting
 - Build fails
 - Tests fail
 - Stray characters at EOF detected
-
-### Rendered-Proof for Visual Claims
-
-A "fixed"/"done" claim about a VISIBLE state (UI, game graphics, layout, render output) is a gate of its own, not covered by a green suite — see [[slop-prevention]] §"Trigger 3 — Visible claim without rendered proof".
-
-### Verify at the Sink, Not the Suite (Data-Exfiltration Fixes) (IMP-158)
-
-A "fixed" claim about a data-exfiltration defect (a filter, exclusion, or manifest gate meant to stop a bulk pipeline from sending certain files/records to an external backend) is only valid with proof taken at the actual sender/output: which files/records the external tool really receives — a capture of the real invocation parameters, or a dry run printing the real target-file list. A green test/regression suite that merely checks a counter or manifest field is **not** that proof: it can confirm an exclusion field was *set* without proving the sender ever *reads* it. Holds for any data-sink fix, not only bulk-pipeline runs; pairs with [[agency-bands]] §"Bulk-Pipeline Manifest Gate (IMP-152)".
-
-### Verify Via the Same Code Path, Not a Reimplementation (IMP-158)
-
-When verifying a fix means counting or resolving something (files, targets, matches) that the production code also counts or resolves, the verification must call the **same** resolution code the production path uses — never a second, independently written counting/matching routine. Separately written implementations drift, and a test on the drifted copy passes while the real path stays broken; a bespoke recount that computes differently from the actual send is itself a defect class, not a safety margin.
-
-### Automatic Check Results Belong to Their Trigger (IMP-158)
-
-If your own action causes an automatic check to run (a security review, a lint pass, any verification firing alongside or after your work), you must retrieve its result before declaring the triggering work "fixed"/"done" — having triggered it is not enough. A check that finds something and logs it where nobody reads it is functionally silent ([[fail-loud]]'s "reported somewhere *observable*?" test, applied to the reporting side). This is a duty on the **work thread**, not a hook this repo can register, whether a Claude-Code-bundled feature (e.g. `/security-review`; the repo defines none of its own) or a repo hook produced the check.
 
 ## Post-Fix Protocol
 

@@ -1,6 +1,6 @@
 ---
 name: project-planning
-description: Strategic project architect using Claude Opus for comprehensive planning. Creates multi-agent development plans, coordinates task distribution, and ensures agent collaboration with zero conflicts. Use when planning new features, creating project architecture, or designing implementation strategies. Triggers on "plan", "planning", "architecture", "strategy", "roadmap", "feature design", "implementation plan", "project structure".
+description: "Plans new features and project architecture as multi-agent development plans: work packages, dependencies, quality gates and task ledgers that keep parallel agents from colliding. Use when planning a feature, designing architecture or an implementation strategy, or splitting work across agents."
 model: opus
 ---
 

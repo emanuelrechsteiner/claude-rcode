@@ -155,6 +155,62 @@ else
     bad "claim+release with an actually-held lock logs both, unsampled" "claim>=1 and release>=1" "claim=$CLAIM_LOGGED release=$RELEASE_LOGGED"
 fi
 
+# ── IMP-286 (2026-11-11): SubagentStop releases aged UNBOUND claims ───────────
+# A claim the subagent never touched has no harness id, so release-all cannot
+# match it and it stayed held until TTL (3 stale sets: 5 + 6 + 4 locks, 2026-11-10).
+# The hook now also runs `release-stale --older-than 120`: unbound claims only,
+# older than 120 min. The hook resolves its claim script under $HOME, so these
+# cases run it with a throwaway HOME whose script is a symlink to the workshop copy.
+STALE_HOME="$CLAUDE_LOCK_ROOT/home"
+mkdir -p "$STALE_HOME/.claude/scripts" && ln -sf "$CLAIM" "$STALE_HOME/.claude/scripts/parallel-claim.sh"
+meta_of() { printf '%s/%s/owner.json' "$CLAUDE_LOCK_ROOT" "$(printf '%s' "$1" | shasum | awk '{print $1}')"; }
+backdate() { # file, seconds-ago: an old claim that is still live (TTL 1h from now)
+    local m t x; m=$(meta_of "$1"); t=$(( $(date +%s) - $2 )); x=$(( $(date +%s) + 3600 ))
+    jq --argjson t "$t" --argjson x "$x" '.claimed_epoch = $t | .expires_at_epoch = $x' "$m" > "${m}.tmp" && mv "${m}.tmp" "$m"
+}
+stop_hook() { printf '%s' "$1" | HOME="$STALE_HOME" bash "$RELEASE_HOOK" >/dev/null 2>&1; }
+held() { bash "$CLAIM" list | grep -qF "$1" && echo held || echo free; }
+
+S1="$CLAUDE_LOCK_ROOT/stale-unbound.ts"; echo "s" > "$S1"
+S2="$CLAUDE_LOCK_ROOT/fresh-unbound.ts"; echo "s" > "$S2"
+S3="$CLAUDE_LOCK_ROOT/bound-running.ts"; echo "s" > "$S3"
+bash "$CLAIM" claim "$S1" "pdispatch-r20-0" 3600 "sess-20" >/dev/null 2>&1
+bash "$CLAIM" claim "$S2" "pdispatch-r20-1" 3600 "sess-20" >/dev/null 2>&1
+bash "$CLAIM" claim "$S3" "pdispatch-r20-2" 3600 "sess-20" >/dev/null 2>&1
+bash "$CLAIM" bind "$S3" "harness-run" "sess-20" >/dev/null 2>&1
+backdate "$S1" 7200; backdate "$S3" 7200
+
+# 15. THE IMP-286 DEFECT: an aged unbound claim of a stopped worker stays held.
+stop_hook '{"agent_id":"harness-stop"}'
+[ "$(held "$S1")" = free ] && ok "SubagentStop releases an aged unbound claim (IMP-286)" \
+    || bad "SubagentStop releases an aged unbound claim" "stale claim free" "still listed"
+
+# 16. A fresh unbound claim (the worker may not have started yet) is NOT released.
+[ "$(held "$S2")" = held ] && ok "fresh unbound claim survives a SubagentStop" \
+    || bad "fresh unbound claim survives a SubagentStop" "held" "released"
+
+# 17. A bound claim of a RUNNING agent is never released by age alone.
+[ "$(held "$S3")" = held ] && ok "aged BOUND claim of a running agent survives" \
+    || bad "aged BOUND claim of a running agent survives" "held" "released"
+
+# 18. Another agent's bound lock (from case 12) is untouched by the sweep.
+[ "$(held "$LEGACY")" = held ] && ok "other agents' bound locks are not touched" \
+    || bad "other agents' bound locks are not touched" "held" "released"
+
+# 19. release-stale: valid call exits 0; missing or non-numeric age exits 2.
+bash "$CLAIM" release-stale --older-than 120 >/dev/null 2>&1; rc_ok=$?
+bash "$CLAIM" release-stale --older-than abc >/dev/null 2>&1; rc_bad=$?
+[ "$rc_ok" -eq 0 ] && [ "$rc_bad" -eq 2 ] && ok "release-stale validates its age argument" \
+    || bad "release-stale validates its age argument" "ok=0 bad=2" "ok=$rc_ok bad=$rc_bad"
+
+# 20. Empty, truncated and non-JSON stdin: the hook exits 0 and does not crash.
+rc_all=0
+for payload in '' '{"agent_id":' 'not json'; do
+    printf '%s' "$payload" | HOME="$STALE_HOME" bash "$RELEASE_HOOK" >/dev/null 2>&1 || rc_all=1
+done
+[ "$rc_all" -eq 0 ] && ok "empty and malformed stdin do not crash the hook" \
+    || bad "empty and malformed stdin do not crash the hook" "exit 0" "non-zero exit"
+
 echo "──────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
 [ "$FAIL" -eq 0 ] || exit 1

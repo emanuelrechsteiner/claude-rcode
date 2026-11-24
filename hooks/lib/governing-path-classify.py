@@ -19,7 +19,7 @@ import sys
 
 HOME = os.environ.get("HOME", "")
 DIRS = {"agents", "skills", "commands", "hooks", "rcode", "scheduled-tasks",
-        "scripts", "cockpit", "output-styles", "templates"}
+        "scripts", "cockpit", "output-styles", "templates", "docs"}
 FILES = {"claude.md", "settings.json", "settings.framework.json", "settings.local.json"}
 PFX = tuple(d + "/" for d in DIRS)
 SEP = {";", ";;", "&&", "||", "|", "|&", "&", "(", ")"}
@@ -29,7 +29,17 @@ ARGOPT = {"-u", "-g", "-h", "-p", "-C", "-D", "-r", "-t", "-U", "-S"}
 GITW = {"checkout", "restore", "apply", "am", "merge", "pull", "stash", "reset", "cherry-pick", "rebase"}
 PUNCT = re.compile(r"&>>|\|\||&&|;;|\|&|>>|&>|>\||>&|<<<|<<|\(|\)|;|\||&|>|<")
 REDIR = re.compile(r"^(>>?|>\||&>>?|>&)$")
-HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n(.*?)\n[ \t]*\2[ \t]*(?=\n|$)", re.S)
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)([\w.-]+)\1[^\n]*\n(.*?)\n[ \t]*\2[ \t]*(?=\n|$)", re.S)
+ANSIC = re.compile(r"\$'((?:\\.|[^'\\])*)'", re.S)
+NAMES = r"(?:rules/|agents|skills|commands|hooks|rcode|scheduled-tasks|scripts|cockpit|output-styles|templates|docs|claude\.md|settings)"
+
+
+def de_ansic(cmd):
+    """Rewrite $'...' strings as plain quoted words so shlex can read them (IMP-274)."""
+    def rep(m):
+        body = re.sub(r"\\(.)", lambda k: {"n": "\n", "t": "\t"}.get(k.group(1), k.group(1)), m.group(1), flags=re.S)
+        return shlex.quote(body)
+    return ANSIC.sub(rep, cmd)
 
 def norm(p, base):
     """Absolute, ~/$HOME-expanded, collapsed path with the existing parent realpath'd."""
@@ -165,7 +175,7 @@ def scan(cmd, base, out, hits, depth=0):
             bodies.append(m.group(3))
         return m.string[m.start():m.start(3) - 1].rstrip("\n")
 
-    cmd = HEREDOC.sub(grab, cmd)
+    cmd = de_ansic(HEREDOC.sub(grab, cmd))
     for body in bodies:
         if depth < 3:
             scan(body, base, out, hits, depth + 1)
@@ -204,14 +214,23 @@ def scan(cmd, base, out, hits, depth=0):
             if head == "mv":
                 out += [norm(s, base) for s in srcs]
 
-def raw_hit(cmd):
+def raw_hit(cmd, cwd):
+    """Conservative verdict for a command that could not be parsed (IMP-274).
+
+    A hit is a governed live path named in one piece, or a governed name anywhere
+    in a command that mentions the live install or runs inside it: without a parse
+    a relative write after `cd <live>` cannot be told from a read.
+    """
     c = cmd.lower().replace("${home}", HOME.lower()).replace("$home", HOME.lower())
     c = c.replace("~/", HOME.lower() + "/")
-    names = r"(?:rules/|agents|skills|commands|hooks|rcode|scheduled-tasks|scripts|cockpit|output-styles|templates|claude\.md|settings)"
-    for v in {LIVE_L, LIVE_RAW.lower()}:
-        m = re.search(re.escape(v) + "/" + names, c)
+    lives = {LIVE_L, LIVE_RAW.lower()}
+    for v in lives:
+        m = re.search(re.escape(v) + "/" + NAMES, c)
         if m:
             return m.group(0)
+    inside = in_live(norm(cwd, "/"))
+    if (inside or any(v in c for v in lives)) and re.search(r"(?<![\w.-])" + NAMES, c):
+        return "unparsed command %s the live install and names a governed path" % ("runs inside" if inside else "mentions")
     return None
 
 def main():
@@ -226,7 +245,7 @@ def main():
             scan(ti["command"], cwd, out, hits)
         except Exception as e:  # parse failure must fail closed, see raw scan below
             print("PARSEFAIL\t%s: %s" % (type(e).__name__, e))
-            raw = raw_hit(ti["command"])
+            raw = raw_hit(ti["command"], cwd)
             if raw:
                 print("HIT\t" + raw)
             return

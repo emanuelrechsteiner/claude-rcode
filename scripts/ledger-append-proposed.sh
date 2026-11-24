@@ -53,9 +53,23 @@
 # Usage:
 #   ledger-append-proposed.sh --proposal ~/.claude/plans/meta-proposal-2026-31.md \
 #     [--dry-run] < findings.jsonl
+#   ledger-append-proposed.sh --import-pending <pending-file> [--dry-run]
 #
 # Idempotent: the dedup key is "<proposal-basename>#<finding>". Re-running the
 # same proposal appends nothing and exits 0.
+#
+# LIVE INSTALL NEVER ALLOCATES IDS (IMP-282, 2026-11-11). Two writers allocated
+# ledger ids independently (the weekly routine in the live install, sessions in
+# the workshop), so one id could be handed out twice. When the ledger resolves
+# into ${CLAUDE_LIVE_DIR:-$HOME/.claude}/global-observation, an append does not
+# touch the ledger: it queues one JSON line per finding into ledger-pending.jsonl
+# beside it ({"queuedAt","proposal","finding"}) and prints QUEUED. The vault gate
+# still runs first. The workshop drains the queue with --import-pending <file>:
+# each finding goes through the normal append path of this script (fresh ids,
+# sourceProposal dedup, vault gate), grouped by proposal. The pending file is
+# never deleted here; the caller removes it after its commit. The live install
+# refuses --import-pending. CLAUDE_LEDGER_ALLOW_LIVE_APPEND=1 restores the old
+# direct live append (regression cases only).
 #
 # SELF-MAINTAINING COUNTERS (IMP-188, 2026-09-27): the header counters
 # (totalImprovements, totalImplementations, totalStaged, totalRollbacks) and
@@ -75,10 +89,14 @@
 # non-empty verification.measured>/<implemented>".
 #
 # Exit codes:
-#   0  — entries appended, or all were duplicates (idempotent), or dry-run,
-#        or --recompute-only wrote, or --check found the counters consistent
-#   1  — input/ledger validation failed → NOTHING written; or --check drift
-#   2  — script-level error (missing deps, bad arguments)
+#   0  — entries appended, queued (live install), or all were duplicates
+#        (idempotent), or dry-run, or --recompute-only wrote, or --check found
+#        the counters consistent, or --import-pending imported cleanly
+#   1  — input/ledger validation failed → NOTHING written; or --check drift;
+#        or --import-pending skipped an invalid pending line or refused a
+#        proposal group (the pending file is kept)
+#   2  — script-level error (missing deps, bad arguments); --import-pending
+#        in the live install
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -92,9 +110,9 @@ die() { echo "[ledger-append-proposed] FATAL: $*" >&2; exit "${2:-2}"; }
 
 command -v jq >/dev/null 2>&1 || die "jq not found"
 
-PROPOSAL=""; DRY_RUN=0; MODE="append"
+PROPOSAL=""; DRY_RUN=0; MODE="append"; IMPORT_FILE=""
 set_mode() {
-  [[ "$MODE" == "append" || "$MODE" == "$1" ]] || die "--recompute-only and --check are mutually exclusive"
+  [[ "$MODE" == "append" || "$MODE" == "$1" ]] || die "--recompute-only, --check and --import-pending are mutually exclusive"
   MODE="$1"
 }
 while [[ $# -gt 0 ]]; do
@@ -103,12 +121,29 @@ while [[ $# -gt 0 ]]; do
     --dry-run)        DRY_RUN=1; shift ;;
     --recompute-only) set_mode recompute; shift ;;
     --check)          set_mode check; shift ;;
+    --import-pending) [[ $# -ge 2 ]] || die "--import-pending needs a file path"
+                      IMPORT_FILE="$2"; set_mode import; shift 2 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
 
 [[ -f "$LEDGER" ]]   || die "ledger not found: $LEDGER"
 jq -e . "$LEDGER" >/dev/null 2>&1 || die "ledger is not valid JSON — refusing to touch it" 1
+
+# ── Live-install detection (IMP-282): a ledger that resolves into the live
+#    install's global-observation directory is "live" — it must never allocate
+#    an id, so appends are queued (see queue_findings below) and imports are
+#    refused. CLAUDE_LEDGER_ALLOW_LIVE_APPEND=1 is the regression-only escape.
+LEDGER_DIR_RESOLVED="$(cd "$(dirname "$LEDGER")" && pwd -P)"
+LIVE_OBS_DIR="${CLAUDE_LIVE_DIR:-$HOME/.claude}/global-observation"
+LIVE_DIR_RESOLVED=""
+if [[ -d "$LIVE_OBS_DIR" ]]; then LIVE_DIR_RESOLVED="$(cd "$LIVE_OBS_DIR" && pwd -P)"; fi
+IN_LIVE=0
+if [[ -n "$LIVE_DIR_RESOLVED" && "$LEDGER_DIR_RESOLVED" == "$LIVE_DIR_RESOLVED" ]]; then IN_LIVE=1; fi
+
+# count_sourced <ledger> — number of entries carrying a sourceProposal (the
+# import uses the difference before/after a child run as its appended count).
+count_sourced() { jq '[.. | objects | select(has("sourceProposal"))] | length' "$1"; }
 
 # ── Counter recomputation (IMP-188) — the ONE jq implementation used by the
 #    append path, --recompute-only and --check alike. ──────────────────────
@@ -164,6 +199,111 @@ def apply_counters($now):
 '
 
 NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# ── Queue (IMP-282, live install only): one line per finding into
+#    ledger-pending.jsonl beside the ledger. No id is allocated, no dedup and
+#    no splice happens here. The vault gate runs first, so a structural hit
+#    refuses the whole run before anything is queued.
+queue_findings() {
+  local pending="$LEDGER_DIR_RESOLVED/ledger-pending.jsonl" gate_in gate_out queued
+  gate_in="$(mktemp "${TMPDIR:-/tmp}/ledger-queue-in.XXXXXX")"
+  gate_out="$(mktemp "${TMPDIR:-/tmp}/ledger-queue-out.XXXXXX")"
+  printf '%s\n' "$INPUT" | jq -s --arg proposal "$PROPOSAL" --arg pkey "$PROPOSAL_KEY" '
+    to_entries | map({
+      _findingId: .value.finding,
+      id: ("queued-" + ((.key + 1) | tostring)),
+      title: .value.title,
+      category: (.value.category // "uncategorized"),
+      riskLevel: (.value.riskLevel // "unknown"),
+      notes: (.value.recommendation // ""),
+      evidence: (.value.evidence // ""),
+      source: ("weekly-improve auto-write-back (IMP-112) from " + $proposal),
+      sourceProposal: ($pkey + "#" + .value.finding)
+    })' > "$gate_in"
+  lvg_gate_entries_file "$gate_in" "$gate_out" || die "vault gate: internal error while validating queued findings — NOTHING queued" 1
+  rm -f "$gate_in" "$gate_out"
+  [[ "$LVG_BLOCKED" -eq 0 ]] || die "pseudonymization gate blocked one or more findings (see BLOCKED lines above) — NOTHING queued" 1
+
+  queued="$(printf '%s\n' "$INPUT" | jq -c --arg q "$NOW" --arg p "$PROPOSAL" '{queuedAt: $q, proposal: $p, finding: .}')"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "DRY-RUN — would queue into $pending:"
+    printf '%s\n' "$queued" | jq -r '"  \(.finding.finding)  \(.finding.title)"'
+    exit 0
+  fi
+  printf '%s\n' "$queued" >> "$pending"
+  log "QUEUED $N_IN finding(s): the live install never allocates ids; the next deploy imports them."
+  exit 0
+}
+
+# ── Import (IMP-282, workshop only): drain a pending file. Each proposal group
+#    is handed to THIS script as a child run (same append path: fresh ids,
+#    sourceProposal dedup, vault gate); the appended count is the ledger's
+#    sourceProposal count difference, the duplicate count the rest. Invalid
+#    lines are reported and skipped; a refused group is reported and the
+#    other groups still run. Returns 1 when anything was skipped or refused.
+#    The pending file is never modified here.
+import_pending() {
+  local pending="$1" valid findings lineno=0 bad=0 failed=0 line proposal rc=0
+  local n_group n_before n_after appended dup total_app=0 total_dup=0 out dry=""
+  if [[ "$DRY_RUN" -eq 1 ]]; then dry="--dry-run"; fi
+  valid="$(mktemp "${TMPDIR:-/tmp}/ledger-import-valid.XXXXXX")"
+  findings="$(mktemp "${TMPDIR:-/tmp}/ledger-import-group.XXXXXX")"
+  : > "$valid"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    lineno=$((lineno + 1))
+    [[ -n "${line// }" ]] || continue
+    if printf '%s\n' "$line" | jq -e 'type == "object"
+        and (.proposal | type == "string") and (.proposal | length > 0) and (.proposal | test("\n") | not)
+        and (.finding | type == "object")
+        and ((.finding.finding // "") | type == "string" and length > 0)
+        and ((.finding.title // "") | type == "string" and length > 0)' >/dev/null 2>&1; then
+      printf '%s\n' "$line" >> "$valid"
+    else
+      log "SKIPPED pending line $lineno: not a queued finding (expected {proposal, finding:{finding, title}})"
+      bad=$((bad + 1))
+    fi
+  done < "$pending"
+
+  while IFS= read -r proposal; do
+    jq -c --arg p "$proposal" 'select(.proposal == $p) | .finding' "$valid" > "$findings"
+    n_group=$(jq -s 'length' "$findings")
+    n_before=0
+    if [[ "$DRY_RUN" -eq 0 ]]; then n_before=$(count_sourced "$LEDGER"); fi
+    rc=0
+    out="$(bash "${BASH_SOURCE[0]}" --proposal "$proposal" $dry < "$findings" 2>&1)" || rc=$?
+    printf '%s\n' "$out"
+    if [[ "$rc" -ne 0 ]]; then
+      failed=$((failed + 1))
+      log "REFUSED proposal group (exit $rc): nothing written for it; the other groups were still processed"
+      continue
+    fi
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+      n_after=$(count_sourced "$LEDGER")
+      appended=$((n_after - n_before))
+      dup=$((n_group - appended))
+      total_app=$((total_app + appended))
+      total_dup=$((total_dup + dup))
+    fi
+  done < <(jq -r -s 'map(.proposal) | unique | .[]' "$valid")
+
+  rm -f "$valid" "$findings"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "DRY-RUN — nothing written"
+  else
+    log "IMPORTED $total_app finding(s), $total_dup skipped as duplicates"
+  fi
+  if [[ "$bad" -gt 0 ]]; then log "SKIPPED $bad invalid pending line(s); the pending file is kept"; fi
+  if [[ "$failed" -gt 0 ]]; then log "REFUSED $failed proposal group(s); the pending file is kept"; fi
+  if [[ "$bad" -gt 0 || "$failed" -gt 0 ]]; then exit 1; fi
+  exit 0
+}
+
+if [[ "$MODE" == "import" ]]; then
+  [[ -z "$PROPOSAL" ]] || die "--proposal cannot be combined with --import-pending" 2
+  [[ "$IN_LIVE" -eq 0 ]] || die "--import-pending is refused in the live install ($LEDGER_DIR_RESOLVED): the live install never allocates ids; run the import against the workshop ledger (CLAUDE_LEDGER_FILE)" 2
+  [[ -f "$IMPORT_FILE" ]] || die "pending file not found: $IMPORT_FILE" 2
+  import_pending "$IMPORT_FILE"
+fi
 
 if [[ "$MODE" != "append" ]]; then
   [[ -z "$PROPOSAL" ]] || die "--proposal cannot be combined with --$([[ "$MODE" == check ]] && echo check || echo recompute-only)"
@@ -267,6 +407,12 @@ BAD_FINDING_POS=$(printf '%s\n' "$INPUT" | jq -s -r '
 
 N_IN=$(printf '%s\n' "$INPUT" | jq -s 'length')
 log "proposal: $PROPOSAL_KEY  findings on stdin: $N_IN"
+
+# ── IMP-282: the live install queues instead of allocating. Everything below
+#    this point (id allocation, dedup, splice) is workshop-only.
+if [[ "$IN_LIVE" -eq 1 && "${CLAUDE_LEDGER_ALLOW_LIVE_APPEND:-0}" != "1" ]]; then
+  queue_findings
+fi
 
 # ── Highest existing IMP id, searched RECURSIVELY (the ledger is a nested
 #    object, not a flat array — a top-level scan silently misses most ids) ────

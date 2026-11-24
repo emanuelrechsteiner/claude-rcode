@@ -1,6 +1,6 @@
 ---
 name: scope-check
-description: "This skill should be used when the user asks to 'check scope', 'scope check', 'verify scope', 'scope review', or mentions 'scope creep', 'scope shrinkage', 'out of scope', 'scope prüfen', 'scope kontrolle', 'bleiben wir im scope', 'zu viel gemacht', 'haben wir uns verzettelt', 'while we are here', 'mission creep', 'feature creep'. It verifies work matches the original plan by detecting unplanned additions (scope creep) and dropped features (scope shrinkage). Works at per-unit and per-phase granularity, tracker-aware (github issues or plan P-NNN units)."
+description: "Checks that work stays within the planned scope, flagging unplanned additions (scope creep) and dropped features (scope shrinkage) per work unit or per phase, for GitHub issues or plan P-NNN units. Use to check scope, or when work drifts beyond the plan. Scope changes need human approval."
 allowed-tools:
   - Read
   - Glob

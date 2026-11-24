@@ -1,7 +1,7 @@
 ---
 description: Meta-layer improvement system verification and self-enhancement activation
 argument-hint: [--verify | --enhance | --analyze | --report] [--opus-mode]
-model: claude-opus-4-1-20250805
+model: fable
 allowed-tools: ["*"]
 ---
 
@@ -75,7 +75,7 @@ Meta-Level Intelligence:
 #### Agent Coordination Framework
 ```
 Verification Checklist:
-✓ Control-agent mandatory delegation enforcement
+✓ Delegation decided per task (`rules/foundation.md`)
 ✓ Specialized agent activation patterns
 ✓ Multi-agent workflow synchronization
 ✓ Progress reporting and status tracking

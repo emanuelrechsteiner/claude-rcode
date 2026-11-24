@@ -29,7 +29,7 @@ if ! echo "$TOOL_ARGS" | grep -qE "git (commit|config user|push)|gh (pr|issue) (
 CWD=$(pwd)
 
 # Identity map — placeholders; customize for your identities.
-# See rules/identity.md and templates/identity.local.md.template.
+# See rules/workflow-git.md (Identity) and templates/identity.local.md.template.
 # Returns: echoes "NAME|EMAIL" if identity is unambiguous; echoes nothing if ambiguous
 derive_identity() {
     local cwd="$1"

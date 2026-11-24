@@ -1,5 +1,6 @@
 ---
 description: "Synchronize PROJECT-STATUS.md with actual project state (GitHub issues or plan units). Run periodically or after merging PRs / closing plan units."
+disable-model-invocation: true
 allowed-tools:
   - Read
   - Write

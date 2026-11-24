@@ -15,8 +15,30 @@
 #   recognizes the inline token and allows that single invocation (logged). This
 #   is NOT a persistent bypass — it must be present on each approved command.
 
+# =============================================================================
+# DEPENDENCY PREAMBLE — FAIL CLOSED (2026-11-06)
+# =============================================================================
+# This hook is the CRITICAL floor. Without jq it cannot read the command, and
+# the old path (COMMAND="" → exit 0) let EVERY Bash call through silently.
+# A floor that cannot run must refuse, loudly, and name the fix.
+dependency_deny() {
+    {
+        echo "BLOCKED: guard-unsafe.sh cannot run: $1"
+        echo "The CRITICAL floor is inactive, so Bash commands are refused until this is fixed."
+        echo "Fix: brew install jq   (then start a new session)"
+        echo ""
+        echo "DO NOT work around this block: do not run the command through another tool or language."
+        echo "Tell the user verbatim which dependency is missing and ask them to install it."
+    } >&2
+    exit 2
+}
+
 # Read JSON input from stdin
 INPUT=$(cat)
+
+if ! command -v jq >/dev/null 2>&1; then
+    dependency_deny "jq is not installed or not on PATH."
+fi
 
 # Extract command from tool_input
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
@@ -162,8 +184,13 @@ soft_ack() {
 # guard_normalize_command() fails OPEN toward the raw string on error, so a
 # python3 outage degrades an arm back to its pre-fix (stricter, substring)
 # behavior — never opens a hole.
+# The sourced helper must exist AND define its function. A missing lib would leave
+# COMMAND_NORM empty and silently skip every COMMAND_NORM-based arm, so refuse instead.
+GUARD_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/normalize-command.sh"
 # shellcheck source=lib/normalize-command.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/normalize-command.sh"
+if [[ ! -r "$GUARD_LIB" ]] || ! source "$GUARD_LIB" || ! declare -F guard_normalize_command >/dev/null; then
+    dependency_deny "helper lib/normalize-command.sh is missing or broken ($GUARD_LIB)."
+fi
 COMMAND_NORM="$(guard_normalize_command "$COMMAND")"
 _NL=$'\n'
 CMDPOS="(^|[;&|${_NL}])[[:space:]]*"
@@ -535,7 +562,7 @@ fi
 # =============================================================================
 # IMP-034/IMP-040 used to block bare `cat FILE` / `head FILE` / non-follow
 # `tail FILE` here, on the theory that Read/Grep are the dedicated-tool
-# equivalent (tool-discipline.md Rule 2). That was a CATEGORY ERROR: this
+# equivalent. That was a CATEGORY ERROR: this
 # file is the CRITICAL floor per rules/agency-bands.md — "never-allow
 # hard-block" reserved for host destruction, exfiltration, and irreversible
 # filesystem damage. A `cat` of a readable file is none of those; it is a
@@ -559,7 +586,7 @@ fi
 # it moved to an ADVISORY: hooks/read-tool-preference-advisory.sh (PreToolUse
 # on Bash, registered alongside this hook in settings.json). It never blocks
 # (always exit 0), fires at most once per session, and states the conflict
-# instead of hiding it. rules/tool-discipline.md Rule 2 now says explicitly
+# instead of hiding it. The Read/Grep preference now says explicitly
 # that this is a preference, not a floor-enforced rule.
 #
 # The IMP-082 global-observation telemetry carve-out that used to sit above

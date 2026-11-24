@@ -1,6 +1,6 @@
 ---
 name: legacy-codebase-audit
-description: Onboarding audit checklist for TypeScript/React codebases flagged as legacy, built with less powerful agents, or showing quality-debt signals. Use on the first session in an unfamiliar TS/React codebase or before feature work on quality-debt code. Triggers on "audit", "codebase audit", "legacy", "technical debt", "modernization", "built with older/less powerful agents", "quality debt", "altlast", "altlasten", "technische schulden", "modernisierung", "code-audit", "codebasis prüfen", "aufräumen vor feature-arbeit".
+description: "Audit and modernization checklist for legacy or quality-debt TypeScript/React codebases: strictness, test coverage, Math.random in security code, duplicate frameworks, file size, dead dependencies, build and lint. Use on first contact with an unfamiliar codebase or before feature work on such code."
 ---
 
 # Legacy Codebase Audit
@@ -113,4 +113,4 @@ Specifics from a 2026-04-12 audit (`/path/to/your/legacy-project`):
 - Largest files > 1500 LOC
 - React Query installed but never called
 
-→ Priority order: Security (crypto RNG) → TypeScript strict migration → Code splitting → Coverage uplift. See IMP-010 in improvement-ledger.json.
+→ Priority order: Security (crypto RNG) → TypeScript strict migration → Code splitting → Coverage uplift.

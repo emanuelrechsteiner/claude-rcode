@@ -1,8 +1,8 @@
 ---
 name: create-skill
-description: "Create Claude Code Skills (SKILL.md files). Use when authoring a new skill, when the user asks about SKILL.md structure or skill frontmatter, when packaging reusable workflows or domain knowledge into a forked-context capability. Skills differ from rules (always-loaded) and hooks (event-triggered) by being on-demand."
+description: "Creates Claude Code skills (SKILL.md files) for on-demand workflows and domain knowledge, usually in forked context. Use when authoring a new skill or asking about SKILL.md structure or frontmatter. Unlike always-loaded rules or event hooks, it loads on demand."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -75,7 +75,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 | Task Type | Model |
 |-----------|-------|
 | Classification, fetching, lookup | `haiku` |
-| Writing, reasoning, code edits | `sonnet` |
+| Writing, reasoning, code edits | `haiku` (`sonnet` only on a recorded Haiku failure) |
 | Multi-step planning, framework reasoning | `opus` |
 
 Default to `haiku` unless the task genuinely needs more capability — token costs add up across invocations.
@@ -325,7 +325,7 @@ code-review/
 name: code-review
 description: "Review code for quality, security, and maintainability per team standards. Use when reviewing pull requests or when the user asks for a code review."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Grep, Glob, Bash
 ---
 

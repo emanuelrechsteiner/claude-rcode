@@ -1,7 +1,7 @@
 ---
 description: Deep codebase exploration achieving >95% understanding through multi-agent coordination
 argument-hint: [--deep | --quick | --focus <area>] [notes]
-model: claude-sonnet-4-20250514
+model: fable
 allowed-tools: ["*"]
 ---
 

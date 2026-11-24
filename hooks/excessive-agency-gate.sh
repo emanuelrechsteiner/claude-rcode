@@ -13,7 +13,7 @@
 #
 # What it is / is NOT:
 #   This hook does NOT make the autonomy judgment — a PreToolUse hook is a synchronous
-#   shell script and cannot call an LLM. The JUDGMENT lives in ~/.claude/rules/autonomy-arbiter.md
+#   shell script and cannot call an LLM. The JUDGMENT lives in ~/.claude/rules/agency-bands.md
 #   (always loaded) and, for delegated work, in the control-agent. This hook only
 #   CLASSIFIES a command into a band and emits a deterministic verdict:
 #
@@ -24,8 +24,9 @@
 #                 (rm -rf / ~ $HOME *, sudo, dd, mkfs, …). This hook is the second opinion.
 #
 # Precedence (per settings.json): deny[] > ask[] > allow[]/defaultMode, THEN PreToolUse hooks.
-#   git push --force, git reset --hard, npm publish are in native ask[] → they fire a real y/n
-#   BEFORE this hook. This hook MUST NOT double-block them.
+#   The exact plain spellings (git push --force …, git reset --hard …, npm publish …) are in
+#   native ask[] and fire a real y/n BEFORE this hook; this hook leaves those to the native
+#   prompt and ESCALATES every other spelling of the same operations (F6, 2026-11-23).
 #
 # Override (single-use, op-bound — replaces the broken session-wide CLAUDE_GATEGUARD_OFF):
 #   After the user approves an ESCALATE op, re-run the SAME command with
@@ -84,7 +85,10 @@ if not cmd.strip():
 # ---- normalize: strip heredoc bodies + quoted strings, collapse whitespace ----
 # Used BOTH for command-position matching (so an op inside a string/heredoc/path
 # is not treated as executed) AND for the op-bound ack signature.
-def strip_data(s):
+def strip_heredocs(s):
+    # heredoc bodies (and the <<TAG marker line's tail) are data: removed line by line.
+    # Split out of strip_data() unchanged (G4, 2026-11-24) so the F6 arm reuses exactly
+    # this part and strip_data() keeps its output.
     out, in_h, tag = [], False, None
     hd = re.compile(r"<<-?\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?")
     for ln in s.split("\n"):
@@ -96,7 +100,10 @@ def strip_data(s):
         if m:
             tag = m.group(1); in_h = True; out.append(ln[:m.start()]); continue
         out.append(ln)
-    s = "\n".join(out)
+    return "\n".join(out)
+
+def strip_data(s):
+    s = strip_heredocs(s)
     s = re.sub(r"'[^']*'", "", s)      # single-quoted strings → data
     s = re.sub(r'"[^"]*"', "", s)      # double-quoted strings → data
     return s
@@ -173,13 +180,16 @@ GCLOUD = r"gcloud(?:\s+" + OPT + r")*\s+"
 VERCEL = r"vercel(?:\s+" + OPT + r")*\s+"
 
 # ---- ESCALATE: GitHub state/comms (irreversible + notifies others) -----------
-if cp_match(r"gh\s+pr\s+merge"):
+# GH tolerates global options between gh and the subcommand (-R owner/repo, --repo
+# owner/repo), the same way VERCEL/GCLOUD/AWS do (F6, 2026-11-23).
+GH = r"gh(?:\s+" + OPT + r")*\s+"
+if cp_match(GH + r"pr\s+merge"):
     emit("ESCALATE", "gh pr merge", "merges + closes the PR and notifies others; cannot be unmerged cleanly")
-if cp_match(r"gh\s+pr\s+close"):
+if cp_match(GH + r"pr\s+close"):
     emit("ESCALATE", "gh pr close", "closes the PR and notifies others")
-if cp_match(r"gh\s+release\s+create"):
+if cp_match(GH + r"release\s+create"):
     emit("ESCALATE", "gh release create", "publishes a release visible to others; not silently revertible")
-if cp_match(r"gh\s+workflow\s+disable"):
+if cp_match(GH + r"workflow\s+disable"):
     emit("ESCALATE", "gh workflow disable", "disables CI/CD for the repo; affects all contributors")
 
 # ---- ESCALATE: global machine/account-identity changes (IMP-163) -------------
@@ -285,11 +295,160 @@ if cp_match(r"kubectl\s+delete"):
     emit("ESCALATE", "kubectl delete", "deletes live cluster resources; not recoverable")
 
 # ---- ESCALATE: force-delete branch / clean untracked -------------------------
-# (git push --force / reset --hard / npm publish are in native ask[] → NOT here, D2.)
 if cp_match(GIT + r"branch\s+-D\b"):
     emit("ESCALATE", "git branch -D", "force-deletes a branch with possibly-unmerged commits")
 if cp_match(GIT + r"clean\s+-[a-z]*f"):
     emit("ESCALATE", "git clean -f", "permanently deletes untracked files")
+
+# ---- ESCALATE: forced push / hard reset / publish, every non-plain spelling (F6) ----
+# The native ask[] prefixes (git push --force, git reset --hard, npm publish) match only
+# the plain spelling. Measured 2026-11-23 (probe run B2-t3-gate, baseline
+# configuration): git -C <dir> push --force-with-lease=<ref>:<sha> origin <branch> ran
+# unstopped. The permissions documentation names this limit ("What a Bash rule doesn't
+# match": a rule for `git push` does not stop `git -C . push`; a PreToolUse hook is the
+# place to inspect the full command text). So the PLAIN spellings stay with the native
+# prompt (one y/n, no double block) and every other spelling of the same operations is
+# escalated here.
+# What the native prompt covers, per the same documentation: every subcommand of a
+# compound command (after ; && || | and inside $(...)), and a plain spelling behind the
+# wrappers it strips (time, nice, nohup, command, timeout, stdbuf) or behind a leading
+# NAME=value assignment. It does not strip exec or env. This arm does not mirror that
+# list: it counts a plain spelling only at a bare command position and escalates every
+# wrapped one. A second confirmation for a rare spelling costs less than a hole.
+# Two failure classes the suite pins (both happened in the first version of this arm):
+#   False alarms: a test over the quoted strings of the WHOLE command fires on a commit
+#     message in another segment; a search for the token `publish` anywhere in a package
+#     manager call fires on `npm install publish`.
+#   Spellings let through: a plain-spelling exemption applied to a segment that has an
+#     environment assignment or a wrapper in front.
+#   A plain-spelling count on a view without quotes: `""git push --force` looked plain
+#     to the count and is not plain to the native prompt (automatic security review of
+#     the commit, 2026-11-24).
+# The rule (2026-11-24):
+#   1. dq: the command with heredoc bodies removed; a quoted span whose content is ONE
+#      plain token keeps that content, every other quoted span is removed as data.
+#      A quoted flag or refspec stays visible; a commit message does not.
+#   2. Segments: the invocations at command position in dq (CP), then the wrappers WRAP
+#      (command, exec, nohup, time, nice; env with its own NAME=value pairs), then the
+#      tool word, up to the next command terminator. Decisions use one segment only.
+#   3. git: GIT_ANY. push: force semantics (_is_force_token) on the arguments after
+#      `push` in that segment. reset: --hard among the arguments after `reset`.
+#   4. npm, pnpm, yarn: decided by the subcommand (_pm_is_publish).
+#   5. Plain spellings: the native prompt owns a forced push, a hard reset and an npm
+#      publish only up to the number of such plain spellings found at a bare command
+#      position (BARE) in `marked`, the command with every quoted span replaced by one
+#      marker character. More segments than that: ESCALATE. pnpm and yarn
+#      have no plain spelling, so one publish segment is enough.
+#   6. The GH arm above is unchanged.
+GIT_ANY = r"git(?:\s+" + OPT + r")*\s+"          # git with any global option before the subcommand
+FORCE_LONG = r"--(?:force|force-with-lease|force-if-includes|mirror)(?:=|$)"
+# Step 5: a bare command position, with no environment assignment and no wrapper in front.
+BARE = r"(?:^|[\n;]|&&|\|\||(?<![|&])\|(?![|&])|\$\()[ \t]*"
+# Step 2: wrappers in front of the tool word. env also takes its own NAME=value pairs.
+WRAP = (r"(?:(?:command|exec|nohup|time|nice)[ \t]+"
+        r"|env[ \t]+(?:[A-Za-z_][A-Za-z0-9_]*=" + ENV_VAL + r"[ \t]+)*)*")
+PLAIN_TOKEN = re.compile(r"[A-Za-z0-9_+:./=@,^~-]+")
+
+def quoted_view(s):
+    # Step 1: a quoted span holding one plain token keeps its content; any other quoted
+    # span is data and is removed. Applied to the heredoc-free command (dq).
+    def _keep(m):
+        body = m.group(1) if m.group(1) is not None else m.group(2)
+        return body if PLAIN_TOKEN.fullmatch(body) else ""
+    return re.sub(r"'([^']*)'|\"([^\"]*)\"", _keep, s)
+
+def marked_view(s):
+    # Step 5: every quoted span becomes one marker character. A quote glued to the
+    # command (""git, g""it, --force'') then breaks the literal plain spelling, and
+    # quoted data cannot fake one. The native prompt matches the command text as
+    # written, so only a spelling without a quote in it is the native prompt's.
+    return re.sub(r"'[^']*'|\"[^\"]*\"", "\x01", s)
+
+def _args_of(head, text):
+    # Step 2: the arguments (split on whitespace, after the tool word) of every invocation
+    # whose tool word matches head at command position in text.
+    return [m.group(2).split()
+            for m in re.finditer(CP + WRAP + r"(" + head + r")([^\n;|&]*)", text)]
+
+# Step 4: options of npm, pnpm and yarn that take their value as the NEXT argument. An
+# option written as --name=value carries its value itself and takes no next argument.
+PM_VALUE_OPTS = {
+    "npm": {"-w", "--workspace", "--prefix", "-C", "--registry", "--userconfig",
+            "--globalconfig", "--cache", "--tag", "--otp", "--access", "--loglevel",
+            "--scope", "--location", "-L"},
+    "pnpm": {"--filter", "-F", "-C", "--dir", "--workspace-dir", "--registry", "--tag",
+             "--otp", "--access", "--loglevel"},
+    "yarn": {"--cwd", "--registry", "--tag", "--otp", "--access"},
+}
+
+def _pm_sub(tool, args, start):
+    # index of the first argument at or after start that is neither an option nor the
+    # value of an option; None when there is none
+    i = start
+    while i < len(args):
+        t = args[i]
+        if not t.startswith("-"):
+            return i
+        i += 2 if ("=" not in t and t in PM_VALUE_OPTS[tool]) else 1
+    return None
+
+def _pm_is_publish(tool, args):
+    # decided by the subcommand: publish. yarn also takes `npm publish` and
+    # `workspace <name> publish` / `workspace <name> npm publish`.
+    i = _pm_sub(tool, args, 0)
+    if i is None:
+        return False
+    if args[i] == "publish":
+        return True
+    if tool != "yarn":
+        return False
+    if args[i] == "npm":
+        j = _pm_sub(tool, args, i + 1)
+        return j is not None and args[j] == "publish"
+    if args[i] == "workspace":
+        name = _pm_sub(tool, args, i + 1)
+        k = _pm_sub(tool, args, name + 1) if name is not None else None
+        if k is None:
+            return False
+        if args[k] == "publish":
+            return True
+        if args[k] == "npm":
+            m = _pm_sub(tool, args, k + 1)
+            return m is not None and args[m] == "publish"
+    return False
+
+def _is_force_token(t):
+    # force semantics: --force, --force-with-lease[=v], --force-if-includes, --mirror,
+    # a short option cluster that holds f (-f, -uf), or a forced +refspec. A + inside a
+    # ref name (feature/a+b) is not a forced refspec: only a leading + counts.
+    return (re.match(FORCE_LONG, t) is not None
+            or re.match(r"-[A-Za-z]*f[A-Za-z]*$", t) is not None
+            or t.startswith("+"))
+
+dq = quoted_view(strip_heredocs(cmd_for_sig))   # step 1
+marked = marked_view(strip_heredocs(cmd_for_sig))   # step 5
+# step 5: the plain spellings the native prompt owns (bare command position, in marked)
+plain_push = len(re.findall(BARE + r"git push --force(?=\s|$)", marked))
+plain_reset = len(re.findall(BARE + r"git reset --hard(?=\s|$)", marked))
+plain_npm = len(re.findall(BARE + r"npm publish(?=\s|$)", marked))
+
+# steps 2 and 3: git push with force semantics, git reset with --hard
+forced_pushes = sum(1 for _args in _args_of(GIT_ANY + r"push(?=\s|$)", dq)
+                    if any(_is_force_token(t) for t in _args))
+if forced_pushes > plain_push:
+    emit("ESCALATE", "git push (force)", "overwrites the remote branch; commits that exist only there are lost")
+hard_resets = sum(1 for _args in _args_of(GIT_ANY + r"reset(?=\s|$)", dq) if "--hard" in _args)
+if hard_resets > plain_reset:
+    emit("ESCALATE", "git reset --hard", "discards uncommitted changes and moves the branch; not recoverable from the working tree")
+
+# step 4: npm, then pnpm and yarn (no plain spelling there: one publish segment is enough)
+npm_publishes = sum(1 for _args in _args_of(r"npm(?=\s|$)", dq) if _pm_is_publish("npm", _args))
+if npm_publishes > plain_npm:
+    emit("ESCALATE", "npm publish (non-plain spelling)", "publishes a package to the registry; cannot be unpublished")
+for _tool in ("pnpm", "yarn"):
+    # no native rule covers these tools: every publish segment is escalated
+    if any(_pm_is_publish(_tool, _args) for _args in _args_of(_tool + r"(?=\s|$)", dq)):
+        emit("ESCALATE", _tool + " publish", "publishes a package to the registry (no native rule covers this tool); cannot be unpublished")
 
 # ---- ESCALATE: SQL destructive via a SQL-runner at command position (D3b) ----
 # DROP TABLE / TRUNCATE always live INSIDE a quoted arg, so command-position alone
@@ -534,7 +693,7 @@ printf '{"ts":"%s","op":"%s","band":"ESCALATE","token":"none","sig":"%s","cwd":"
   echo "  Reason:  $REASON"
   echo "  Command: $COMMAND"
   echo ""
-  echo "Per ~/.claude/rules/autonomy-arbiter.md: surface this to the user VERBATIM and ask y/n."
+  echo "Per ~/.claude/rules/agency-bands.md: surface this to the user VERBATIM and ask y/n."
   echo "Do NOT route around it with a different tool/language."
   echo ""
   echo "After the user approves, re-run EXACTLY (op-bound, single-use, logged):"

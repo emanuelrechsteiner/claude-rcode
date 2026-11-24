@@ -1,7 +1,10 @@
 ---
 name: orchestration
-description: Scrum master and orchestrator for multi-agent coordination. Manages agent workflows, enforces quality gates, coordinates handoffs, and ensures proper sequencing. Use when coordinating multiple specialized tasks, managing complex features, or when work spans backend, frontend, and testing. Triggers on "orchestrate", "coordinate", "multi-agent", "workflow", "manage agents", "complex feature", "scrum", "sprint", "quality gate".
+disable-model-invocation: true
+description: "Scrum-master coordination for multi-agent work: sequences agent workflows, enforces quality gates and handoffs. Delegates the work and does not execute it itself. Use when coordinating several specialized tasks, complex features, or work spanning backend, frontend and testing."
 ---
+
+> Superseded by `/team-lead` and `~/.claude/agents/control-agent.md`; kept for reference and no longer loaded automatically (2026-11-23).
 
 # Orchestration Skill - Scrum Master & Agent Coordinator
 

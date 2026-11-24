@@ -1,8 +1,8 @@
 ---
 name: prototype
-description: "Build a throwaway prototype to answer a design question — a single self-contained HTML page opened in the browser for state/logic questions, or several radically different UI variations on one route switchable via URL param. Use when unsure whether a state model or logic feels right, or what a UI should look like. Triggers on 'prototype', 'spike', 'wegwerf-prototyp', 'varianten bauen', 'mal durchspielen', 'ausprobieren bevor wir bauen', 'welche variante'."
+description: "Builds a throwaway prototype that answers one design question: a single HTML page for state or logic, or several radically different UI variants on one route. Use when unsure whether a state model or logic feels right, or what a UI should look like."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 

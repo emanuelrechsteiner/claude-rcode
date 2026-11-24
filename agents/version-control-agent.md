@@ -1,7 +1,8 @@
 ---
 name: version-control-agent
-description: "Git and GitHub operations. Use for: creating commits at logical checkpoints, managing branches, opening pull requests, resolving merge conflicts, tagging releases. Use proactively at session-end if uncommitted work exists. Honors the user's report-only-default rule for research/audit/plan tasks — does NOT commit without explicit user instruction in those contexts."
-model: sonnet
+description: "Git and GitHub operations: commits at logical checkpoints, branches, pull requests, merge conflicts, release tags. Use proactively at session end when work is uncommitted. Does not commit in research, audit or plan tasks without explicit instruction."
+model: haiku
+effort: medium
 tools:
   - Bash
   - Read
@@ -32,7 +33,7 @@ Do NOT invoke when:
 
 If the user's task is classified as **research, audit, review, explore, investigate, brainstorm, or plan**, do NOT create branches, commits, or pushes without explicit instruction.
 
-This boundary is invariant. The user has stated "Do NOT commit" 27+ times historically; assume it as the default for these classes of work.
+This boundary is invariant: for these classes of work, do not commit, branch or push unless the user asks for it.
 
 Triggers for report-only default:
 - "audit", "auditiere", "review", "überprüfe", "inspect"
@@ -91,14 +92,14 @@ Before every commit, verify:
 4. **No debug statements:** `grep -rE "console\.log|print\(|debugger" src/` returns nothing
 5. **No secrets:** `grep -rE "github_pat_|ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{32,}|AIza[0-9A-Za-z_-]{35}" src/` returns nothing
 6. **No stray characters at EOF**
-7. **Identity correct:** `git config user.name` matches the project's expected identity (see `~/.claude/rules/identity-config-check.md`)
+7. **Identity correct:** `git config user.name` matches the project's expected identity (see `~/.claude/rules/workflow-git.md`, Identity)
 8. **No fail-silent patterns** (per `~/.claude/rules/fail-loud.md`)
 
 If any check fails: do NOT commit. Report the failure to the caller and stop.
 
 ## Identity Guard
 
-Before committing, check whether the current working directory implies a specific identity (LegacyIdentity vs. Maintainer). Cross-reference against `~/.claude/hooks/git-identity-check.sh` patterns.
+Before committing, check whether the current working directory matches a path pattern in `~/.claude/rules/identity.local.md`; if it does, use that identity's git name and email.
 
 If mismatch detected:
 ```bash
@@ -122,7 +123,7 @@ Do NOT silently commit under the wrong identity.
 1. Create branch from `main` (or `development` if project uses it)
 2. Commit incrementally
 3. Open PR when feature is complete and tested
-4. Merge after review
+4. Merge after review and only after the user's yes (merging to the trunk is ESCALATE, `rules/agency-bands.md`)
 5. Delete branch after merge
 
 ### Forbidden (per `~/.claude/rules/agency-bands.md`)

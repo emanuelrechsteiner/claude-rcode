@@ -79,13 +79,30 @@ BEGIN {
 }
 '
 
+# km_meta_mtimes <scratch-dir>: writes <scratch>/meta-mt.tsv ("<path>\t<YYYY-MM-DD>", UTC) for the sources
+# listed in field 2 of <scratch>/meta-in.tsv. BSD stat (macOS) and GNU stat (Linux) differ: `stat -f` is
+# BSD-only (GNU reads it as filesystem status and exits 0), so the branch is chosen by `stat --version`,
+# which only GNU stat accepts. Each branch uses the stat syntax of its own tool; a failing stat or an
+# unparsable time is an error, never a guessed date.
+km_meta_mtimes() {
+  local w=$1
+  if stat --version >/dev/null 2>&1; then
+    cut -f 2 "$w/meta-in.tsv" | tr '\n' '\0' | TZ=UTC xargs -0 -r stat -c "%n${TAB}%y" > "$w/meta-mt.raw" \
+      || err "could not read the modification times of the source files"
+    LC_ALL=C awk -F "$TAB" 'BEGIN { OFS = "\t" } { t = $NF; d = substr(t, 1, 10); if (d !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) { print "knowledge-mirror: unparsable stat time: " $0 > "/dev/stderr"; exit 1 } print substr($0, 1, length($0) - length(t) - 1), d }' "$w/meta-mt.raw" > "$w/meta-mt.tsv" \
+      || err "could not read the modification times of the source files"
+  else
+    cut -f 2 "$w/meta-in.tsv" | tr '\n' '\0' | TZ=UTC xargs -0 -r stat -f '%N%t%Sm' -t '%Y-%m-%d' > "$w/meta-mt.tsv" \
+      || err "could not read the modification times of the source files"
+  fi
+}
+
 # km_meta_build <plan.tsv> <scratch-dir> <claude-src-dir>: writes <scratch>/meta.tsv ("<rel>\t<key: value>...")
 # and exports KM_METAMAP for km_render, which drops the keys a source owns.
 km_meta_build() {
   local w=$2 rel sid f present
   awk -F "$TAB" '$3 == "copy" { print $1 "\t" $2 "\t" $4 }' "$1" > "$w/meta-in.tsv"
-  cut -f 2 "$w/meta-in.tsv" | tr '\n' '\0' | TZ=UTC xargs -0 -r stat -f '%N%t%Sm' -t '%Y-%m-%d' > "$w/meta-mt.tsv" \
-    || err "could not read the modification times of the source files"
+  km_meta_mtimes "$w"
   : > "$w/meta-sid.tsv"
   KM_METAIN=$w/meta-in.tsv KM_METAMT=$w/meta-mt.tsv KM_METASID=$w/meta-sid.tsv LC_ALL=C \
     awk "$KM_AWK_META" < /dev/null > "$w/meta-keys.tsv" || err "could not compute the generated dated keys"

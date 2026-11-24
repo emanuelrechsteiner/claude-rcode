@@ -1,8 +1,8 @@
 ---
 name: create-hook
-description: "Create Claude Code hooks. Use when the user wants to create a hook, register a hook in settings.json, add lifecycle automation (SessionStart, PreToolUse, PostToolUse, Stop), gate or audit tool calls, or block specific commands. Asks for missing requirements, then creates the hook script + registration."
+description: "Creates a Claude Code hook (script plus settings.json registration) on a lifecycle event such as PreToolUse or Stop. Use when gating, auditing or blocking specific tool calls, or adding lifecycle automation. Asks for missing requirements first."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
@@ -166,7 +166,7 @@ if [[ "$COMMAND" =~ (nc|netcat|ncat)[[:space:]] ]]; then
 if [[ "$COMMAND" =~ (^|[[:space:]])(nc|netcat|ncat)[[:space:]] ]]; then
 ```
 
-The fix above is the actual fix applied to `~/.claude/hooks/guard-unsafe.sh:96` on 2026-05-24 after a false-positive blocked `rsync` operations.
+Anchor the match: an unanchored `nc ` also matches inside `rsync -`, so require start-of-string or whitespace before the command name (see the netcat arm in `~/.claude/hooks/guard-unsafe.sh`).
 
 ## Verify Dependencies
 

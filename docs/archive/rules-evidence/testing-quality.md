@@ -1,6 +1,6 @@
 <!--
 Status: ARCHIVED
-Last Updated: 2026-09-24
+Last Updated: 2026-11-10
 Purpose: Evidence, incidents, and measurements moved verbatim out of rules/testing-quality.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
 # Evidence for `rules/testing-quality.md`
@@ -30,3 +30,24 @@ A "fixed"/"done" claim about a VISIBLE state (UI, game graphics, layout, render 
 ### Automatic Check Results Belong to Their Trigger (IMP-158) — scope note (verbatim)
 
 **Scope note:** at the time of writing, no `/security-review` command or skill is defined in this repo (`commands/`, `skills/`) — the string `security-review` appears only in `skills/audit-config/SKILL.md` as a name to avoid colliding with, i.e. it is treated there as a **Claude-Code-bundled** feature, not a repo-owned one. This rule is therefore written as a duty on the **work thread**, not as a hook this repo can register: whoever's action caused an automatic check to run must read its outcome before reporting completion, regardless of whether a bundled feature or a repo hook produced the check.
+
+## Moved 2026-11-10 (context diet)
+
+> Passages moved verbatim out of rules/testing-quality.md on 2026-11-10 (context diet) — the rule keeps the normative text; this file carries rationale, hook internals, history and examples.
+> Normative copies now in rules/slop-prevention.md (2026-11-10).
+
+### Rendered-Proof for Visual Claims
+
+A "fixed"/"done" claim about a VISIBLE state (UI, game graphics, layout, render output) is a gate of its own, not covered by a green suite — see [[slop-prevention]] §"Trigger 3 — Visible claim without rendered proof".
+
+### Verify at the Sink, Not the Suite (Data-Exfiltration Fixes) (IMP-158)
+
+A "fixed" claim about a data-exfiltration defect (a filter, exclusion, or manifest gate meant to stop a bulk pipeline from sending certain files/records to an external backend) is only valid with proof taken at the actual sender/output: which files/records the external tool really receives — a capture of the real invocation parameters, or a dry run printing the real target-file list. A green test/regression suite that merely checks a counter or manifest field is **not** that proof: it can confirm an exclusion field was *set* without proving the sender ever *reads* it. Holds for any data-sink fix, not only bulk-pipeline runs; pairs with [[agency-bands]] §"Bulk-Pipeline Manifest Gate (IMP-152)".
+
+### Verify Via the Same Code Path, Not a Reimplementation (IMP-158)
+
+When verifying a fix means counting or resolving something (files, targets, matches) that the production code also counts or resolves, the verification must call the **same** resolution code the production path uses — never a second, independently written counting/matching routine. Separately written implementations drift, and a test on the drifted copy passes while the real path stays broken; a bespoke recount that computes differently from the actual send is itself a defect class, not a safety margin.
+
+### Automatic Check Results Belong to Their Trigger (IMP-158)
+
+If your own action causes an automatic check to run (a security review, a lint pass, any verification firing alongside or after your work), you must retrieve its result before declaring the triggering work "fixed"/"done" — having triggered it is not enough. A check that finds something and logs it where nobody reads it is functionally silent ([[fail-loud]]'s "reported somewhere *observable*?" test, applied to the reporting side). This is a duty on the **work thread**, not a hook this repo can register, whether a Claude-Code-bundled feature (e.g. `/security-review`; the repo defines none of its own) or a repo hook produced the check.

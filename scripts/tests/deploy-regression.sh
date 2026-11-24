@@ -197,6 +197,53 @@ check "automode/no-preferences-commit" 0 "$(G -C "$WS" log --oneline -1 | grep -
 check "automode/rule-arrived"          1 "$([ -f "$LIVE/rules-j.md" ] && echo 1 || echo 0)"
 teardown
 
+# ── J2) Live install carries deniedMcpServers (the owner's claude.ai connector
+#       denylist, IMP-287) → stays live-install-only like autoMode: the deploy
+#       succeeds, the list survives, and the workshop gets neither the value nor
+#       a commit. Without the exemption the deploy aborts on the unlisted key. ──
+setup
+jq '.deniedMcpServers = [{"serverName": "claude.ai Example"}]' "$LIVE/settings.json" > "$LIVE/s.tmp" && mv "$LIVE/s.tmp" "$LIVE/settings.json"
+echo "Rule DM" > "$WS/rules-dm.md"
+G -C "$WS" add -A && G -C "$WS" commit -q -m "Rule DM"
+run_deploy; RC=$?
+check "denied-mcp/exit0"               0 "$RC"
+check "denied-mcp/live-keeps-list"     '[{"serverName":"claude.ai Example"}]' "$(jq -cS .deniedMcpServers "$LIVE/settings.json")"
+check "denied-mcp/workshop-gets-nothing" 'null|Rule DM' \
+      "$(jq -c '.deniedMcpServers // null' "$WS/settings.json")|$(G -C "$WS" log -1 --format=%s)"
+teardown
+
+# ── J3) Live install holds queued ledger proposals (IMP-282): the deploy imports
+#       them into the workshop ledger with the next free id, commits there and
+#       empties the queue; an invalid queue line aborts the deploy and leaves
+#       ledger and queue as they were. ──
+ledger_fixture() { # workshop and live get the same one-entry ledger
+  mkdir -p "$WS/global-observation"
+  jq -n '{totalImprovements: 1, totalImplementations: 1, totalStaged: 0, totalRollbacks: 0, metrics: {totalEntries: 1},
+    batch: {description: "fixture", entries: [{id: "IMP-101", status: "implemented", verification: {measured: "1/1"}}]}}' \
+    > "$WS/global-observation/improvement-ledger.json"
+  G -C "$WS" add -A && G -C "$WS" commit -q -m "Ledger fixture"
+  G -C "$LIVE" pull -q workshop main
+}
+queued_id() { jq -r '[.. | objects | select(.sourceProposal? == "meta-proposal-q.md#F-1") | .id] | join(",")' "$1/global-observation/improvement-ledger.json"; }
+setup; ledger_fixture
+printf '%s\n' '{"queuedAt":"2026-11-11T00:00:00Z","proposal":"meta-proposal-q.md","finding":{"finding":"F-1","title":"queued finding","category":"quality","riskLevel":"low","recommendation":"r","evidence":"e"}}' \
+  > "$LIVE/global-observation/ledger-pending.jsonl"
+CLAUDE_VAULT_DIR="$ROOT/no-vault" run_deploy; RC=$?
+[ "$RC" = 0 ] || printf '%s\n' "$OUT" | tail -n 15
+check "ledger-queue/exit0"                 0 "$RC"
+check "ledger-queue/imported-with-next-id" "IMP-102" "$(queued_id "$WS")"
+check "ledger-queue/committed"             1 "$(G -C "$WS" log --oneline -1 | grep -c 'IMP-282')"
+check "ledger-queue/queue-emptied"         0 "$(wc -c < "$LIVE/global-observation/ledger-pending.jsonl" | tr -d ' ')"
+check "ledger-queue/live-has-the-entry"    "IMP-102" "$(queued_id "$LIVE")"
+teardown
+setup; ledger_fixture
+printf 'not json at all\n' > "$LIVE/global-observation/ledger-pending.jsonl"
+CLAUDE_VAULT_DIR="$ROOT/no-vault" run_deploy; RC=$?
+check "ledger-queue-bad/aborts"            1 "$RC"
+check "ledger-queue-bad/queue-kept"        1 "$([ -s "$LIVE/global-observation/ledger-pending.jsonl" ] && echo 1 || echo 0)"
+check "ledger-queue-bad/workshop-clean"    "" "$(G -C "$WS" status --porcelain)"
+teardown
+
 # ── K) Invariant pin: live install diverges on a NOT-listed key
 #      (hooks) → still ABORTS with a diff, no matter how many runtime paths exist ─
 setup

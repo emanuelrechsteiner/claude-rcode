@@ -1,10 +1,11 @@
 <!--
 Status: ACTIVE
-Last Updated: 2026-10-01
+Last Updated: 2026-11-23
 Purpose: Mandatory form for briefs to subagents and for handoffs — five
-mandatory fields plus two evidenced additions. Referenced by
+mandatory fields plus two evidenced additions and an optional KNOWLEDGE field. Referenced by
 agents/control-agent.md §2/§3, commands/handoff.md, rules/foundation.md.
-Origin: IMP-161, plans/meta-proposal-2026-08-24-august-vollanalyse.md §3.5.
+Origin: IMP-161, plans/meta-proposal-2026-08-24-august-vollanalyse.md §3.5;
+IMP-268 (optional KNOWLEDGE field, the knowledge round); IMP-267 (library hits injected automatically).
 Completion contract: the section below defines what every delegate hands back.
 Note: the filename stays "auftragsbrief.md.template" (German for "task
 brief") — the English term "task brief" is used throughout the content.
@@ -30,7 +31,27 @@ brief (5 instead of 50 cents) ran unchallenged for 1h 41min and 97 edits across
 | **Symptom** | What is observably wrong — what you see, not what you suspect. |
 | **Cause, if known** | The root cause, if known; otherwise explicitly "unknown", never a guess dressed up as a fact. |
 | **Measurement / evidence** | The number or artifact the symptom hangs on — with its measurement depth. |
-| **Acceptance criterion** | How the brief is recognized as done — checkable against the artifact, not the mechanism (see `rules/slop-prevention.md` Trigger 3). |
+| **Acceptance criterion** | How the brief is recognized as done — checkable against the artifact, not the mechanism (see `~/.claude/docs/reference/slop-prevention.md`, Trigger 3). |
+**The optional KNOWLEDGE field (lead-supplied).** Fill it when library notes fit the unit; leave it out otherwise. It carries what the Lead found in the knowledge library for this unit: verbatim excerpts with paths, or the explicit none/unavailable verdict with the sets searched.
+
+The brief check is switched off since 2026-11-23: `settings.json` sets `CLAUDE_KNOWLEDGE_BRIEF=off` and `hooks/knowledge-brief-check.sh` is not registered, so no dispatch is denied because of this field and no knowledge-agent run is required. `hooks/knowledge-inject.sh --dispatch` still reads the field through the shared parser `hooks/lib/knowledge-brief.sh` and never denies.
+
+**The KNOWLEDGE field, three forms** (the parser reads them; keep the wording).
+The field is optional: a brief without it is allowed. When it is present, the contract below applies. The contract was hardened on 2026-11-01.
+
+- **Marker:** a line starting with `KNOWLEDGE` or `WISSEN` in UPPER CASE (case-sensitive; "Knowledge: see below" is no marker), optionally markdown-decorated, optionally `(lead-supplied)`, then a colon. Lines inside fenced code blocks never count; if several markers exist, the LAST one outside fences is the field. The block runs to the first blank line, must contain no blank line, and must stay under 4000 bytes (a longer block makes the field invalid; it is not cut).
+- **Verdict by precedence, not first occurrence:** the `sets:` clause and every double-quoted segment are ignored for verdict words. A none-phrase (`none relevant`, `nothing relevant`, `no relevant`, `nichts relevant`, `nichts passendes`, `keine passende(n)`, `kein passendes`, `nichts gefunden`) is `none`; else `unavailable` (or `nicht verfügbar`) followed by at least 20 bytes of reason is `unavailable`; else at least one `.md` path is `cited`; otherwise the field is invalid.
+- **Cited:** `KNOWLEDGE (lead-supplied): sets: "<set1>" | "<set2>"; <path>.md L<a>–<b>: "<verbatim excerpt>"`. Every path must be a note inside the library mirror: relative to the mirror root (for example `ledger/IMP-128.md`) or an absolute path that resolves inside it; symlinks pointing out are rejected. Every double-quoted excerpt of 30 bytes or more must appear verbatim (whitespace-normalised) in a cited note, and at least one such excerpt is required. Quote the note's own lines, never the lookup's `L<n> §` meta lines; the `» ` prefix is ignored for matching. A reworded quote makes the field invalid, by design ("copy, don't interpret"). A `.md` inside the `sets:` clause or inside quotes is not a citation.
+
+`hooks/knowledge-inject.sh --dispatch` reaches the same verdict through the shared parser `hooks/lib/knowledge-brief.sh`. In the off state it never denies: a cited brief is queued as cited; a `none` brief runs the automatic lookup as the floor and is queued as none; any other brief gets the automatic lookup and is queued as plain (no lead-supplied record), and a brief whose lookup finds no hits queues nothing. `CLAUDE_KNOWLEDGE_INJECT=0` and a missing lookup script switch off only the automatic hits; the lead-supplied bookkeeping (queue, paragraph, record) still runs, so a cited brief is still queued as cited. Only a missing library disables everything.
+
+**Only when the brief check is switched back on** (`CLAUDE_KNOWLEDGE_BRIEF=deny` and `hooks/knowledge-brief-check.sh` registered again):
+- **None:** `KNOWLEDGE: none relevant after 2 searches — sets: "<set1>" | "<set2>" / "<set3>" | "<set4>"`. The `sets:` clause is required and names the sets searched. At least TWO DISTINCT knowledge-agent runs (two different agent ids, not two lines of one run) must be recorded in this session within the last 30 minutes (`CLAUDE_KNOWLEDGE_BRIEF_WINDOW`, default 1800 s).
+- **Unavailable:** `KNOWLEDGE: unavailable — <reason>`. At least ONE knowledge-agent dispatch in this session within the same window. The reason must carry at least 20 bytes of real content after the word: spaces, dashes and punctuation do not count; umlauts count two.
+
+In that state an invalid field denies the dispatch, and a denied dispatch queues nothing.
+
+**Ambiguous queue:** at SubagentStart the hook counts the unexpired queued entries of the subagent's type. Exactly one: its verdict is attributed (lead paragraph, `lead-supplied` record). Two or more: ambiguous. The oldest entry's hits may still be delivered as the floor, but only the plain mandatory paragraph is injected and NO `lead-supplied` record is written; the worker then does its own lookup. Logged as `ambiguous-queue=<n>`. A wrong worker can inherit a wrong hits block (low harm) but never a gate pass it did not earn. Lead advice: in one wave, dispatch same-type workers so that only one of them is pending at a time, or accept that they look up themselves.
 
 ## The two additions
 
@@ -46,6 +67,16 @@ brief (5 instead of 50 cents) ran unchallenged for 1h 41min and 97 edits across
   wave review in `agents/control-agent.md` §4, "Scope against the
   negative-list" (IMP-201).
 
+## Write briefs: one more line
+
+A brief whose worker changes governed files (rules, hooks, commands, skills,
+agents, settings) carries the line **"Edit tool for existing files, Write for
+new ones — no `sed -i`, no shell redirection, no scripted write."** The write
+gates (`vault-write-gate.sh`, `parallel-lock-check.sh`)
+are PreToolUse hooks on Write and Edit and never see a write made through the
+shell. On 2026-11-10 three of six workers wrote that way and left 15 file
+locks unbound (IMP-286).
+
 ## Completion contract
 
 Every brief implies it; the delegate's final message is checked against it.
@@ -55,8 +86,7 @@ Mustafa, commit c70874f).
 1. **The final message IS the deliverable.** "Waiting for background agents"
    is not a result; a spawned task is not a completed task.
 2. **A delegate that can delegate owns collection.** It integrates its
-   children's results before returning; no fire-and-forget. (Workers
-   cannot spawn subagents, so this binds only delegates that can.)
+   children's results before returning; no fire-and-forget. (Under this framework's procedure a worker does not spawn helpers of its own, so this binds only delegates that do.)
 3. **Hand back:** files changed (with line ranges), evidence (command plus
    output summary, or a rendered observation), deviations from this brief,
    and what it did NOT verify.
@@ -65,7 +95,7 @@ Mustafa, commit c70874f).
 5. **A field the delegate cannot meet is named, not filled.** "Not checked:
    <what>, because <why>" beats a plausible guess.
 6. **Decompose only when the work cannot fit one context.** This binds
-   delegates; the lead follows `rules/foundation.md` (delegate by default).
+   delegates; the lead follows `rules/foundation.md` (work directly or with helpers).
 
 ## Raw form (copy this)
 
@@ -79,8 +109,15 @@ Mustafa, commit c70874f).
   measured, not assumed; PLEASE VERIFY YOURSELF.
 - **Acceptance criterion:** <checkable against the artifact>
 - **Not part of this task:** <what explicitly stays out>
+- **Write discipline (write briefs only):** Edit tool for existing files, Write for new ones; no `sed -i`, no redirection, no scripted write.
 - **Verbatim user instruction:** "<quote, if one exists>"
+
+KNOWLEDGE (lead-supplied): sets: "<set1>" | "<set2>"; <path>.md L<a>–<b>: "<verbatim excerpt>"
 ```
+
+The KNOWLEDGE line is optional. Written as a plain line (not a bullet), it forms
+its own block. Leave it out when no library note fits the unit; use the none or
+unavailable form when a lookup was run and found nothing.
 
 The last field is omitted if there is no verbatim instruction. If one exists,
 it is **passed on as a quote, never paraphrased** — and the subagent may not
@@ -105,6 +142,8 @@ replace it with its own judgment, only escalate it upward
   >0 lines; line count before/after in the report.
 - **Not part of this task:** no change to the findings logic, no rework of
   the rotation scheme, no new data sources.
+
+KNOWLEDGE (lead-supplied): sets: "gzip shard empty silent" | "compressed file empty no error" | "zcat BSD exit status"; rules/fail-loud.md L7–7: "**Errors must propagate.** Silent fallbacks (returning a default when required input is missing, swallowing exceptions, masking failures with `try/except: pass`) are forbidden in agent-generated code."
 ```
 
 ## Where it's used
@@ -121,5 +160,5 @@ replace it with its own judgment, only escalate it upward
   (FINDING format, 10/10 in one turn) and §5 (6 sessions, 79–266 turns with
   no correction, vs. 24 correction turns)
 - IMP-176 (same doc) — transposed digit in a brief, 1h 41min / 97 edits / 8 files
-- Related: `rules/recommend-on-ask.md` (questions with a recommendation),
+- Related: `rules/foundation.md` (Asking and acting; questions with a recommendation),
   `rules/slop-prevention.md` (sign-off against the artifact)

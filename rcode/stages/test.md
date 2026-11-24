@@ -9,9 +9,9 @@ or via the `/test-team` alias) once R.Code Mode has selected this Stage.
 | Asset | Kind | Use for |
 |---|---|---|
 | `quality-review` | skill | 6-specialist milestone review (arch/security/perf/testing/maintainability/docs) |
-| `testing-agent` | agent (sonnet) | Coverage gaps, regression tests |
-| `code-reviewer-agent` | agent (sonnet, read-only) | Per-file code review |
-| `visual-qa-agent` | agent (sonnet, read-only) | Rendered check in a real browser before a milestone/RC is signed off |
+| `testing-agent` | agent (haiku) | Coverage gaps, regression tests |
+| `code-reviewer-agent` | agent (haiku, read-only) | Per-file code review |
+| `visual-qa-agent` | agent (haiku, read-only) | Rendered check in a real browser before a milestone/RC is signed off |
 | `testing-suite` | skill | Unit/E2E/visual test authoring |
 | `human-testing` | skill | Manual UX/UI click-through validation |
 | `validate-build` | skill | Build/type/lint validation |

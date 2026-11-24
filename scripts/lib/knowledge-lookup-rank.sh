@@ -55,11 +55,15 @@ kl_kwspec() {
   [ -r "$2" ] || kl_die "collision list not readable: $2" 1
   awk -F '\t' -v cf="$2" '
     function err(m) { printf "knowledge-lookup: %s:%d: %s\n", cf, FNR, m > "/dev/stderr"; bad = 1; exit 2 }
+    function lf(s) { # = the lf() of kl_scan_prog (byte-mode lowercase, IMP-267)
+      s = tolower(s)
+      if (index(s, "\303")) { gsub("\303\204", "\303\244", s); gsub("\303\226", "\303\266", s); gsub("\303\234", "\303\274", s) }
+      return s }
     FILENAME == cf { sub(/\r$/, "")
       if ($0 == "" || $0 ~ /^#/) next
       if (!hdr) { hdr = 1; if ($0 != "keyword\tmode") err("header must be \"keyword<TAB>mode\""); next }
       if (NF != 2 || $1 == "" || ($2 != "cs" && $2 != "code")) err("row must be keyword<TAB>cs|code")
-      mode[tolower($1)] = $2; next }
+      mode[lf($1)] = $2; next }
     { if (!hdr) err("empty collision list (no header)"); print $0 "\t" (($0 in mode) ? mode[$0] : "ci") }
     END { if (bad) exit 2 }' "$2" "$1" > "$3" || exit $?
 }
@@ -69,6 +73,11 @@ kl_kwspec() {
 # distinct, score, path, bytes, status, superseded_by, description, then (line, heading, text) x <= 3.
 kl_scan_prog() {
   cat <<'AWK'
+function lf(s) { # lowercase for matching: ASCII (C locale, byte mode) plus the German capitals Ä Ö Ü (IMP-267)
+  s = tolower(s)
+  if (index(s, "\303")) { gsub("\303\204", "\303\244", s); gsub("\303\226", "\303\266", s); gsub("\303\234", "\303\274", s) }
+  return s
+}
 function kf(x, st,    t, r) { # fence state after line x (st = state before): 0 prose, N >= 3 inside a fence of N backticks
   t = x; sub(/^[ \t]+/, "", t)
   if (st) { r = t; sub(/[ \t\r]+$/, "", r); return (r ~ /^`+$/ && length(r) >= st) ? 0 : st }
@@ -107,7 +116,7 @@ function cnt(s, k, pf,    key, kl, off, pos, n2, ok) { # whole-word (or word-pre
   return n2
 }
 function scanline(line, fenced, skipcode,    k, s, c) { # fills LC[k] (counts), LM (distinct), LS (set string)
-  low = tolower(line); cdone = 0; ddone = 0; LM = 0; LS = ""
+  low = lf(line); cdone = 0; ddone = 0; LM = 0; LS = ""
   for (k = 1; k <= K; k++) {
     if (index(low, kw[k]) == 0) { LC[k] = 0; continue } # cheap reject (keywords are lowercase) before any boundary work
     if (md[k] == "cs") { # exact case always; another case only on a line without a German function word
@@ -115,7 +124,7 @@ function scanline(line, fenced, skipcode,    k, s, c) { # fills LC[k] (counts), 
       s = de ? line : low
     } else if (md[k] == "code") {
       if (skipcode) { LC[k] = 0; continue }
-      if (!cdone) { cd = tolower(codeof(line, fenced)); cdone = 1 }
+      if (!cdone) { cd = lf(codeof(line, fenced)); cdone = 1 }
       s = cd
     } else s = low
     c = cnt(s, k, pf); LC[k] = c
@@ -134,8 +143,19 @@ function fmval(line,    v) {
   else if (v ~ /^'.*'$/) v = substr(v, 2, length(v) - 2)
   gsub(/\t/, " ", v); return v
 }
+function u8cut(s,   n, i, c, need) { # byte mode: drop a trailing PARTIAL UTF-8 sequence, so a byte cut never splits a character (IMP-267)
+  n = length(s)
+  for (i = n; i >= 1 && i > n - 4; i--) {
+    c = substr(s, i, 1)
+    if (c in cont) continue
+    if (!(c in lead)) return s
+    need = lead[c]
+    return (n - i + 1 < need) ? substr(s, 1, i - 1) : s
+  }
+  return s
+}
 function addhit(ln, line, hd, isH,    t, j, mi) { # keep the 3 best lines: most distinct keywords, earliest first
-  t = line; gsub(/[\t\r]/, " ", t); sub(/^ +/, "", t); sub(/ +$/, "", t); t = isH ? "" : substr(t, 1, 640) # a heading hit is shown as its heading alone
+  t = line; gsub(/[\t\r]/, " ", t); sub(/^ +/, "", t); sub(/ +$/, "", t); t = isH ? "" : u8cut(substr(t, 1, 640)) # a heading hit is shown as its heading alone
   if (nh < 3) { nh++; j = nh }
   else { mi = 1; for (j = 2; j <= 3; j++) if (HLM[j] <= HLM[mi]) mi = j
          if (LM <= HLM[mi]) return
@@ -163,7 +183,7 @@ function endfile(    fe, i, k, line, ns, infc, isH, hd, fst, nm, ds, base, bs, j
   DESC[fi] = ds
   base = PATH[fi]; sub(/^.*\//, "", base); sub(/\.md$/, "", base)
   fscan(base, WB, 1)
-  base = tolower(base); for (k = 1; k <= K; k++) if (md[k] != "code" && base == kw[k]) XACT[fi, k] = 1 # file name IS the keyword
+  base = lf(base); for (k = 1; k <= K; k++) if (md[k] != "code" && base == kw[k]) XACT[fi, k] = 1 # file name IS the keyword
   if (nm != "") fscan(nm, WF, 0)
   if (ds != "") fscan(ds, WF, 0)
   fst = 0; hd = ""
@@ -192,6 +212,9 @@ BEGIN {
   for (i = 1; i < 128; i++) { c = sprintf("%c", i); if (c !~ /[A-Za-z0-9_]/) nw[c] = 1 }
   nw["\342"] = 1; nw["\302"] = 1 # UTF-8 lead bytes of U+2000-U+2FFF (quotes, dashes, arrows) and U+0080-U+00BF (NBSP): boundaries
   for (i = 128; i <= 191; i++) cont[sprintf("%c", i)] = 1
+  for (i = 194; i <= 223; i++) lead[sprintf("%c", i)] = 2 # UTF-8 lead bytes: sequence lengths (u8cut)
+  for (i = 224; i <= 239; i++) lead[sprintf("%c", i)] = 3
+  for (i = 240; i <= 244; i++) lead[sprintf("%c", i)] = 4
   while ((getline ln < kws) > 0) {
     split(ln, a, "\t"); K++; kw[K] = a[1]; md[K] = a[2]; kn[K] = length(a[1])
     lw[K] = !(substr(a[1], 1, 1) in nw); rw[K] = !(substr(a[1], kn[K], 1) in nw)

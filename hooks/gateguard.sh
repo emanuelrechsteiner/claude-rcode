@@ -31,8 +31,8 @@
 #   - CLAUDE_GATEGUARD_OFF=1 env var
 #
 # Rationale: signals.jsonl shows 23 files edited 3+ times in same day —
-# evidence of insufficient investigation before edit. The discipline lives
-# in tool-discipline.md Rule 1; this hook now nudges rather than blocks.
+# evidence of insufficient investigation before edit. The discipline is in
+# rules/foundation.md (read before edit); this hook now nudges rather than blocks.
 set -u
 
 [ "${CLAUDE_GATEGUARD_OFF:-0}" = "1" ] && exit 0

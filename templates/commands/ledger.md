@@ -1,7 +1,7 @@
 ---
 description: Global observation ledger health check and improvement metrics analysis
 argument-hint: [--check | --metrics | --export | --repair] [--verbose]
-model: claude-sonnet-4-20250514
+model: haiku
 allowed-tools: ["*"]
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: rcode-ios
-description: iOS-specific adaptations of the R.Code atomic development workflow (toolchain defaults, SwiftData patterns, Swift Testing, mandatory i18n gate, /phase-gate overrides). Use when working in a R.Code-managed iOS project — `.rcode/` exists alongside `.xcodeproj` or `Package.swift`. Triggers on "iOS", "SwiftData", "SwiftUI", "Swift Testing", "SwiftLint", ".xcodeproj", "Package.swift", "Xcode", "@Observable", "Localizable.xcstrings", "iOS app bauen", "iOS projekt", "iOS entwickeln", "swift tests schreiben".
+description: "Adapts the R.Code workflow to iOS: Xcode toolchain defaults, SwiftUI with @Observable, SwiftData, Swift Testing, SwiftLint, the mandatory i18n gate and /phase-gate checks. Use when an R.Code project is an iOS app with .rcode/ next to .xcodeproj or Package.swift."
 ---
 
 # R.Code-iOS

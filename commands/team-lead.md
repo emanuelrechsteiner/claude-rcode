@@ -1,11 +1,9 @@
 ---
-description: "The main R.Code and framework entry point — decompose any directive and dispatch as team lead (manual Fable5 controller entry point). When `.rcode/` exists, R.Code Mode detects the Stage (Plan/Design/Develop/Test/Launch) automatically; /plan-team, /design-team, /develop-team, /test-team, /launch-team are thin aliases that force a Stage."
+description: "Main entry point for R.Code and framework work: decomposes a directive, dispatches specialist agents as team lead and, in R.Code projects, detects the Stage (Plan, Design, Develop, Test, Launch). Use for any directive; /plan-team through /launch-team force a Stage."
 argument-hint: <the task or directive to hand to the team>
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
-  - TaskCreate
-  - TaskUpdate
   - Read
   - Write
   - Edit
@@ -37,11 +35,8 @@ allowed-tools:
 
 # Team Lead — The Main Controller-First Entry Point
 
-This command is the manual counterpart to the (soft-only) `controller-first-*`
-hooks: instead of a hook trying to nudge or gate the main thread into
-controller behavior, you invoke this command explicitly — the `model:`
-frontmatter pins THIS turn to `claude-fable-5-1[1m]` regardless of the session
-model — and it makes the current turn genuinely act as team lead: this prompt
+The `model:` frontmatter pins THIS turn to the `fable` alias (the current Fable model) regardless of the session
+model, and it makes the current turn genuinely act as team lead: this prompt
 is a management directive, not a task to execute directly. When `.rcode/`
 exists in the project root, this turn additionally runs **R.Code Mode**
 (below) to bind the directive to a Stage and its playbook before decomposing.
@@ -57,53 +52,57 @@ $ARGUMENTS
 ## Instructions
 
 ### 1. Read as a management directive
-Treat `$ARGUMENTS` as instructions from a manager to a team lead, not as
-something to implement inline. Your job this turn is to plan and delegate,
-not to write code yourself (skip-list exceptions from `~/.claude/rules/foundation.md`
-still apply: single-file edits, <2min tasks, pure Q&A — those you may answer
-directly, but you MUST name the exception in one line first, e.g.
-"skip-list: single-file edit". If the directive plausibly touches 2+ files
-or 2+ domains, the exception does not apply. The user invoked /team-lead
-deliberately — when in doubt, delegate.)
+Treat `$ARGUMENTS` as instructions from a manager to a team lead. Your job this turn is to plan the work, hand out what is worth handing out, and check what comes back. Apply the decision rule in `~/.claude/rules/foundation.md`: units that are independent, produce long output or need an unbiased review go to helpers; a unit that is small, sequential or needs the context you hold you do yourself, and you say so in one line. Under `/team-lead`, size decides first: a unit that spans several files or domains goes to a helper with a brief, also when it is sequential. A personal preference file may set a stricter default for the lead; where it does, it decides.
 
-Do NOT Task-dispatch the control-agent as a subagent for this — subagents
-cannot spawn further subagents, so a spawned control-agent degrades to
-planner mode (per `~/.claude/agents/control-agent.md` "Dispatch model") and this turn
-would have to dispatch its plan anyway. This turn IS the control-agent, in
-its main-thread planner form; CLAUDE.md Behavioral Directive 3 ("invoke
-control-agent first") is satisfied by this command itself.
+Do not spawn `control-agent` as a subagent for this: this turn is the lead, and a spawned controller would only add a layer between you and the workers.
 
 ### 2. Decompose
 Break the directive into atomic units of work. For each unit, determine:
 - Which specialized agent fits (see `~/.claude/agents/control-agent.md` §2 for the
-  Agent/Model/Effort assignment table and `~/.claude/rules/tool-discipline.md` Rule 3
+  Agent/Model/Effort assignment table and `~/.claude/docs/reference/delegation.md` (Agent Selection)
   for the agent-selection matrix)
 - Whether it's independent of the other units (disjoint files, no
-  output→input chain) — see `~/.claude/rules/parallel-by-default.md`
+  output→input chain) — see `~/.claude/docs/reference/delegation.md` (Parallel work)
+
+**Goal plan (IMP-289).** The units become the goal plan: one
+`bash ~/.claude/scripts/goal.sh --session <id> plan` call (the session id is in
+this turn's `[Goal tracking]` line) with the goal in one sentence, milestones in
+workflow order (research, plan, develop, test, deploy; a stage left out carries
+its reason) and one atomic issue per unit with honest minutes, the files it may
+touch (`paths`) and `"fixed": true` for machine time such as a suite run. The
+plan is what Cockpit card 4 shows and what the time to goal is computed from;
+work that is not in the plan is a deviation.
 
 ### 3. Dispatch
 - 2+ independent, reversible units with disjoint files → dispatch in
-  parallel in a single message, per `~/.claude/rules/parallel-by-default.md`.
+  parallel in a single message, per `~/.claude/docs/reference/delegation.md` (Parallel work).
 - Anything containing an ESCALATE-band op, or with unprovable disjointness →
-  present the proposal format from `~/.claude/rules/parallel-by-default.md` and wait
+  present the proposal format from `~/.claude/docs/reference/delegation.md` (Parallel work) and wait
   for a real y/n.
-- Single-domain / sequential work → dispatch the one right specialist rather
-  than doing it yourself.
-- **Task list per wave (mandatory).** Before the first Agent call of a wave,
-  create one `TaskCreate` entry per unit — `subject` states the unit in one
-  sentence, `activeForm` its gerund form, and `description` names the
-  assigned Agent, Model, and Effort. Set each entry to `in_progress` at
-  dispatch, and to `completed` (or left open with a stated reason) in the
-  wave review (§4). Two reasons this is mandatory, not optional bookkeeping:
-  the task list is the one thing a human sees next to a running session
-  without opening the transcript — **Cockpit's card 4 reads it live** — and
-  without it a wave is invisible from outside until it finishes. Skip-list
-  units (§1) need no task entry.
-- **Every Agent call carries an explicit `model` parameter.** This turn is
-  pinned to Fable by the `model:` frontmatter above, and a spawn whose target
-  has no definition file of its own (`general-purpose`, `Explore`, `Plan`,
-  plugin agents) inherits the CALLER's model when the parameter is omitted —
-  i.e. it would run on Fable. See `~/.claude/agents/control-agent.md` §2 for the full
+- Single-domain work that is more than a small unit → dispatch the one fitting
+  specialist. A small unit, or one that needs the context you hold, you do
+  yourself (§1).
+- **Knowledge for the brief (IMP-267, IMP-268).** Library hits for the prompt and for each helper are injected automatically. When a unit touches an area with history, run one lookup yourself (`bash ~/.claude/scripts/knowledge-lookup.sh --max 6` with two to four keyword sets: your own words, the German or English translation, the technical terms) and put fitting notes with their paths into the brief's KNOWLEDGE field. `knowledge-agent` remains available when a large wave needs many lookups at once.
+- **Goal tracking per wave (IMP-289).** The goal plan is the task list of the wave. `bash ~/.claude/scripts/goal.sh --session <id> start <issue>`
+  when a unit is dispatched, `done <issue>` when its check has passed in the
+  wave review (§4). Work that was not planned gets `add` (or `add --detour`),
+  planned work that will not happen gets `drop --why`, any other change of
+  course gets `deviate` — BEFORE it is done, not after. Two reasons this is
+  mandatory, not optional bookkeeping: **Cockpit's card 4 shows the goal, the
+  issues, the measured pace, the time to goal and every deviation live**, and
+  the time to goal is only as true as the start and done marks. Units you do yourself (§1) need no issue.
+- **Every Agent call carries an explicit `model` parameter.** A worker spawn
+  passes `haiku` (Haiku 5.5, the worker default in `~/.claude/docs/reference/delegation.md` (Model tiers));
+  `sonnet` only on a recorded Haiku failure under that reference's three-part rule.
+  This turn is pinned to Fable by the `model:` frontmatter above. A spawn
+  without the parameter resolves in this order: the `model:` of the target's
+  definition file, then `CLAUDE_CODE_SUBAGENT_MODEL` (`haiku` in this setup's
+  `settings.json`), then the CALLER's model, which here is Fable, the
+  coordinator tier. `general-purpose`, `Plan` and plugin agents have no
+  definition file of their own and depend on that variable. The built-in
+  `Explore` agent is the exception: on a subscription it runs on the model
+  behind the `opus` alias unless the call passes `model`.
+  See `~/.claude/agents/control-agent.md` §2 for the full
   four-step resolution order and the 2026-09-21 measurement behind this
   (IMP-212). Assigning the model in prose does not set it.
 
@@ -115,16 +114,20 @@ Model×Effort sizing, and decide explicitly (continue / re-decompose /
 escalate) BEFORE dispatching the next wave. Then consolidate all outputs
 into one coherent result for the user; its first line is `Done: yes` or
 `Done: no — missing: <list>`, scoped per visible surface (`verified` /
-`not checked`), per `~/.claude/rules/slop-prevention.md` Trigger 3 step 6.
+`not checked`), per `~/.claude/docs/reference/slop-prevention.md` Trigger 3 step 6.
 Surface any ESCALATE-band operations
 subagents flagged up to you (per `~/.claude/rules/agency-bands.md` — you are the
 human-facing escalation point for this delegation).
 
-**Task-list check.** Every unit of the wave has its `TaskCreate` entry in
-end-state `completed`, or is explicitly left open with a stated reason —
-an entry with no state change and no reason means this review is not
-finished. This is the same list Cockpit card 4 surfaces to the user; closing
-it here is what makes the wave's outcome visible, not just its start.
+**Goal check (IMP-289).** Every issue of the wave is `done`, or is explicitly
+left open or dropped with a stated reason. At every milestone and before the
+completion report, spawn `goal-agent` (model haiku, effort medium) with the
+session id and the repository root: it lists scope creep, silent drops and
+unreported detours against the plan. Record each finding with `goal.sh deviate`
+(or `add` / `drop`), name it in the synthesis for the user, then run
+`goal.sh ack`. The completion report carries the progress, pace and time-to-goal
+line of `goal.sh status` and every deviation; `hooks/goal-stop.sh` raises what
+was left unreported when the turn ends.
 
 ## R.Code Mode
 
@@ -153,7 +156,7 @@ on PASS/WARN nothing else updates it, so it can go stale between phase
 gates.
 
 If `.rcode/config.json` has no `tracker` field, ask once via
-`AskUserQuestion` before proceeding (per `~/.claude/rules/recommend-on-ask.md`):
+`AskUserQuestion` before proceeding (per `~/.claude/rules/foundation.md`, Asking and acting):
 recommend `github` when a remote exists AND `gh auth status` succeeds AND at
 least one GitHub issue exists, else recommend `plan`. Persist the answer to
 `.rcode/config.json` and continue — never guess silently.
@@ -174,7 +177,7 @@ step 1:
 | release, deploy, production incident | Launch |
 
 State the chosen Stage and a one-line why. Genuine ambiguity → one question
-to management with a recommendation, per `~/.claude/rules/recommend-on-ask.md`
+to management with a recommendation, per `~/.claude/rules/foundation.md` (Asking and acting)
 — never a silent guess.
 
 ### 3. Load playbook
@@ -219,7 +222,7 @@ git checkout -b "work/$(date +%Y-%m-%d)-<slug>"
 ### 5. Dispatch + wave review
 
 Unchanged mechanics from §2–4 above: control-agent §2/§3/§4 for
-Agent/Model/Effort assignment, `~/.claude/rules/parallel-by-default.md` for
+Agent/Model/Effort assignment, `~/.claude/docs/reference/delegation.md` (Parallel work) for
 independence + auto-dispatch vs. proposal, the task brief form
 (`~/.claude/templates/auftragsbrief.md.template`) for every brief, the
 verbatim-instruction clause, and the explicit `model` parameter rule above
@@ -276,12 +279,4 @@ Same rule stated in `~/.claude/rcode/rules/rcode-workflow.md`.
 
 ## Why This Command Exists
 
-The `controller-first-prompt-gate.sh` / `-mutation-gate.sh` hook pair
-(IMP-089/090) can only *nudge* (inject a context reminder) or *react*
-(block a mutation after the fact) — a `PreToolUse`/`UserPromptSubmit` hook
-is a synchronous shell script and cannot itself invoke an LLM turn or force
-a specific agent to run before the main thread responds. `/team-lead` closes
-that gap the only way actually available: an explicit, user-invoked command
-that makes *this* turn behave as the team lead, on the frontmatter-pinned
-Fable5 substrate (a manual chat switch to Fable5 is only needed to keep
-mid-flow follow-up turns on Fable).
+A hook cannot start a model turn or force a controller to run first. This command makes the current turn act as the team lead, on the model pinned in its frontmatter. The earlier prompt-time reminder hooks were retired on 2026-11-23; their guidance is in `~/.claude/rules/foundation.md`.

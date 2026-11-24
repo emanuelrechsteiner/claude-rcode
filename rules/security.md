@@ -1,6 +1,19 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,swift,go,rs,java,kt,kts,rb,php,vue,svelte,astro,sh,bash,zsh,c,h,cc,cpp,hpp,cs,m,mm,dart,gd,lua,ex,exs,scala,sql,prisma,html,css,scss}"
+  - "**/.env*"
+  - "**/*.{yml,yaml,toml}"
+  - "**/supabase/**"
+  - "**/convex/**"
+  - "**/Dockerfile*"
+  - "**/*.tf"
+  - "**/vercel.json"
+  - "**/firebase.json"
+---
+
 # Security Rules
 
-> Universal security practices. Applies to all projects and tech stacks.
+> Universal security practices. Applies to all projects and tech stacks. Path-scoped: loads when a source, config or env file is read or edited.
 
 ## Input Validation
 
@@ -36,6 +49,17 @@ Some providers mark variables as **"Sensitive"**, which then **silently skip** `
 - No path traversal — validate and sanitize all file paths
 - Use temporary files securely with proper cleanup
 - No information leakage in error messages (log details server-side, show generic messages to users); implement proper error handling that doesn't expose internals
+
+## Access for agents and LLM-backed apps
+
+An agent or an LLM-backed app gets the access its current task needs, not more.
+
+- Database: queries run through a read-only role; writes need an explicit, user-authenticated path.
+- API keys: one scoped key per tool, no master keys, no key shared between agents; rotate scoped keys.
+- Filesystem: sub-agents work inside the workspace, not in the home directory or the filesystem root.
+- Network: deny by default; allow domains per task. This is about what an app or a helper may reach; your own research fetching follows the web research paragraph in `agency-bands`.
+- A session that skips permission checks (`--dangerously-skip-permissions`) belongs in a container or sandbox with a narrow allowlist and a log of every shell command it runs; `hooks/sandbox-guard.sh` warns at session start when it runs elsewhere.
+- Do not rely on an agent's statement that its output holds no secrets; check with a search. A fetched page can make an agent send local files through its own tools.
 
 ## Platform-Specific Notes
 

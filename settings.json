@@ -1,9 +1,8 @@
 {
   "env": {
-    "MAX_THINKING_TOKENS": "30000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "90",
-    "CLAUDE_CONTROLLER_GATE_MODE": "note",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+    "CLAUDE_KNOWLEDGE_GATE": "off",
+    "CLAUDE_KNOWLEDGE_BRIEF": "off",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
   },
   "permissions": {
     "allow": [
@@ -20,12 +19,13 @@
     "deny": [
       "Bash(sudo:*)",
       "Bash(su:*)",
-      "Bash(rm -rf /*:*)",
-      "Bash(rm -rf ~/*:*)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf $HOME)",
       "Bash(dd:*)",
       "Bash(mkfs:*)",
       "Bash(fdisk:*)",
-      "Bash(> /dev/*:*)",
+      "Bash(> /dev/*)",
       "Bash(nc:*)",
       "Bash(netcat:*)",
       "Read(**/.env)",
@@ -38,11 +38,11 @@
       "Edit(**/secrets/**)",
       "Read(~/.claude/cockpit/web-*)",
       "Edit(~/.claude/cockpit/web-*)",
-      "Bash(cat ~/.claude/cockpit/web-*:*)",
-      "Bash(head ~/.claude/cockpit/web-*:*)",
-      "Bash(tail ~/.claude/cockpit/web-*:*)",
-      "Bash(less ~/.claude/cockpit/web-*:*)",
-      "Bash(grep * ~/.claude/cockpit/web-*:*)",
+      "Bash(cat ~/.claude/cockpit/web-*)",
+      "Bash(head ~/.claude/cockpit/web-*)",
+      "Bash(tail ~/.claude/cockpit/web-*)",
+      "Bash(less ~/.claude/cockpit/web-*)",
+      "Bash(grep * ~/.claude/cockpit/web-*)",
       "Bash(tmux capture-pane:*)",
       "Bash(tmux pipe-pane:*)",
       "Bash(tmux save-buffer:*)",
@@ -63,31 +63,44 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '🚀 Claude Code session started - $(date)'"
+            "command": "~/.claude/hooks/session-start-context.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/session-start-context.sh"
+            "command": "~/.claude/hooks/git-identity-check.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/git-identity-check.sh"
+            "command": "~/.claude/hooks/dependency-check.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/sandbox-guard.sh"
+            "command": "~/.claude/hooks/sandbox-guard.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/git-remote-check.sh"
+            "command": "~/.claude/hooks/git-remote-check.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/routine-liveness-check.sh"
+            "command": "~/.claude/hooks/routine-liveness-check.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/security-findings-check.sh"
+            "command": "~/.claude/hooks/security-findings-check.sh",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/knowledge-mirror-refresh.sh",
+            "timeout": 120,
+            "async": true
           }
         ]
       }
@@ -98,39 +111,33 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/guard-unsafe.sh"
+            "command": "~/.claude/hooks/guard-unsafe.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/governing-path-guard.sh"
+            "command": "~/.claude/hooks/governing-path-guard.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/git-bypass-guard.sh"
+            "command": "~/.claude/hooks/git-bypass-guard.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/git-state-check.sh"
+            "command": "~/.claude/hooks/git-state-check.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/git-identity-enforce.sh"
+            "command": "~/.claude/hooks/excessive-agency-gate.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/excessive-agency-gate.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/web-fetch-safety-gate.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/controller-first-mutation-gate.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/read-tool-preference-advisory.sh"
+            "command": "~/.claude/hooks/web-fetch-safety-gate.sh",
+            "timeout": 30
           }
         ]
       },
@@ -139,7 +146,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/cockpit-secret-guard.sh"
+            "command": "~/.claude/hooks/cockpit-secret-guard.sh",
+            "timeout": 30
           }
         ]
       },
@@ -148,7 +156,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/web-fetch-safety-gate.sh"
+            "command": "~/.claude/hooks/web-fetch-safety-gate.sh",
+            "timeout": 30
           }
         ]
       },
@@ -157,11 +166,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/dispatch-capture.sh"
+            "command": "~/.claude/hooks/dispatch-capture.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/dispatch-specialist-check.sh"
+            "command": "~/.claude/hooks/knowledge-inject.sh --dispatch",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/goal-track.sh",
+            "timeout": 10
           }
         ]
       },
@@ -170,11 +186,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/mcp-agency-gate.sh"
+            "command": "~/.claude/hooks/mcp-agency-gate.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/web-fetch-safety-gate.sh"
+            "command": "~/.claude/hooks/web-fetch-safety-gate.sh",
+            "timeout": 30
           }
         ]
       },
@@ -183,7 +201,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/serena-write-gate.sh"
+            "command": "~/.claude/hooks/serena-write-gate.sh",
+            "timeout": 30
           }
         ]
       },
@@ -192,47 +211,33 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/parallel-lock-check.sh"
+            "command": "~/.claude/hooks/parallel-lock-check.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/gateguard.sh"
+            "command": "~/.claude/hooks/config-protection.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/pretool-auto-read.sh"
+            "command": "~/.claude/hooks/file-protection.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/config-protection.sh"
+            "command": "~/.claude/hooks/governing-path-guard.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/file-protection.sh"
+            "command": "~/.claude/hooks/security-audit.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/governing-path-guard.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/security-audit.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/vault-write-gate.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/controller-first-mutation-gate.sh"
-          },
-          {
-            "type": "command",
-            "command": "echo '📝 File modification detected - remember to commit within 60 minutes'"
-          },
-          {
-            "type": "command",
-            "command": "if [ -d .rcode ] && [ -f .rcode/scope-manifest.json ]; then BRANCH=$(git branch --show-current 2>/dev/null); if echo \"$BRANCH\" | grep -q 'issue-'; then echo 'R.Code: Scope guard active. Ensure changes are within issue scope.'; fi; fi"
+            "command": "~/.claude/hooks/vault-write-gate.sh",
+            "timeout": 30
           }
         ]
       },
@@ -241,11 +246,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/governing-path-guard.sh"
+            "command": "~/.claude/hooks/governing-path-guard.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/vault-write-gate.sh"
+            "command": "~/.claude/hooks/vault-write-gate.sh",
+            "timeout": 30
           }
         ]
       }
@@ -256,7 +263,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/serena-post-tool.sh"
+            "command": "~/.claude/hooks/serena-post-tool.sh",
+            "timeout": 30
           }
         ]
       },
@@ -265,28 +273,28 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/auto-format.sh"
+            "command": "~/.claude/hooks/auto-format.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/post-edit-validate.sh"
+            "command": "~/.claude/hooks/post-edit-validate.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/observation-capture.sh"
-          },
-          {
-            "type": "command",
-            "command": "if [ -d .rcode ]; then echo 'R.Code: Remember to update PROJECT-STATUS.md if this completes an issue.'; fi"
+            "command": "~/.claude/hooks/observation-capture.sh",
+            "timeout": 30
           }
         ]
       },
       {
-        "matcher": "Read",
+        "matcher": "Edit|Write|MultiEdit|Bash|Task|Agent",
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/posttool-track-read.sh"
+            "command": "~/.claude/hooks/goal-track.sh",
+            "timeout": 10
           }
         ]
       }
@@ -296,27 +304,54 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/session-end-check.sh"
+            "command": "~/.claude/hooks/session-end-check.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/stop-batched-checks.sh"
+            "command": "~/.claude/hooks/stop-batched-checks.sh",
+            "timeout": 300
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/self-critique-log.sh"
+            "command": "~/.claude/hooks/self-critique-log.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/session-handoff-write.sh"
+            "command": "~/.claude/hooks/session-handoff-write.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/scripts/config-drift-check.sh"
+            "command": "~/.claude/scripts/config-drift-check.sh",
+            "timeout": 60
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/background-agent-check.sh"
+            "command": "~/.claude/hooks/background-agent-check.sh",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/goal-stop.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/knowledge-inject.sh --subagent-start",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/goal-track.sh",
+            "timeout": 10
           }
         ]
       }
@@ -326,19 +361,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/subagent-lock-release.sh"
+            "command": "~/.claude/hooks/subagent-lock-release.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/subagent-watchdog.sh"
+            "command": "~/.claude/hooks/subagent-watchdog.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/controller-first-subagent-flag.sh"
-          },
-          {
-            "type": "command",
-            "command": "echo '✅ Sub-agent completed task'"
+            "command": "~/.claude/hooks/goal-track.sh",
+            "timeout": 10
           }
         ]
       }
@@ -349,7 +383,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/postbash-failure-recovery.sh"
+            "command": "~/.claude/hooks/postbash-failure-recovery.sh",
+            "timeout": 30
           }
         ]
       }
@@ -359,7 +394,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/notification-tts.sh"
+            "command": "~/.claude/hooks/notification-tts.sh",
+            "timeout": 30
           }
         ]
       }
@@ -369,15 +405,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/parallel-analyze-prompt.sh"
+            "command": "~/.claude/hooks/background-agent-check.sh",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/controller-first-prompt-gate.sh"
+            "command": "~/.claude/hooks/knowledge-inject.sh --prompt",
+            "timeout": 30
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/background-agent-check.sh"
+            "command": "~/.claude/hooks/goal-prompt.sh",
+            "timeout": 10
           }
         ]
       }
@@ -389,25 +428,30 @@
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
-    "firebase@claude-plugins-official": true,
+    "firebase@claude-plugins-official": false,
     "code-review@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "pr-review-toolkit@claude-plugins-official": true,
-    "explanatory-output-style@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": false,
+    "explanatory-output-style@claude-plugins-official": false,
     "playwright@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
-    "ralph-loop@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": false,
     "firecrawl@claude-plugins-official": true,
     "swift-lsp@claude-plugins-official": true,
-    "code-simplifier@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": false,
+    "superpowers@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "agent-sdk-dev@claude-plugins-official": true,
-    "pixel-plugin@pixel-plugin": true,
-    "vercel@claude-plugins-official": true
+    "agent-sdk-dev@claude-plugins-official": false,
+    "pixel-plugin@pixel-plugin": false,
+    "vercel@claude-plugins-official": false,
+    "design@synced": false,
+    "marketing@synced": false,
+    "finance@synced": false,
+    "brand-voice@synced": false
   },
+  "syncClaudeAiSkills": false,
   "extraKnownMarketplaces": {
     "pixel-plugin": {
       "source": {
@@ -464,13 +508,13 @@
       "effortLevel": "low"
     },
     "claude-opus-5-5": {
-      "effortLevel": "high"
+      "effortLevel": "low"
     },
     "claude-sonnet-5-5": {
-      "effortLevel": "high"
+      "effortLevel": "medium"
     },
     "claude-haiku-5-5": {
-      "effortLevel": "medium"
+      "effortLevel": "high"
     }
   },
   "switchModelsOnFlag": true

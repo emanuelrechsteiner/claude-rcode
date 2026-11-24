@@ -73,17 +73,16 @@ Every command file needs YAML frontmatter with, at minimum:
 ```yaml
 ---
 description: <one line>
-model: claude-fable-5[1m]   # substrate pin — IMP-092 landed; every command
-                             # on disk today is pinned to claude-fable-5[1m]
-                             # (agents/control-agent.md is pinned to the same
-                             # value). Other values remain syntactically
-                             # legal per command-contract-lint.sh's
-                             # allowed-substrate pattern (short aliases
-                             # opus/sonnet/haiku/fable, or full
-                             # claude-<family>-<n>[1m] ids) — override via
-                             # CLAUDE_CONTRACT_MODEL_RE if a command
-                             # genuinely needs a different substrate — but
-                             # claude-fable-5[1m] is the default to copy.
+model: fable                 # substrate pin — IMP-092, alias since IMP-284:
+                             # every substantial command pins the alias `fable`,
+                             # which Claude Code resolves to the current Fable
+                             # model (probed on 2.1.322: claude-fable-5-2).
+                             # Other values remain syntactically legal per
+                             # command-contract-lint.sh's allowed-substrate
+                             # pattern (short aliases opus/sonnet/haiku/fable,
+                             # or full claude-<family>-<n>[1m] ids) — override
+                             # via CLAUDE_CONTRACT_MODEL_RE if a command
+                             # genuinely needs a different substrate.
 allowed-tools:               # for the SUBSTANTIAL shape, must include one of:
   - Task                     #   Task, TaskCreate, or TaskUpdate
   - Read

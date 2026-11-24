@@ -1,6 +1,6 @@
 ---
 name: validate-build
-description: Full build validation skill. Runs TypeScript compilation, ESLint validation, and production build checks. Generates a comprehensive validation report with pass/fail status for each check. Use when you need to verify code quality before committing, deploying, or creating a PR. Triggers on "validate", "validate build", "check build", "run validation", "pre-commit check", "build check", "type check", "tsc check", "validiere", "build prüfen", "build checken", "ist das gebaut", "baut das", "typescript fehler", "lint fehler", "build kaputt", "kann das kompilieren", "pre-commit".
+description: "Runs TypeScript compile, ESLint, production build and unit test checks, then reports pass or fail per check. Use before committing, opening a PR or deploying, after a major refactor, or when CI fails locally."
 context: fork
 model: haiku
 allowed-tools: Read, Glob, Grep, Bash(npm *), Bash(npx tsc *), Bash(npx eslint *)

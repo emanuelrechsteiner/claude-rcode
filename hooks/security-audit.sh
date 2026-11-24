@@ -1,6 +1,8 @@
 #!/bin/bash
 # Security Audit Hook — PreToolUse on Edit/Write
 # Scans content being written/edited for secret patterns and blocks if found.
+# Code files (.py/.ts/.js ...) also get the silent-fallback check (IMP-271b,
+# detector: hooks/lib/silent_fallback_detect.py).
 # Ported from ~/.cursor/hooks/security-audit.sh on 2026-05-24.
 # Triggered by the 2026-05-24 finding of github_pat_* file on an external volume.
 # Exit codes: 0 = allow, 2 = block.
@@ -12,10 +14,49 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 # Edit uses new_string, Write uses content
 CONTENT=$(echo "$INPUT" | jq -r '.tool_input.new_string // .tool_input.content // empty')
 
+LOG=~/.claude/global-observation/security-audit.log
+
+# Silent-fallback check (IMP-271b, rules/fail-loud.md). Runs before the
+# empty-content exit so MultiEdit calls (edits[].new_string) are inspected too.
+SF_TEXT=$(echo "$INPUT" | jq -r '[.tool_input.content?, .tool_input.new_string?, (.tool_input.edits[]?.new_string?)] | map(select(type == "string" and . != "")) | join("\n")')
+SF_DETECTOR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/silent_fallback_detect.py"
+if [[ -n "$SF_TEXT" ]] && [[ "$FILE_PATH" =~ \.(py|ts|tsx|js|jsx|mjs|cjs)$ ]]; then
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "NOTE: security-audit.sh: python3 not found, silent-fallback check skipped." >&2
+    else
+        SF_OUT=$(printf '%s' "$SF_TEXT" | python3 "$SF_DETECTOR" "$FILE_PATH")
+        SF_RC=$?
+        if [[ "$SF_RC" -eq 3 ]]; then
+            mkdir -p "$(dirname "$LOG")"
+            TS=$(date "+%Y-%m-%d %H:%M:%S")
+            SF_MSG=""
+            while IFS=$'\t' read -r SF_NAME SF_LINE; do
+                echo "[$TS] SILENT FALLBACK in $FILE_PATH ($TOOL_NAME): $SF_NAME" >> "$LOG"
+                SF_MSG+="  Pattern: $SF_NAME"$'\n'"  Line:    $SF_LINE"$'\n'
+            done <<< "$SF_OUT"
+            cat >&2 <<EOF
+🔒 BLOCKED: Silent fallback in incoming code (rules/fail-loud.md)
+  File: $FILE_PATH
+$SF_MSG  Allow only with a reason on the same line or on the line directly above:
+    Python: # ALLOWED: <reason>
+    JS/TS:  // ALLOWED: <reason>
+  Logged: $LOG
+EOF
+            exit 2
+        elif [[ "$SF_RC" -ne 0 ]]; then
+            # A broken detector must not block every code edit (the repair itself is a
+            # code edit): the check is skipped for this call, logged, and the secret
+            # checks below still run.
+            mkdir -p "$(dirname "$LOG")"
+            echo "[$(date "+%Y-%m-%d %H:%M:%S")] DETECTOR FAILED rc=$SF_RC on $FILE_PATH ($TOOL_NAME): silent-fallback check skipped" >> "$LOG"
+            echo "NOTE: security-audit.sh: silent-fallback detector failed (rc $SF_RC); check skipped for this call, logged in $LOG." >&2
+        fi
+    fi
+fi
+
 # No content to inspect → allow
 [[ -z "$CONTENT" ]] && exit 0
 
-LOG=~/.claude/global-observation/security-audit.log
 mkdir -p "$(dirname "$LOG")"
 
 # Whitelisted paths — these are expected to legitimately contain secret-like strings

@@ -1,6 +1,6 @@
 ---
 name: nextjs-debug
-description: Framework diagnostics for Next.js applications. Troubleshoots API route 404/405 errors, middleware redirect loops, SSR/hydration issues, and server/client component problems. Use when facing Next.js-specific issues. Triggers on "nextjs debug", "404 error", "405 error", "middleware issue", "hydration error", "server component", "client component", "API route not working".
+description: "Diagnoses Next.js issues: API route 404 and 405 errors, middleware redirect loops, hydration mismatches (SSR), and server and client component errors (hooks, 'use client'). Use when a Next.js app shows one of these failures or another Next.js-specific issue."
 context: fork
 model: haiku
 allowed-tools: Read, Glob, Grep, Bash(npm *), Bash(npx next *)
@@ -200,9 +200,7 @@ echo "Server Hooks Usage:" && grep -rn "useState\|useEffect" src/ --include="*.t
 ## Integration
 
 This skill works with:
-- `framework-specialist-agent` for complex issues
 - `/validate-build` for verification after fixes
-- `nextjs-app-router-patterns.md` rule for prevention
 
 ## Quick Reference
 

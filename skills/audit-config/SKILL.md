@@ -1,6 +1,6 @@
 ---
 name: audit-config
-description: Run a deterministic audit of ~/.claude configuration against known schema-drift patterns (invalid settings fields, stale model IDs, broken hook patterns, naming collisions). Triggers on "audit config", "check config", "verify configuration", "config audit", "konfiguration prüfen", "audit my claude setup", "config check", or quarterly via launchd. Reports CRITICAL/WARN findings to ~/.claude/audit-reports/.
+description: "Deterministic audit of the ~/.claude configuration for known schema drift: invalid settings fields, stale model IDs, broken hook patterns, naming collisions. Writes CRITICAL/WARN findings to ~/.claude/audit-reports/. Use when checking or verifying the config, or for the quarterly launchd run."
 allowed-tools: Bash(bash ~/.claude/scripts/audit-config.sh), Bash(bash ~/.claude/scripts/command-contract-lint.sh), Bash(bash ~/.claude/scripts/config-security-audit.sh *), Read, Glob
 ---
 

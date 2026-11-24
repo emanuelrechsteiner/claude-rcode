@@ -1,7 +1,8 @@
 ---
 name: pattern-extractor-agent
 description: "Learning extraction specialist. Use for: analyzing fix commits, identifying root cause patterns, creating rule documents that prevent future bugs."
-model: sonnet
+model: haiku
+effort: high
 tools:
   - Bash
   - Read

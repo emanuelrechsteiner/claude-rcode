@@ -146,3 +146,56 @@ If the head-verb classification is genuinely uncertain, default to the **safe re
 ### Second pass — Context Hygiene symptom / good-sign lists (first-pass wording)
 
 Contamination symptoms: "Based on the authentication work we did earlier...", "Using the same pattern as before...", variable names reused from a different issue. Good hygiene: read the issue fresh every time, check what actually exists in the codebase, validate assumptions instead of carrying them over.
+
+## Moved 2026-11-10 (context diet)
+
+Source: pre-diet rules/workflow-git.md (2026-11-10 snapshot). Verbatim blocks, original headings kept.
+
+## Commit Format
+
+- **Types** as above; **Areas:** auth, api, ui, db, config, test, core, infra, status, architecture, conventions.
+- Every code commit carries a **tracking reference** (docs-only may omit); the form is a property of the repo, not a preference: a **GitHub issue number** (`#42`, `closes #42`) in repos running an issue-driven loop (`/decompose` → `/issue <#>`, i.e. `gh issue list` is non-empty); a **ledger id** (`IMP-114`) in this framework's own config repos, which track work in `improvement-ledger.json`.
+- Never mix code changes and doc changes in the same commit. Commit every 60 minutes during active development.
+
+## Feature Lifecycle Autonomy Bands
+
+Prefer `gh pr merge` over MCP merge tools — the bash gate fires and logs at the command head. MCP-routed merges are equally ESCALATE (Meta Rule-of-Two: untrusted PR input + shared-remote state + external notifications), gated by `mcp-agency-gate.sh`.
+
+## Context Hygiene
+
+**MANDATORY: Run `/clear` between issues.** Contamination symptoms: "Based on the authentication work we did earlier...", "Using the same pattern as before...", variable names reused from a different issue. Good hygiene: read the issue fresh every time, check what actually exists in the codebase, validate assumptions instead of carrying them over.
+
+## Report-Only Default for Research / Planning / Audit Tasks
+
+**When the user's request is classified as research, audit, review, explore, investigate, brainstorm, or plan — NEVER perform IRREVERSIBLE or REMOTE git/state operations without explicit instruction.** Local, fully-reversible scaffolding (a working branch + local commits) is explicitly allowed and even encouraged: it costs nothing to undo and keeps the working tree clean.
+
+| Operation | In report-only mode | Why |
+|---|---|---|
+| Write read-only artifacts, proposals, analyses | ✅ Allowed | The deliverable of research/audit |
+| Edit files the user explicitly named | ✅ Allowed | User-directed |
+| `git checkout -b <working-branch>` (local) | ✅ Allowed | Fully reversible; isolates scratch work |
+| `git add` / `git commit` on a local working branch | ✅ Allowed | Local-only, reversible (`git reset`, branch delete) |
+| `git push` / `git push -u` | ❌ Suppressed | Publishes; not trivially reversible on shared remotes |
+| `gh pr create` (even draft) to a shared repo | ❌ Suppressed | Notifies others; remote state |
+| Deploys, prod migrations, releases, tags pushed to remote | ❌ Suppressed | Irreversible / externally visible |
+| Direct commit to trunk (`main`/`master`/`development`) | ❌ Suppressed | Violates Branch Management above, regardless of mode |
+
+### Classifier — the keyword must govern the ACTION VERB
+
+A single research/audit keyword anywhere in the message must NOT flip the entire task to report-only; classify by what the keyword *modifies*:
+
+**Genuinely uncertain classification:** take the **safe reversible middle ground** — commit on a local working branch, but do NOT push/PR/deploy — then **ask before publishing** with a short clarification rather than guessing. The reversibility-vs-mode reasoning is the band system of [[agency-bands]].
+
+## Pre-Commit Checklist (original line, examples dropped in the diet)
+
+## Pre-Commit Checklist
+
+Before every commit: type checker passes (`tsc --noEmit` / `mypy`) · tests pass (`npm test` / `pytest`) · linter passes (`eslint` / `ruff`) · build succeeds (`npm run build`) · no debug statements (`console.log`, `print()`, `debugger`) · no stray characters at EOF · commit message follows the format · issue number referenced.
+
+### Second pass
+
+Text removed from `rules/workflow-git.md` by the second pass (2026-11-10, fix-up item B8), verbatim. The sentence is removed because which of the two rules wins on trunk commits is an open owner decision (IMP-235 B1); the rule no longer pre-empts it.
+
+```text
+B8 removed: Direct trunk commits are forbidden by this file's convention; where one happens anyway, the band system treats it as SOFT-ACK (`rules/agency-bands.md`) — the two files describe the convention and the gate, not a contradiction.
+```

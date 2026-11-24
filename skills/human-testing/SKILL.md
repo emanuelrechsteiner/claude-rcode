@@ -1,6 +1,6 @@
 ---
 name: human-testing
-description: Senior UX/UI tester that performs comprehensive manual testing using Playwright MCP. Navigates through the entire app, clicks all buttons, tests all functions, takes screenshots, checks visual consistency, validates styling principles, and reports issues. Use when you need thorough app testing, visual regression checks, or UX validation. Triggers on "human test", "manual test", "test the app", "QA test", "visual test", "click through", "test all functions", "UX test", "UI test", "teste die app", "app durchklicken", "manuell testen", "klick dich durch", "alle funktionen testen", "oberfläche testen", "ux prüfen".
+description: "Manual UX/UI testing of a running web app with Playwright MCP: clicks through the whole app and every function, takes screenshots, checks visual consistency and styling, and reports the issues. Use when the app needs thorough testing, visual regression checks or UX validation."
 allowed-tools: mcp__plugin_playwright_playwright__*, Bash(npm run dev:*), Bash(npm run build:*), Bash(lsof:*), Bash(curl:*), Bash(sleep:*), Read, Glob, Grep, TodoWrite
 ---
 

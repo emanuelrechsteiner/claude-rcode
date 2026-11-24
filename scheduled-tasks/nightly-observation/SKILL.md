@@ -31,6 +31,11 @@ if [ -f "$L" ] && [ "$(wc -l < "$L")" -gt 50000 ]; then
 fi
 ```
 
+## Step 2c — Monthly usage count (IMP-279)
+On the first day of a month (UTC), and whenever `~/.claude/global-observation/usage-scan-latest.json` is missing, run:
+`python3 ~/.claude/scripts/usage-scan.py --days 30 --format json --out ~/.claude/global-observation/usage-scan-latest.json`
+The script counts tool, MCP server, skill and agent use over all transcript depths, windowed by record timestamp, and writes names, counts and timestamps only. It is the ONLY place these numbers are derived: never count by hand. A non-zero exit is recorded in Step 4 as `partial` with the exit code.
+
 ## Step 3 — Health check
 Verify signals.jsonl exists and is writable, the archive dir is writable, and daily-metrics.jsonl has a row for yesterday.
 

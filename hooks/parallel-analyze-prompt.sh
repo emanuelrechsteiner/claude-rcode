@@ -12,6 +12,9 @@
 # Schema: { prompt, session_id, transcript_path, cwd, permission_mode, ... }
 # Output: JSON with hookSpecificOutput.additionalContext
 # Opt-out: CLAUDE_PARALLEL_AUTO_SUGGEST=0
+# Context diet (2026-11-10): automated turns (subagent hand-backs, task notifications, system text) get no
+# reminder, and the reminder is shown once per session (marker under ${TMPDIR:-/tmp}/claude-prompt-reminders/).
+# Regression: hooks/tests/parallel-analyze-prompt-regression.sh.
 set -u
 
 [ "${CLAUDE_PARALLEL_AUTO_SUGGEST:-1}" = "0" ] && exit 0
@@ -19,6 +22,23 @@ set -u
 INPUT=$(cat)
 PROMPT=$(printf '%s' "$INPUT" | jq -r '.prompt // empty')
 [ -n "$PROMPT" ] || exit 0
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty')
+# Sanitised before it becomes a file name. Empty means no once-marker: the reminder then repeats, as before.
+SAFE_SESS=$(printf '%s' "$SESSION_ID" | tr -cd 'A-Za-z0-9_-')
+LOG="$HOME/.claude/global-observation/parallel-prompts.jsonl"
+# log_skip REASON: one fired:0 line for a prompt that gets no reminder (jq builds the line).
+log_skip() {
+    mkdir -p "$(dirname "$LOG")"
+    jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg r "$1" '{ts: $ts, fired: 0, reason: $r}' >> "$LOG"
+}
+# Shared predicate (hooks/lib/prompt-turn.sh). Without the library no turn counts as automated: the pre-diet behaviour.
+. "$(dirname "$0")/lib/prompt-turn.sh" 2>/dev/null || { automated_turn() { return 1; }; log_skip lib-missing; }
+
+# Automated turns are not user input: no reminder.
+if automated_turn "$PROMPT"; then
+    log_skip automated-turn
+    exit 0
+fi
 
 PROMPT_LC=$(printf '%s' "$PROMPT" | tr '[:upper:]' '[:lower:]')
 
@@ -43,6 +63,16 @@ esac
 # Not task-shaped → silent
 [ "$FIRE" = "1" ] || exit 0
 
+# Once per session: shown on the first task-shaped prompt only (the marker is written at emission below).
+ONCE_MARK=""
+if [ -n "$SAFE_SESS" ]; then
+    ONCE_MARK="${TMPDIR:-/tmp}/claude-prompt-reminders/$SAFE_SESS.parallel-analyze-prompt"
+    if [ -e "$ONCE_MARK" ]; then
+        log_skip already-shown
+        exit 0
+    fi
+fi
+
 # ── Context7 trigger (wish #2): explicit library name OR integration verb ──
 LIB_RE='\b(react|next\.?js|vue|svelte|angular|tailwind|prisma|supabase|firebase|stripe|express|fastapi|django|flask|swiftui|swiftdata|combine|zustand|redux|vite|webpack|playwright|vitest|jest|pytest|openai|anthropic|langchain|drizzle|trpc|graphql|apollo)\b'
 INTEG_RE='\b(integr|integriere|sdk|npm install|pip install|uvx add|cargo add)\b'
@@ -55,10 +85,10 @@ echo "$PROMPT_LC" | grep -qE "$INTEG_RE" && CTX7=1
 # for confirmation") injected the pre-IMP-055 policy into EVERY task prompt,
 # undoing the 2026-06-21 auto-dispatch decision via recency bias. Now:
 # auto-dispatch when reversible+disjoint; y/n ONLY for ESCALATE-band ops
-# or scope that cannot be proven disjoint (rules/parallel-by-default.md).
+# or scope that cannot be proven disjoint (docs/reference/delegation.md, Parallel work).
 REMINDER='[Pre-Flight — before starting this task]
 1. PICK A SUBAGENT: Delegate to a specialized agent instead of doing everything yourself — control-agent for 3+ domains, otherwise backend-/testing-/ui-/research-/code-reviewer-agent or similar. Do it yourself only if none fits.
-2. CHECK FOR A SWARM: For 2+ independent units (disjoint files, no A→B chain) → AUTO-DISPATCH in parallel with a one-line note (Workflow tool for complex orchestration, otherwise /parallel-dispatch). Confirmation (y/n) ONLY when ESCALATE-band ops are involved or file-disjointness cannot be proven — see rules/parallel-by-default.md. Otherwise sequential.'
+2. CHECK FOR A SWARM: For 2+ independent units (disjoint files, no A→B chain) → AUTO-DISPATCH in parallel with a one-line note (Workflow tool for complex orchestration, otherwise /parallel-dispatch). Confirmation (y/n) ONLY when ESCALATE-band ops are involved or file-disjointness cannot be proven — see docs/reference/delegation.md (Parallel work). Otherwise sequential.'
 
 if [ "$CTX7" = "1" ]; then
     REMINDER="$REMINDER
@@ -69,12 +99,16 @@ REMINDER="$REMINDER
 
 Opt-out for this session: export CLAUDE_PARALLEL_AUTO_SUGGEST=0"
 
-# Log for observability
-LOG="$HOME/.claude/global-observation/parallel-prompts.jsonl"
+# Log for observability (jq builds the line, so newlines, quotes and backslashes in the prompt stay valid JSON)
 mkdir -p "$(dirname "$LOG")"
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-PROMPT_SAMPLE=$(printf '%s' "$PROMPT" | head -c 100 | sed 's/"/\\"/g')
-printf '{"ts":"%s","fired":1,"ctx7":%s,"prompt_sample":"%s"}\n' "$TS" "$CTX7" "$PROMPT_SAMPLE" >> "$LOG"
+jq -cn --arg ts "$TS" --arg s "${PROMPT:0:100}" --argjson c "$CTX7" '{ts: $ts, fired: 1, ctx7: $c, prompt_sample: $s}' >> "$LOG"
+
+# Mark the session as shown (first firing only); a failed marker is reported and logged, the reminder still goes out.
+if [ -n "$ONCE_MARK" ] && ! { mkdir -p "$(dirname "$ONCE_MARK")" && : > "$ONCE_MARK"; } 2>/dev/null; then
+    printf 'parallel-analyze-prompt: cannot write %s\n' "$ONCE_MARK" >&2
+    jq -cn --arg ts "$TS" '{ts: $ts, fired: 1, marker: "unwritable"}' >> "$LOG"
+fi
 
 # Emit JSON per UserPromptSubmit protocol
 jq -n --arg ctx "$REMINDER" '{

@@ -202,3 +202,66 @@ if [ "$after" -gt "$before" ]; then
 fi
 # Holding flat or decreasing is fine — fixing edits and refactors-toward-green pass.
 ```
+
+## Moved 2026-11-10 (context diet)
+
+> Passages moved verbatim out of rules/slop-prevention.md on 2026-11-10 (context diet). The rule keeps the normative text and the verification principles; this file carries the full wording, the workflow rationale and the history.
+>
+> Note (2026-11-10, verified): the "Enforcement" block below describes a PreToolUse type-error gate that does not exist. No registered PreToolUse hook blocks on type errors; type-check and lint run at Stop (`hooks/stop-batched-checks.sh`). The rule carries the corrected wording.
+
+### "Slop-on-Slop" Math
+
+Compounding agent reliability: `P(end-state correct) = P(step correct)^N`; silent slop (unverified scaffolds, ignored type errors, untested code) drops `P(step)` to ~0.7–0.8, and `P(end)` approaches zero exponentially.
+
+### Trigger 1 — Type errors / lint errors present
+
+- ✅ **Allowed / encouraged:** edits that hold a file's unresolved compile/type-error count flat or drive it down (fixing the type error, narrowing a type, removing the broken call). The fix-the-error edit is never blocked.
+- ❌ **Forbidden:** edits that *add* features, branches, or call sites to such a file while its error count stays the same or rises — building on slop. "I'll fix the type error later" is no excuse: fixing *now* is always allowed, deferral-plus-extension is banned.
+
+Run the type-check first (`npx tsc --noEmit` / `mypy` / `swift build`); while errors exist, the next edits must be aimed at *reducing* them — do not bolt new functionality onto the still-broken file; proceed once the file type-checks clean (or your edit has measurably reduced the error set).
+
+### Trigger 3 — Visible claim without rendered proof
+
+**Check against the SOURCE, never against your own paraphrase.** The comparison target is the primary artifact — the file on disk, the PDF, the screenshot the *user* sent, the running program — not your summary of it, not the plan's restatement of it, not what a sub-agent reported it says; a paraphrase was already filtered through the expectation that produced the bug.
+
+**Describe what you see, then judge.** At every checkpoint, first write down what is *actually visible* in the artifact (which elements, colors, positions, values), and only then state whether it matches the claim — naming the observation before the verdict is the defense against confirmation bias; a verdict with no description behind it is a guess, not an inspection.
+
+**Four error types** (IMP-160), each with its own countermeasure — fixing one leaves the others live: circular check, checking against your own paraphrase, confirmation bias (countered above and by the patterns below), and a sub-agent overruling an explicit user instruction (`agents/control-agent.md` §3/§4). A discipline agreed only in chat is not enforced; it lives in this rule.
+
+### How to Apply — Pattern: Fresh-Agent Review Before Extension
+
+Before extending unverified AI scaffolds, spawn a fresh-context `code-reviewer-agent`: it reviews the scaffold cold, identifies issues, half-implementations, and silent fallbacks, and returns "verified safe to extend" or "fix these N issues first".
+
+### How to Apply — "Copy, don't interpret" (Abschreiben, nicht deuten)
+
+**Sub-agents get pointed at the SOURCE, never at the orchestrator's paraphrase of it:** the brief hands over the file path, the quoted requirement, the user's screenshot — not a summary, which comes from the same context that is about to be wrong and, passed down, turns one misreading into every sub-agent's premise. In every brief:
+
+### How to Apply — Pattern: Adversarial counter-check (an agent that HUNTS for deviations)
+
+After an implementation wave that claims conformance to a spec, source, or design, spawn a **separate** agent whose stated job is to **find deviations**, not to confirm the work: "find every place this does NOT match, list them" (not "verify this matches", which invites agreement). Run it as a second phase with a typed result schema (a list of deviations with locations), so an empty result is a real finding rather than the absence of a report.
+
+### Enforcement (original wording, superseded in the rule)
+
+A PreToolUse hook blocks `Edit` only when it would **add functionality** to a file with unresolved type-errors (error count not decreasing); edits that reduce the error set pass. Also: the `code-reviewer-agent` invocation pattern in control-agent workflows; the R.Code phase-gate runs type-check + test before unlocking the next phase.
+
+### Anti-Patterns
+
+- ❌ **Cline's "Level 4: full autonomy"** — measurably worse outcomes than Level 2 ("plan + review per step") on real codebases. Default to Level 2.
+- ❌ **Skipping verification because "the test passes"** — passing tests on slop only prove the slop passes the tests. Manual review of NEW logic is mandatory.
+- ❌ **Asking Claude to "make the tests pass" without reviewing what it changed** — it may delete the test, weaken the assertion, or comment out the failing case. Always diff.
+- ❌ **"Hardening" a check that was never looking at the right thing** — a stricter circular check only agrees with itself more strictly. Before tightening a check, ask what artifact it reads; if the fix wrote that artifact, no hardening turns it into evidence.
+
+### References
+
+References: Trigger 3 — IMP-143, `plans/meta-proposal-2026-08-23-chat-analyse.md`; companion paragraph in `testing-quality.md` ("Rendered-Proof for Visual Claims").
+
+### Second pass
+
+Text removed from `rules/slop-prevention.md` by the second pass (2026-11-10, fix-up items B19 and D4–D6), verbatim:
+
+```text
+B19 removed (paragraph of "## Verification principles (IMP-158)"): **Verify at the sink, not the suite:** a fix to a filter, exclusion or manifest gate that stops data reaching an external backend is proven only at the real sender/output — the files or records the external tool actually receives, or a dry run printing the real target list; a green suite that checks a flag or counter is not that proof. **Verify via the same code path:** when verification counts or resolves what production also counts or resolves, call the same resolution code; a second, independently written counter drifts and passes while the real path stays broken. **Automatic check results belong to their trigger:** if your action caused a check to run (security review, lint pass, async verification), retrieve its result before claiming fixed or done — triggering it is not enough.
+D4 removed: **Check against the SOURCE, never against your own paraphrase.** The comparison target is the primary artifact — the file on disk, the PDF, the screenshot the *user* sent, the running program — not your summary of it.
+D5 removed ("### Pattern: Fresh-Agent Review Before Extension"): Before extending unverified AI scaffolds, spawn a fresh-context `code-reviewer-agent` to review the scaffold cold; it returns "verified safe to extend" or "fix these N issues first".
+D6 removed ("### Pattern: Adversarial counter-check"): After an implementation wave that claims conformance, spawn a **separate** agent whose job is to **find deviations**, not to confirm the work. Run it with a typed result schema (a list of deviations with locations), so an empty result is a real finding.
+```

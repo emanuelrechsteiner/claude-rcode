@@ -1,6 +1,6 @@
 ---
 name: backend-development
-description: Firebase and state management specialist. Handles Firestore operations, Firebase Functions, Zustand stores, user-scoped security, and optimistic updates with rollback. Use when working with Firebase, Firestore, Cloud Functions, Zustand, state management, APIs, or backend logic. Triggers on "Firebase", "Firestore", "Zustand", "state management", "backend", "API", "Cloud Functions", "security rules", "database", "store", "backend bauen", "datenbank anbinden", "firestore regeln", "cloud function schreiben", "state management einrichten", "api endpunkt bauen", "speichern schlägt fehl".
+description: "Firebase and Zustand backend specialist: Firestore operations, Cloud Functions, user-scoped security rules, Zustand stores, optimistic updates with rollback. Use when working with Firebase, Firestore, databases, Zustand, state management, APIs, backend logic, or failed saves."
 allowed-tools: Read, Edit, Write, Bash(npm:*), Bash(node:*), Bash(firebase:*), Grep, Glob
 ---
 

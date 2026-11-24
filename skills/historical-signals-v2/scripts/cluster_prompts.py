@@ -41,7 +41,7 @@ Output ONLY the category name (uppercase), nothing else. No explanation."""
 def classify_one(client, text: str) -> str:
     try:
         resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-5-5",
             max_tokens=20,
             system=CLUSTER_PROMPT,
             messages=[{"role": "user", "content": text}],

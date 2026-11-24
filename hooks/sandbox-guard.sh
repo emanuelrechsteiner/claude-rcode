@@ -2,7 +2,7 @@
 # SessionStart hook — warn if YOLO/--dangerously-skip-permissions detected outside sandbox.
 # Added 2026-05-26 per Wave 4 of MIGRATION-PLAN.md v3.
 # Reason: KB cluster 09 — Casco YC red-team finding (7/16 agents hacked in 30 min).
-# Per ~/.claude/rules/agents-as-users.md + ~/.claude/rules/excessive-agency-gate.md,
+# Per ~/.claude/rules/security.md + ~/.claude/rules/agency-bands.md,
 # YOLO should only run in containers/sandboxes.
 
 set -euo pipefail
@@ -28,7 +28,7 @@ if [ "$YOLO_MODE" = "1" ] && [ "$IS_SANDBOX" = "0" ]; then
   cat <<'EOF'
 ⚠️  Sandbox-Guard: YOLO/auto-permission mode active but NOT in a known sandbox.
 
-   Per ~/.claude/rules/agents-as-users.md + Casco YC finding (7/16 agents hacked in 30min):
+   Per ~/.claude/rules/security.md + Casco YC finding (7/16 agents hacked in 30min):
    autonomous/YOLO modes should only run in containers, sandboxes, or throwaway envs.
 
    This is a soft warning, not a block. Recommended actions:

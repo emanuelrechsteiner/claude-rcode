@@ -89,9 +89,9 @@ else
   FAILURES="${FAILURES}  [DEDUP] first=<$FIRST_ERR> second=<$SECOND_ERR>\n"
 fi
 
-echo "── Note text names the conflict (Auto-Mode vs. Rule 2), not just one side ──"
+echo "── Note text names the Auto-Mode conflict and the Read/Grep preference ──"
 run_hook "$(json_cmd "cat conflict-check.txt" "rta-10")"
-if printf '%s' "$ERR" | grep -qi "auto mode" && printf '%s' "$ERR" | grep -qi "Rule 2"; then
+if printf '%s' "$ERR" | grep -qi "auto mode" && printf '%s' "$ERR" | grep -qi "Read/Grep"; then
   PASS=$((PASS+1))
 else
   FAIL=$((FAIL+1))

@@ -20,13 +20,15 @@ HOOK_INPUT=$(cat 2>/dev/null || printf '{}')
 SID=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null || printf '')
 
 SIGNALS="$HOME/.claude/global-observation/signals.jsonl"
+# grep -c exits 1 when nothing matches, and pipefail propagates that. Zero matching
+# lines is a real count of 0, so the pipeline's exit status is ignored here, not the count.
 if [ -f "$SIGNALS" ] && [ -n "$SID" ]; then
   EDITS_LAST_HOUR=$(grep -F "\"session_id\":\"$SID\"" "$SIGNALS" 2>/dev/null \
-    | grep -cE '"tool":"(Edit|Write)"' | tr -d '\n')
+    | grep -cE '"tool":"(Edit|Write)"' | tr -d '\n' || true)
   [[ "$EDITS_LAST_HOUR" =~ ^[0-9]+$ ]] || EDITS_LAST_HOUR=0
 elif [ -f "$SIGNALS" ]; then
   EDITS_LAST_HOUR=$(tail -1000 "$SIGNALS" 2>/dev/null \
-    | grep -cE '"tool":"(Edit|Write)"' | tr -d '\n')
+    | grep -cE '"tool":"(Edit|Write)"' | tr -d '\n' || true)
   [[ "$EDITS_LAST_HOUR" =~ ^[0-9]+$ ]] || EDITS_LAST_HOUR=0
 else
   EDITS_LAST_HOUR=0
@@ -66,5 +68,5 @@ echo "📝 Session-end log → $LOG (branch=$BRANCH uncommitted=$UNCOMMITTED edi
 
 # Heuristic: if there were many edits + still uncommitted, suggest /meta-observe
 if [ "$UNCOMMITTED" -gt 5 ] && [ "$EDITS_LAST_HOUR" -gt 20 ]; then
-  echo "   Note: $UNCOMMITTED uncommitted files with $EDITS_LAST_HOUR recent edits — run /meta-observe to extract patterns."
+  echo "   Note: $UNCOMMITTED uncommitted files with $EDITS_LAST_HOUR recent edits — run /meta-observer to extract patterns."
 fi

@@ -1,6 +1,6 @@
 <!--
 Status: ARCHIVED
-Last Updated: 2026-09-27
+Last Updated: 2026-11-10
 Purpose: Evidence, incidents, and measurements moved verbatim out of rules/domain-docs-convention.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
 # Evidence for `rules/domain-docs-convention.md`
@@ -43,3 +43,18 @@ Agents dropped into a project without a shared language use 20 words where 1 wou
 
 - Companions: [[planning-doc-convention]], [[documentation]], `skills/grilling` (closes into these artifacts), `skills/prototype` (verdicts land here)
 - Origin: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) `domain-modeling` conventions + `.agents/adr/` practice (MIT); adopted as IMP-124 (2026-08-03)
+
+## Moved 2026-11-10 (context diet)
+
+> Passages moved verbatim out of rules/domain-docs-convention.md on 2026-11-10 (context diet) — the rule keeps the normative text; this file carries rationale, hook internals, history and examples.
+> The pointer now lives in rules/domain-docs-convention.md §Enforcement; the normative text is in rules/foundation.md §Corrections become law (2026-11-10).
+
+### Enforcement — a correction becomes law immediately
+
+**On the FIRST "NIE X" / "IMMER X" (or "NEVER X" / "ALWAYS X") correction from the user, persist it IN THE SAME TURN** — the default action, not an offer and not a question back ("should I persist this?" is itself the violation). A correction that only lives in the chat transcript is not enforced; it has to land in an artifact the next session actually reads. **The SECOND occurrence of the identical correction is a process failure, not a reminder**: the first was heard but not persisted — treat it as a signal (per the observation pipeline), not as "say it again, more firmly."
+
+1. Recognize a categorical, non-negotiable rule statement ("NIE X", "IMMER X", "NEVER X", "ALWAYS X" or their unambiguous equivalents).
+1a. **Classify scope before persisting.** About *this codebase* (a file, term, vendor, invariant of this project) → CONTEXT.md / ADR / project memory. About *how the user works with the agent* (who tests, which model tier, branch naming, report format) → **user-global**: one line in `~/.claude/rules/preferences.local.md` (git-ignored, auto-loaded everywhere; copied from `templates/preferences.local.md.template`; edited in place per the `*.local.md` exception in `CLAUDE.md`), never project memory. Before writing a project memory, grep `~/.claude/projects/*/memory/` for the same stance; a hit elsewhere means user-global — consolidate, leaving a one-line pointer in the project copy.
+2. Project scope, same turn: add/amend the CONTEXT.md entry for a term or invariant, or write a mini-ADR for a decision (formats above).
+3. If mechanically checkable, add a test case that would have caught the violation before it recurs.
+4. Then proceed with the original task — persisting is a side-effect of the same turn, not a separate task requiring confirmation.

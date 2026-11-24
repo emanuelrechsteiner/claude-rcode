@@ -12,7 +12,7 @@ Adapted from affaan-m/ECC skills/eval-harness @ c70874f (MIT, Copyright (c) 2026
 
 Eval-driven development (EDD) treats evals as the unit tests of AI-assisted work: write the expected behavior down before implementing, run it repeatedly, track regressions. It is a manual, on-demand procedure (`/eval-harness`), not an always-on behavior.
 
-It sits next to, not in place of, ordinary tests (`testing-suite`, `testing-quality` rules). Use evals when quality cannot be captured by a unit test alone: agent behavior, prompts, skills, open-ended outputs, reliability across retries.
+It sits next to, not in place of, ordinary tests (the `testing-suite` skill and the `testing-quality` rule). Use evals when quality cannot be captured by a unit test alone: agent behavior, prompts, skills, open-ended outputs, reliability across retries.
 
 ## When to Use
 
@@ -79,7 +79,7 @@ Prefer them in this order: deterministic first, judgment last.
    Risk: LOW | MEDIUM | HIGH
    ```
 
-A grader must read the artifact the work produces, not the source the fix just wrote. A check that reads its own edit can only agree with itself (`slop-prevention`, Trigger 3).
+A grader must read the artifact the work produces, not the source the fix just wrote. A check that reads its own edit can only agree with itself (`slop-prevention`, Trigger 3 in `~/.claude/docs/reference/slop-prevention.md`).
 
 ## Metrics
 

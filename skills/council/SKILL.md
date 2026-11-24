@@ -56,7 +56,7 @@ The three external voices run as fresh sub-agents that receive only the question
 
 ### 1. Extract the real question
 
-Reduce the decision to one explicit prompt: what are we deciding, which constraints matter, what counts as success. If the question is vague, ask one clarifying question first, with your recommendation (`recommend-on-ask`).
+Reduce the decision to one explicit prompt: what are we deciding, which constraints matter, what counts as success. If the question is vague, ask one clarifying question first, with your recommendation (`rules/foundation.md`, Asking and acting).
 
 ### 2. Gather only the necessary context
 
@@ -87,7 +87,7 @@ Respond with:
 3. Risk: the biggest risk in your recommendation
 4. Surprise: one thing the other voices may miss
 
-Be direct. No hedging. Under 300 words. Do not modify any file.
+Be direct. No hedging. Keep it short; the four numbered parts are enough. Do not modify any file.
 ```
 
 Role emphasis:
@@ -95,7 +95,7 @@ Role emphasis:
 - **Pragmatist**: optimize for speed, simplicity, and real-world execution.
 - **Critic**: surface downside risk, edge cases, and the ways the plan could fail.
 
-Pass an explicit `model` parameter on each of the three Agent calls (default `sonnet`, per `rules/api-cost-optimization.md`); omitting it runs the voice on the caller's model (`agents/control-agent.md` §2).
+Pass an explicit `model` parameter on each of the three Agent calls (default `haiku`, per `~/.claude/docs/reference/delegation.md`, Model tiers); omitting it runs the voice on the caller's model (`agents/control-agent.md` §2).
 
 ### 5. Synthesize with bias guardrails
 

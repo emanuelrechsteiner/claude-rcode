@@ -4,7 +4,10 @@
 # Deterministic pre-publish scan: fails (exit 1) if a tracked file contains
 # a credential-shaped secret, a real vault-registered term, or a leftover
 # reference to the pre-rebrand project name. Exit 0 + "scrub-check: clean"
-# otherwise.
+# otherwise. A check that does not complete also exits 1, with
+# "scrub-check: FAILED" on stderr: a vault.sh crash or an exit status outside
+# its contract, a git call that fails (file list, git grep, staged diff), or a
+# run outside any git work tree. A check that did not run is never clean.
 #
 # Usage:
 #   scripts/scrub-check.sh              # scan the whole repo
@@ -33,7 +36,7 @@
 # different word-boundary and allowlist rules from scripts/vault/lib.sh's
 # actual matcher. That regex is gone. All vault-term and structural
 # (path/email/id-shaped) detection below runs through `vault.sh check`
-# exclusively (rules/testing-quality.md "Verify Via the Same Code Path") —
+# exclusively (rules/slop-prevention.md "Verification principles": "Verify Via the Same Code Path") —
 # same allowlist semantics, same word boundaries, same public-name
 # exclusions as every other vault consumer (the write-gate hook, pre-commit,
 # the publish transforms). Only two things remain genuinely separate here:
@@ -52,7 +55,7 @@
 #   CI runner even though `vault.sh check` itself correctly reported it
 #   (kind=path, token empty by construction for any structural match).
 #   Fixed by iterating every row `vault.sh check` returns with no kind
-#   filter at all (rules/testing-quality.md "Verify Via the Same Code
+#   filter at all (rules/slop-prevention.md "Verification principles": "Verify Via the Same Code
 #   Path") — the file-NAME check below had the same class of gap (it only
 #   ran at all when a vault was present, so a public CI runner without one
 #   never got a structural filename check either) and is fixed the same way.
@@ -93,7 +96,14 @@
 # checked for.
 set -euo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Outside a git work tree there is nothing to scan: FAILED, never a clean pass.
+# (2026-11-06, follow-up review: the old `|| pwd` fallback let a non-repo run
+# reach "no tracked files to scan" and exit 0.) publish.sh's staging tree is a
+# real work tree (`git init` + `git add -A`), so this does not affect it.
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "scrub-check: FAILED — not inside a git work tree (git rev-parse --show-toplevel failed); nothing was scanned. This is NOT a clean result." >&2
+  exit 1
+fi
 cd "$REPO_ROOT"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -191,16 +201,26 @@ SECRET_PATTERN="(${_gh_fine}|${_gh_ghp}|${_gh_gho}|${_gh_ghs}|${_aws_akia}|${_aw
 # skips the path entirely. 0 such tracked paths exist in this repo today (no
 # behavior change now), but the fix costs nothing and closes the gap before
 # it ever matters.
+# The list is captured, not read through `done < <(git ...)`: a process
+# substitution never fails the script, so a failed git call used to leave
+# FILES empty and print "no tracked files to scan" with exit 0 (follow-up
+# review, 2026-11-06). A git failure is now FAILED; an empty list from a
+# working git (a repo with no tracked files) is still the legitimate "no files".
 FILES=()
+_file_list=""
+_list_rc=0
 if [[ "$MODE" == "--staged" ]]; then
-  while IFS= read -r f; do
-    [[ -n "$f" ]] && FILES+=("$f")
-  done < <(git -c core.quotePath=false diff --cached --name-only --diff-filter=AMRC)
+  _file_list="$(git -c core.quotePath=false diff --cached --name-only --diff-filter=AMRC)" || _list_rc=$?
 else
-  while IFS= read -r f; do
-    [[ -n "$f" ]] && FILES+=("$f")
-  done < <(git -c core.quotePath=false ls-files)
+  _file_list="$(git -c core.quotePath=false ls-files)" || _list_rc=$?
 fi
+if [[ "$_list_rc" -ne 0 ]]; then
+  echo "scrub-check: FAILED — git could not list the files to scan (exit $_list_rc); nothing was scanned. This is NOT a clean result." >&2
+  exit 1
+fi
+while IFS= read -r f; do
+  [[ -n "$f" ]] && FILES+=("$f")
+done <<< "$_file_list"
 
 if [[ ${#FILES[@]} -eq 0 ]]; then
   echo "scrub-check: no tracked files to scan"
@@ -248,6 +268,27 @@ is_allowlisted() {
 # 5. Scan
 # ---------------------------------------------------------------------------
 FOUND=0
+# SCAN_FAILED=1 once any git call of a scan did not complete (see _git_scan).
+SCAN_FAILED=0
+
+# _git_scan <label> <git grep args...> — one `git grep` of the scan. Exit 0
+# (matches) and exit 1 (no match) are git grep's own legitimate outcomes; any
+# other status means the scan did NOT run for this part. That used to be
+# `2>/dev/null || true`, which read exit 128 as "no match" (follow-up review,
+# 2026-11-06). Sets GIT_SCAN_OUT (matches, empty on no match or failure).
+_git_scan() {
+  local label="$1" rc=0
+  shift
+  GIT_SCAN_OUT=""
+  GIT_SCAN_OUT="$(git "$@")" || rc=$?
+  if [[ "$rc" -eq 0 || "$rc" -eq 1 ]]; then
+    return 0
+  fi
+  GIT_SCAN_OUT=""
+  SCAN_FAILED=1
+  echo "scrub-check: FAILED — git grep ($label) exited $rc; that part of the scan did NOT run. This is NOT a clean result." >&2
+  return 0
+}
 
 scan_pattern() {
   local pattern="$1" label="$2"
@@ -256,17 +297,18 @@ scan_pattern() {
   if [[ $# -gt 0 ]]; then
     local excludes=("$@")
     if [[ "$MODE" == "--staged" ]]; then
-      out=$(git grep --cached -nIE "$pattern" -- "${FILES[@]}" "${excludes[@]}" 2>/dev/null || true)
+      _git_scan "$label" grep --cached -nIE "$pattern" -- "${FILES[@]}" "${excludes[@]}"
     else
-      out=$(git grep -nIE "$pattern" -- . "${excludes[@]}" 2>/dev/null || true)
+      _git_scan "$label" grep -nIE "$pattern" -- . "${excludes[@]}"
     fi
   else
     if [[ "$MODE" == "--staged" ]]; then
-      out=$(git grep --cached -nIE "$pattern" -- "${FILES[@]}" 2>/dev/null || true)
+      _git_scan "$label" grep --cached -nIE "$pattern" -- "${FILES[@]}"
     else
-      out=$(git grep -nIE "$pattern" 2>/dev/null || true)
+      _git_scan "$label" grep -nIE "$pattern"
     fi
   fi
+  out="$GIT_SCAN_OUT"
   [[ -z "$out" ]] && return 0
   local match file lineno content
   while IFS= read -r match; do
@@ -319,25 +361,115 @@ if [[ "$HAVE_VAULT" -eq 0 ]]; then
   echo "scrub-check: WARNING — no vault at $(vault_dir 2>/dev/null || echo '~/.claude/vault'); vault-sourced PII/leak checks (§ PII, § private leak) are skipped this run. Structural patterns (path/email/id shapes) inside vault.sh check still run regardless. Run: scripts/vault/vault.sh init" >&2
 fi
 
+# FAIL LOUD (2026-11-06, defect sweep): every vault.sh call used to run as
+# `... 2>/dev/null) || true`, so a crashed or broken vault.sh produced zero
+# rows and the run reported "clean". Every call now goes through
+# vault_check_step below: its stderr is forwarded, and its exit status is
+# classified against vault.sh's documented contract (header of vault.sh:
+# check = 0 clean, 2 findings, 1 error). A call that did not complete sets
+# VAULT_*_OK=0, its section prints NOT CHECKED, and the run ends FAILED.
+
+# _vault_forward_stderr <err_file> — prints vault.sh's stderr to ours. The
+# no-vault warning is dropped ONLY when this run has no vault: scrub-check
+# already printed its own copy at line ~319, and forwarding vault.sh's copy
+# once per staged file would repeat it N times (fail-loud: one message, not
+# a habituated flood).
+_vault_forward_stderr() {
+  local line
+  [[ -s "$1" ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$HAVE_VAULT" -eq 0 && "$line" == "vault: WARNING"*"no vault at"* ]]; then
+      continue
+    fi
+    printf '%s\n' "$line" >&2
+  done < "$1"
+  return 0
+}
+
+# _vault_rows_wellformed <text> — true when <text> holds at least one finding
+# row and every non-blank line has the five tab-separated fields vault.sh
+# check emits: file, line number, kind, term, token. LC_ALL=C keeps the test
+# byte-wise, independent of the caller's locale (umlaut file names).
+_vault_rows_wellformed() {
+  printf '%s\n' "$1" | LC_ALL=C awk -F'\t' '
+    NF == 0 { next }
+    { rows++ }
+    NF != 5 || $1 == "" || $2 !~ /^[0-9]+$/ || $3 == "" { bad++ }
+    END { exit ((rows > 0 && bad == 0) ? 0 : 1) }
+  '
+}
+
+# vault_check_step <label> <args after "check"...> — runs ONE `vault.sh check`
+# (stdin passed through). Sets VAULT_STEP_OK (1 completed, 0 failed) and
+# VAULT_STEP_ROWS (finding rows, empty when clean).
+#   exit 0 + empty stdout                  -> clean
+#   exit 2 + >=1 well-formed finding row   -> findings (the legitimate hit)
+#   anything else                          -> did not complete, FAILED line
+# Exit 2 is NOT trusted by itself: a bash syntax error in vault.sh and a perl
+# die on a missing rules file both exit 2 with no rows (verified 2026-11-06),
+# the same status vault.sh uses for findings. The stdout shape is the second
+# half of the test; the exit code alone cannot classify a result.
+vault_check_step() {
+  local label="$1"
+  shift
+  local err_file out rc=0
+  err_file="$(mktemp "${TMPDIR:-/tmp}/scrub-check-vault-err.XXXXXX")"
+  out="$(bash "$VAULT_SH" check "$@" 2>"$err_file")" || rc=$?
+  _vault_forward_stderr "$err_file"
+  rm -f "$err_file"
+  VAULT_STEP_ROWS=""
+  VAULT_STEP_OK=0
+  if [[ "$rc" -eq 0 && -z "$out" ]]; then
+    VAULT_STEP_OK=1
+  elif [[ "$rc" -eq 2 ]] && _vault_rows_wellformed "$out"; then
+    VAULT_STEP_OK=1
+    VAULT_STEP_ROWS="$out"
+  fi
+  if [[ "$VAULT_STEP_OK" -eq 0 ]]; then
+    echo "scrub-check: FAILED — vault.sh check ($label) exited $rc without a valid result (contract: 0 = clean, 2 = findings with rows on stdout; anything else is a crash). Its checks did NOT run; this is not a clean result." >&2
+  fi
+  return 0
+}
+
 VAULT_RAW=""
+VAULT_CONTENT_OK=1
+VAULT_NAMES_OK=1
 if [[ -f "$VAULT_SH" ]]; then
   if [[ "$MODE" == "--staged" ]]; then
+    _vault_blob="$(mktemp "${TMPDIR:-/tmp}/scrub-check-blob.XXXXXX")"
     for _vf in "${FILES[@]}"; do
-      _vf_out="$(git show ":$_vf" 2>/dev/null | bash "$VAULT_SH" check --stdin --as "$_vf" 2>/dev/null)" || true
-      [[ -n "$_vf_out" ]] && VAULT_RAW="${VAULT_RAW}${_vf_out}"$'\n'
+      if ! git show ":$_vf" > "$_vault_blob"; then
+        VAULT_CONTENT_OK=0
+        echo "scrub-check: FAILED — git show could not read the staged content of $_vf; it was NOT scanned by the vault-sourced checks." >&2
+        continue
+      fi
+      vault_check_step "$_vf" --stdin --as "$_vf" < "$_vault_blob"
+      if [[ "$VAULT_STEP_OK" -eq 0 ]]; then
+        VAULT_CONTENT_OK=0
+      fi
+      if [[ -n "$VAULT_STEP_ROWS" ]]; then
+        VAULT_RAW="${VAULT_RAW}${VAULT_STEP_ROWS}"$'\n'
+      fi
     done
+    rm -f "$_vault_blob"
   else
-    VAULT_RAW="$(bash "$VAULT_SH" check "${FILES[@]}" 2>/dev/null)" || true
+    vault_check_step "tracked files" "${FILES[@]}"
+    VAULT_CONTENT_OK="$VAULT_STEP_OK"
+    VAULT_RAW="$VAULT_STEP_ROWS"
   fi
 else
-  echo "scrub-check: WARNING — $VAULT_SH not found; vault-sourced PII/leak checks are skipped this run." >&2
+  VAULT_CONTENT_OK=0
+  VAULT_NAMES_OK=0
+  echo "scrub-check: FAILED — $VAULT_SH not found; vault-sourced checks (PII, file names, private leak) did NOT run. This is not a clean result." >&2
 fi
 
 echo "PII / personal-data patterns:"
 _pii_found=0
-if [[ -n "$VAULT_RAW" ]]; then
+if [[ "$VAULT_CONTENT_OK" -eq 0 ]]; then
+  echo "  NOT CHECKED — vault.sh check did not complete (see scrub-check: FAILED on stderr)"
+elif [[ -n "$VAULT_RAW" ]]; then
   # 2026-09-25 rework round 6, IMP-219, Befund H1: NO second kind-list here
-  # on purpose (rules/testing-quality.md "Verify Via the Same Code Path") —
+  # on purpose (rules/slop-prevention.md "Verification principles": "Verify Via the Same Code Path") —
   # every row vault.sh check returns for this content is a finding, full
   # stop. The previous case/esac whitelist (user|email|phrase|project|
   # account|id) silently dropped "path" — the one kind missing from it —
@@ -356,7 +488,9 @@ if [[ -n "$VAULT_RAW" ]]; then
     FOUND=1
   done <<< "$VAULT_RAW"
 fi
-[[ "$_pii_found" -eq 0 ]] && echo "  clean"
+if [[ "$VAULT_CONTENT_OK" -eq 1 && "$_pii_found" -eq 0 ]]; then
+  echo "  clean"
+fi
 
 # ---------------------------------------------------------------------------
 # 6b. PII in tracked FILE NAMES, not just file CONTENT (added 2026-09-23).
@@ -400,19 +534,23 @@ _name_found=0
 # text is unredacted here (same rationale a normal secret scanner uses when
 # it shows "path:line" but masks only the payload).
 if [[ -f "$VAULT_SH" ]]; then
-  _names_out="$(printf '%s\n' "${FILES[@]}" | bash "$VAULT_SH" check --stdin --as "<tracked-file-names>" 2>/dev/null)" || true
-  if [[ -n "$_names_out" ]]; then
-    while IFS=$'\t' read -r _nf _nln _nkind _nterm _ntok; do
-      [[ -z "$_nf" ]] && continue
-      _matched_path="${FILES[$((_nln - 1))]}"
-      mask_value "$_nterm"
-      echo "  [NAME-PATH] $_matched_path"
-      FOUND=1
-      _name_found=1
-    done <<< "$_names_out"
-  fi
+  _names_input="$(printf '%s\n' "${FILES[@]}")"
+  vault_check_step "tracked file names" --stdin --as "<tracked-file-names>" <<< "$_names_input"
+  VAULT_NAMES_OK="$VAULT_STEP_OK"
+  while IFS=$'\t' read -r _nf _nln _nkind _nterm _ntok; do
+    [[ -z "$_nf" ]] && continue
+    _matched_path="${FILES[$((_nln - 1))]}"
+    mask_value "$_nterm"
+    echo "  [NAME-PATH] $_matched_path"
+    FOUND=1
+    _name_found=1
+  done <<< "$VAULT_STEP_ROWS"
 fi
-[[ "$_name_found" -eq 0 ]] && echo "  clean (no tracked file name matched)"
+if [[ "$VAULT_NAMES_OK" -eq 0 ]]; then
+  echo "  NOT CHECKED — vault.sh check did not complete (see scrub-check: FAILED on stderr)"
+elif [[ "$_name_found" -eq 0 ]]; then
+  echo "  clean (no tracked file name matched)"
+fi
 
 echo "Rebrand regression (leftover pre-rebrand project name):"
 _rebrand_term="tor""valdsen"
@@ -514,7 +652,13 @@ if [[ "$MODE" == "--staged" ]]; then
     # pathspec, so git reports the new path as a full addition — every line
     # of a renamed file counts as "added" (same as a brand-new file), never
     # fewer. Verified empirically (git 2.51.0) before writing this.
-    _rb_diff="$(git diff --cached --no-color -U0 -- "$_rb_f" 2>/dev/null || true)"
+    # A failed diff must NOT drop the file silently (follow-up review,
+    # 2026-11-06): it is reported FAILED and the run cannot end clean.
+    if ! _rb_diff="$(git diff --cached --no-color -U0 -- "$_rb_f")"; then
+      SCAN_FAILED=1
+      echo "scrub-check: FAILED — git diff --cached ($_rb_f) did not complete; that file was NOT checked for the rebrand name. This is NOT a clean result." >&2
+      continue
+    fi
     [[ -z "$_rb_diff" ]] && continue
     _rb_newln=0
     _rb_seen_hunk=0
@@ -563,7 +707,8 @@ if [[ "$MODE" == "--staged" ]]; then
   fi
   rebrand_out="${rebrand_out%$'\n'}"
 else
-  rebrand_out=$(git grep -niI "$_rebrand_term" -- . "${REBRAND_CARVEOUT[@]}" "${SELF_EXCLUDE[@]}" 2>/dev/null || true)
+  _git_scan "rebrand" grep -niI "$_rebrand_term" -- . "${REBRAND_CARVEOUT[@]}" "${SELF_EXCLUDE[@]}"
+  rebrand_out="$GIT_SCAN_OUT"
 fi
 if [[ -n "$rebrand_out" ]]; then
   while IFS= read -r match; do
@@ -622,7 +767,9 @@ else
     exit 1
   fi
   _pn_found=0
-  if [[ -n "$VAULT_RAW" ]]; then
+  if [[ "$VAULT_CONTENT_OK" -eq 0 ]]; then
+    echo "  NOT CHECKED — vault.sh check did not complete (see scrub-check: FAILED on stderr)"
+  elif [[ -n "$VAULT_RAW" ]]; then
     while IFS=$'\t' read -r _f _ln _kind _term _tok; do
       [[ -z "$_f" || -z "$_tok" ]] && continue
       if [[ "$REDACT" -eq 1 ]]; then
@@ -635,12 +782,20 @@ else
       FOUND=1
     done <<< "$VAULT_RAW"
   fi
-  [[ "$_pn_found" -eq 0 ]] && echo "  clean (0 real vault term(s) found)"
+  if [[ "$VAULT_CONTENT_OK" -eq 1 && "$_pn_found" -eq 0 ]]; then
+    echo "  clean (0 real vault term(s) found)"
+  fi
 fi
 
 echo ""
 if [[ "$FOUND" -eq 1 ]]; then
   echo "scrub-check: BLOCKED — findings above must be fixed or added to scripts/scrub-allowlist.txt"
+fi
+if [[ "$VAULT_CONTENT_OK" -eq 0 || "$VAULT_NAMES_OK" -eq 0 || "$SCAN_FAILED" -eq 1 ]]; then
+  echo "scrub-check: FAILED — a check did not complete (see the FAILED lines on stderr); this is NOT a clean result." >&2
+  exit 1
+fi
+if [[ "$FOUND" -eq 1 ]]; then
   exit 1
 fi
 

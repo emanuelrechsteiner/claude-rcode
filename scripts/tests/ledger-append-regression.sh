@@ -446,6 +446,163 @@ else
     bad "mode argument misuse must exit 2" "rc1=$rc1 rc2=$rc2 out=$out out2=$out2"
 fi
 
+# ══ IMP-282: the live install queues instead of allocating ids; the workshop
+#    imports the queue. Every case runs in a throwaway HOME with a fake live
+#    install and a fake workshop ledger; no case needs the old live override
+#    except Q9, which names it. ═══════════════════════════════════════════════
+SANDBOXES=""
+new_sandbox() {  # sets SB, LIVE_LEDGER, WS_LEDGER, PENDING
+    SB=$(mktemp -d "${TMPDIR:-/tmp}/ledger-queue-test.XXXXXX")
+    SANDBOXES="$SANDBOXES $SB"
+    mkdir -p "$SB/home/.claude/global-observation" "$SB/workshop"
+    LIVE_LEDGER="$SB/home/.claude/global-observation/improvement-ledger.json"
+    WS_LEDGER="$SB/workshop/improvement-ledger.json"
+    PENDING="$SB/home/.claude/global-observation/ledger-pending.jsonl"
+    jq -n '{totalImprovements: 2, totalImplementations: 1, totalStaged: 0, totalRollbacks: 0,
+      metrics: {totalEntries: 2},
+      batchA_2026: {description: "fixture", entries: [
+        {id: "IMP-101", status: "implemented", verification: {measured: "1/1"}},
+        {id: "IMP-102", status: "proposed", verification: null}]}}' > "$LIVE_LEDGER"
+    cp "$LIVE_LEDGER" "$WS_LEDGER"
+}
+ws_run() {  # workshop ledger, throwaway HOME, no vault
+    env HOME="$SB/home" CLAUDE_VAULT_DIR="$SB/no-vault" CLAUDE_LEDGER_FILE="$WS_LEDGER" \
+        bash "$LEDGER_APPEND" "$@" 2>&1
+}
+live_run() {  # the fake live install's ledger (CLAUDE_LIVE_DIR points at the fake HOME/.claude)
+    env HOME="$SB/home" CLAUDE_VAULT_DIR="$SB/no-vault" CLAUDE_LIVE_DIR="$SB/home/.claude" \
+        CLAUDE_LEDGER_FILE="$LIVE_LEDGER" bash "$LEDGER_APPEND" "$@" 2>&1
+}
+FA='{"finding":"F-A1","title":"alpha","category":"quality","riskLevel":"low","recommendation":"r-a","evidence":"clean"}'
+FB='{"finding":"F-B1","title":"beta","category":"quality","riskLevel":"low","recommendation":"r-b","evidence":"clean"}'
+
+# ── Q1: workshop append allocates the next id as before (IMP-103; the fixture
+#    tops out at IMP-102).
+new_sandbox
+out=$(printf '%s\n' "$FA" | ws_run --proposal meta-proposal-q1.md); rc=$?
+Q1_ID=$(jq -r '[.. | objects | select(.sourceProposal? == "meta-proposal-q1.md#F-A1") | .id] | join(",")' "$WS_LEDGER")
+if [[ "$rc" -eq 0 ]] && [[ "$Q1_ID" == "IMP-103" ]]; then
+    ok "workshop append allocates the next free id (IMP-103) as before"
+else
+    bad "workshop append allocates the next free id" "rc=$rc id=$Q1_ID out=$out"
+fi
+
+# ── Q2: live append leaves the ledger byte-identical and queues one line per
+#    finding in ledger-pending.jsonl beside it, shape {queuedAt, proposal, finding}.
+new_sandbox
+LIVE_BEFORE=$(hash_of "$LIVE_LEDGER")
+out=$(printf '%s\n' "$FA" "$FB" | live_run --proposal meta-proposal-q2.md); rc=$?
+LIVE_AFTER=$(hash_of "$LIVE_LEDGER")
+Q2_LINES=$(jq -s 'length' "$PENDING" 2>/dev/null)
+Q2_SHAPE=$(jq -s -e 'all(.[]; (keys == ["finding","proposal","queuedAt"]) and (.proposal == "meta-proposal-q2.md") and (.finding.finding | type == "string"))' "$PENDING" >/dev/null 2>&1 && echo y || echo n)
+if [[ "$rc" -eq 0 ]] && [[ "$LIVE_BEFORE" == "$LIVE_AFTER" ]] && [[ "$Q2_LINES" == "2" ]] && [[ "$Q2_SHAPE" == "y" ]] \
+    && printf '%s' "$out" | grep -q "QUEUED 2 finding(s)"; then
+    ok "live append: ledger byte-identical, two queue lines written, QUEUED printed"
+else
+    bad "live append must queue, not write" "rc=$rc before=$LIVE_BEFORE after=$LIVE_AFTER lines=$Q2_LINES shape=$Q2_SHAPE out=$out"
+fi
+
+# ── Q3: --dry-run in the live install prints what would be queued and writes nothing.
+new_sandbox
+LIVE_BEFORE=$(hash_of "$LIVE_LEDGER")
+out=$(printf '%s\n' "$FA" | live_run --proposal meta-proposal-q3.md --dry-run); rc=$?
+LIVE_AFTER=$(hash_of "$LIVE_LEDGER")
+if [[ "$rc" -eq 0 ]] && [[ "$LIVE_BEFORE" == "$LIVE_AFTER" ]] && [[ ! -e "$PENDING" ]] \
+    && printf '%s' "$out" | grep -q "DRY-RUN" && printf '%s' "$out" | grep -q "F-A1"; then
+    ok "live --dry-run: prints the queue preview, ledger and pending file untouched"
+else
+    bad "live --dry-run must write nothing" "rc=$rc out=$out"
+fi
+
+# ── Q4: the vault gate still runs before anything is queued. A registered vault
+#    term used as the finding id (charset-safe, so only the full sourceProposal
+#    check catches it) refuses the run: ledger identical, nothing queued, the
+#    term never printed. Same blocking route as Case 11.
+new_sandbox
+Q4_VAULT="$SB/vault"
+CLAUDE_VAULT_DIR="$Q4_VAULT" bash "$VAULT_SH" init >/dev/null 2>&1
+CLAUDE_VAULT_DIR="$Q4_VAULT" bash "$VAULT_SH" add project "SynthCorpQ4" --group synthcorpq4 >/dev/null 2>&1
+LIVE_BEFORE=$(hash_of "$LIVE_LEDGER")
+out=$(jq -nc '{finding:"SynthCorpQ4",title:"t4",category:"quality",riskLevel:"low",recommendation:"r",evidence:"clean"}' \
+    | env HOME="$SB/home" CLAUDE_VAULT_DIR="$Q4_VAULT" CLAUDE_LIVE_DIR="$SB/home/.claude" \
+        CLAUDE_LEDGER_FILE="$LIVE_LEDGER" bash "$LEDGER_APPEND" --proposal meta-proposal-q4.md 2>&1); rc=$?
+LIVE_AFTER=$(hash_of "$LIVE_LEDGER")
+if [[ "$rc" -eq 1 ]] && [[ "$LIVE_BEFORE" == "$LIVE_AFTER" ]] && [[ ! -e "$PENDING" ]] \
+    && printf '%s' "$out" | grep -q "BLOCKED" && ! printf '%s' "$out" | grep -q "SynthCorpQ4"; then
+    ok "live append with a registered vault term as finding id: vault gate blocks before queueing, nothing queued"
+else
+    bad "vault gate must run before queueing" "rc=$rc out=$out"
+fi
+
+# ── Q5 + Q6: workshop import appends the queued findings with fresh ids, leaves
+#    the pending file in place, and a second run reports them as duplicates.
+new_sandbox
+printf '%s\n' "$FA" "$FB" | live_run --proposal meta-proposal-q5.md >/dev/null
+PEND_BEFORE=$(hash_of "$PENDING")
+out=$(ws_run --import-pending "$PENDING"); rc=$?
+Q5_IDS=$(jq -r '[.. | objects | select(has("sourceProposal")) | .id] | sort | join(",")' "$WS_LEDGER")
+PEND_AFTER=$(hash_of "$PENDING")
+if [[ "$rc" -eq 0 ]] && [[ "$Q5_IDS" == "IMP-103,IMP-104" ]] && [[ "$PEND_BEFORE" == "$PEND_AFTER" ]] \
+    && printf '%s' "$out" | grep -q "IMPORTED 2 finding(s), 0 skipped as duplicates"; then
+    ok "workshop import: two findings appended with fresh ids (IMP-103, IMP-104), pending file kept"
+else
+    bad "workshop import must append with fresh ids and keep the pending file" "rc=$rc ids=$Q5_IDS out=$out"
+fi
+WS_MID=$(hash_of "$WS_LEDGER")
+out2=$(ws_run --import-pending "$PENDING"); rc2=$?
+WS_AFTER=$(hash_of "$WS_LEDGER")
+if [[ "$rc2" -eq 0 ]] && [[ "$WS_MID" == "$WS_AFTER" ]] \
+    && printf '%s' "$out2" | grep -q "IMPORTED 0 finding(s), 2 skipped as duplicates"; then
+    ok "second workshop import: both findings reported as duplicates, ledger byte-identical"
+else
+    bad "second import must dedup by sourceProposal" "rc2=$rc2 out2=$out2"
+fi
+
+# ── Q7: --import-pending in the live install is refused (exit 2), ledger untouched.
+new_sandbox
+printf '%s\n' "$FA" | live_run --proposal meta-proposal-q7.md >/dev/null
+LIVE_BEFORE=$(hash_of "$LIVE_LEDGER")
+out=$(live_run --import-pending "$PENDING"); rc=$?
+LIVE_AFTER=$(hash_of "$LIVE_LEDGER")
+if [[ "$rc" -eq 2 ]] && [[ "$LIVE_BEFORE" == "$LIVE_AFTER" ]] && printf '%s' "$out" | grep -q "refused in the live install"; then
+    ok "--import-pending in the live install: refused (exit 2), ledger byte-identical"
+else
+    bad "--import-pending must be refused in the live install" "rc=$rc out=$out"
+fi
+
+# ── Q8: a pending line that is not valid JSON is reported and skipped; the
+#    import continues with the valid lines around it (exit 1 keeps the file).
+new_sandbox
+PEND8="$SB/pending-q8.jsonl"
+{
+    jq -nc --argjson f "$FA" '{queuedAt: "2026-11-11T00:00:00Z", proposal: "meta-proposal-q8.md", finding: $f}'
+    printf '%s\n' 'not json{'
+    jq -nc --argjson f "$FB" '{queuedAt: "2026-11-11T00:00:00Z", proposal: "meta-proposal-q8.md", finding: $f}'
+} > "$PEND8"
+out=$(ws_run --import-pending "$PEND8"); rc=$?
+Q8_IDS=$(jq -r '[.. | objects | select(has("sourceProposal")) | .id] | sort | join(",")' "$WS_LEDGER")
+if [[ "$rc" -eq 1 ]] && [[ "$Q8_IDS" == "IMP-103,IMP-104" ]] \
+    && printf '%s' "$out" | grep -q "SKIPPED pending line 2" && printf '%s' "$out" | grep -q "IMPORTED 2 finding(s)"; then
+    ok "invalid pending line: reported and skipped, valid lines imported around it"
+else
+    bad "invalid pending line must be skipped without stopping the import" "rc=$rc ids=$Q8_IDS out=$out"
+fi
+
+# ── Q9: the regression override CLAUDE_LEDGER_ALLOW_LIVE_APPEND=1 restores the
+#    old direct live append (allocates IMP-103 in the live ledger, queues nothing).
+new_sandbox
+out=$(printf '%s\n' "$FA" | env HOME="$SB/home" CLAUDE_VAULT_DIR="$SB/no-vault" CLAUDE_LIVE_DIR="$SB/home/.claude" \
+    CLAUDE_LEDGER_FILE="$LIVE_LEDGER" CLAUDE_LEDGER_ALLOW_LIVE_APPEND=1 \
+    bash "$LEDGER_APPEND" --proposal meta-proposal-q9.md 2>&1); rc=$?
+Q9_ID=$(jq -r '[.. | objects | select(.sourceProposal? == "meta-proposal-q9.md#F-A1") | .id] | join(",")' "$LIVE_LEDGER")
+if [[ "$rc" -eq 0 ]] && [[ "$Q9_ID" == "IMP-103" ]] && [[ ! -e "$PENDING" ]]; then
+    ok "CLAUDE_LEDGER_ALLOW_LIVE_APPEND=1: old live append restored (IMP-103), nothing queued"
+else
+    bad "CLAUDE_LEDGER_ALLOW_LIVE_APPEND=1 must restore the direct live append" "rc=$rc id=$Q9_ID out=$out"
+fi
+
+for d in $SANDBOXES; do rm -rf "$d"; done
+
 echo "──────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

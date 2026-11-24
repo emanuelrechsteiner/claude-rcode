@@ -1,6 +1,6 @@
 ---
 name: kokonutui-pro
-description: KokonutUI Pro setup and component installation — per-project shadcn/ui registry config, KOKO_PRO_TOKEN handling, and the complete component slug index (references/index.md). Use when setting up KokonutUI Pro in a project, adding components, or debugging registry auth/404 errors. Triggers on "kokonutui", "@kokonutui-pro", "koko", "KOKO_PRO_TOKEN", "shadcn add @kokonutui-pro", "kokonutui component", "kokonutui einrichten", "kokonutui komponente hinzufügen", "koko pro registry".
+description: "Sets up KokonutUI Pro per project (shadcn/ui registry block, KOKO_PRO_TOKEN from the environment) and installs components by slug from its bundled index. Use when adding KokonutUI components or debugging registry auth or 404 errors."
 ---
 
 # KokonutUI Pro Setup

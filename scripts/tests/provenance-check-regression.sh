@@ -341,12 +341,49 @@ else
   bad "only the Non-adoptions section may register annotations" "rc=$RC out=$OUT"
 fi
 
-# ── Case 23: the real workshop has exactly the 3 registered annotations ────
+# ── Case 23: the registered annotations present in the tree under test are counted ─
+# The expected count is derived from the registry rows (Non-adoptions section) whose file
+# is tracked and on disk in the tree under test. Workshop-only registered files (e.g. the
+# private CLAUDE.md, ops/) are absent from the public mirror: they are named on stdout,
+# never counted, never passed silently. The "no UNREGISTERED ANNOTATION" half applies in
+# every tree. In the workshop, where every registered file is present, the count is pinned to 2.
+REG_NOTICES="$REPO_ROOT/skills/THIRD-PARTY-NOTICES.md"
+REG_TOTAL=0
+REG_EXPECTED=0
+REG_ABSENT=""
+REG_ROWS="$(awk -v SEC="## Non-adoptions (provenance annotations)" '
+BEGIN { insec = 0 }
+/^## / { insec = (index($0, SEC) == 1 && length($0) == length(SEC)); next }
+/^# /  { insec = 0; next }
+insec && /^- / {
+  n = split(substr($0, 3), f, " — ")
+  path = f[1]; tok = f[2]
+  gsub(/^ +| +$/, "", path); gsub(/^ +| +$/, "", tok)
+  if (n >= 4 && path != "" && (tok == "[provenance: not-adopted]" || tok == "[provenance: own]"))
+    printf "%s\t%s\n", path, tok
+}' "$REG_NOTICES")" || REG_ROWS=""
+while IFS=$'\t' read -r reg_path reg_tok; do
+  [[ -n "$reg_path" ]] || continue
+  REG_TOTAL=$((REG_TOTAL + 1))
+  if [[ -f "$REPO_ROOT/$reg_path" ]] && [[ -n "$(git -C "$REPO_ROOT" ls-files -- "$reg_path")" ]]; then
+    reg_lines="$(grep -c -F -- "$reg_tok" "$REPO_ROOT/$reg_path")"
+    REG_EXPECTED=$((REG_EXPECTED + reg_lines))
+  else
+    REG_ABSENT="${REG_ABSENT:+$REG_ABSENT, }$reg_path"
+  fi
+done <<< "$REG_ROWS"
+if [[ -n "$REG_ABSENT" ]]; then
+  printf '  note: registered files absent from this tree (not counted): %s\n' "$REG_ABSENT"
+fi
 run_check --root "$REPO_ROOT"
-if [[ "$RC" -eq 0 ]] && [[ "$OUT" == *"3 annotated (registered)"* ]] && [[ "$OUT" != *UNREGISTERED* ]]; then
-  ok "real workshop: exit 0, 3 annotated (registered), no UNREGISTERED ANNOTATION"
+PIN_OK=1
+if [[ -z "$REG_ABSENT" ]] && [[ "$REG_EXPECTED" -ne 2 ]]; then PIN_OK=0; fi
+if [[ "$REG_TOTAL" -eq 0 ]]; then
+  bad "registry unreadable: no rows in the Non-adoptions section of $REG_NOTICES" "rc=$RC out=$OUT"
+elif [[ "$PIN_OK" -eq 1 ]] && [[ "$RC" -eq 0 ]] && [[ "$OUT" == *", $REG_EXPECTED annotated (registered)"* ]] && [[ "$OUT" != *UNREGISTERED* ]]; then
+  ok "registered annotations in this tree: exit 0, $REG_EXPECTED annotated (registered) of $REG_TOTAL registered rows, no UNREGISTERED ANNOTATION"
 else
-  bad "real workshop must show 3 registered annotations and no unregistered ones" "rc=$RC out=$OUT"
+  bad "registered annotation count must equal the registered rows present in this tree (pinned to 2 when all are present) with no unregistered ones" "expected=$REG_EXPECTED total=$REG_TOTAL absent=[$REG_ABSENT] pin_ok=$PIN_OK rc=$RC out=$OUT"
 fi
 
 echo "──────────────────────────────────────"

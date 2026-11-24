@@ -633,7 +633,7 @@ source "$REPO_ROOT/scripts/vault/lib.sh"
 OLD_SECRET="$(cat "$CLAUDE_VAULT_DIR/secret")"
 # Old method reimplemented ONCE, HERE ONLY, purely to prove the new
 # derivation agrees with it byte-for-byte — the shipped code no longer
-# contains this line (rules/testing-quality.md "same code path": this is
+# contains this line (rules/slop-prevention.md "Verification principles" "same code path": this is
 # a test asserting the NEW path agrees with the OLD one, not a second
 # production matcher).
 old_hmac_hex6() {

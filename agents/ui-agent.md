@@ -1,7 +1,8 @@
 ---
 name: ui-agent
 description: "UI design and component implementation. Use for: visual design systems, component specifications, color schemes, typography, spacing, design tokens, Storybook stories, and React/TypeScript component implementation."
-model: sonnet
+model: haiku
+effort: high
 tools:
   - Glob
   - Grep

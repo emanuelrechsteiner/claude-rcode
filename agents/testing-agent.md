@@ -1,7 +1,8 @@
 ---
 name: testing-agent
-description: "Testing and QA. Use when the user asks to 'write tests', 'add test coverage', 'create unit tests', 'add integration tests', 'write E2E tests', 'check coverage', 'reproduce a bug', 'fix failing tests', or mentions Jest, Vitest, Playwright, Cypress, testing library, test coverage, mocking, test fixtures, QA, or quality assurance."
-model: sonnet
+description: "Writes unit, integration and E2E tests, checks coverage and reproduces bugs as failing tests. Use for test work with Jest, Vitest, Playwright or Cypress, mocking, fixtures, or test failures."
+model: haiku
+effort: high
 tools:
   - Glob
   - Grep

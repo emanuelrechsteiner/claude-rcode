@@ -3,7 +3,7 @@
 # ──────────────────────────────────────────────────────────────────────
 # Standing-allow for web research fetching; escalate to a native `ask`
 # ONLY for URLs that trip a DETERMINISTIC danger signal. Pairs with
-# rules/web-research-trust.md (the LLM-judgment layer).
+# the web research section of rules/agency-bands.md (the LLM-judgment layer).
 #
 # WHY a hook AND a rule (see agency-bands.md): a PreToolUse hook is a
 # synchronous shell script — it CANNOT invoke an LLM. So it screens only
@@ -48,7 +48,7 @@
 # composition (xargs/parallel/base64-decode/variable-indirection two-step download-
 # then-run without a pipe, `/x.exe/download` mid-path ext, `# | bash` comment over-
 # ask) is NOT robustly gated here — that is the remit of guard-unsafe.sh (CRITICAL
-# floor) + rules/web-research-trust.md (the LLM judgment layer), per agency-bands.md.
+# floor) + the web research section of rules/agency-bands.md (the LLM judgment layer).
 #
 # Fails OPEN (exit 0) on parse failure. Bypass: CLAUDE_WEBFETCH_GATE_OFF=1
 # Self-test exemption: CLAUDE_WEBFETCH_GATE_TESTMODE=1 (prints "ASK: …" to stderr)
@@ -260,7 +260,7 @@ if [ -n "$reason" ]; then
          --arg tool "$TOOL" --arg reason "$reason" \
       '{ts:$ts, gate:"web-fetch", tool:$tool, decision:"ask", reason:$reason}' \
       >> "$LOG_FILE" 2>/dev/null || true
-  MSG="web-fetch-safety-gate (web-research-trust.md): ${reason}. This request crosses the deterministic danger threshold — please explicitly confirm the fetch/execution (y/n). The standing permission only covers inconspicuous research URLs."
+  MSG="web-fetch-safety-gate (rules/agency-bands.md, web research): ${reason}. This request crosses the deterministic danger threshold — please explicitly confirm the fetch/execution (y/n). The standing permission only covers inconspicuous research URLs."
   REASON_JSON=$(printf '%s' "$MSG" | jq -Rs '.')
   cat <<JSON
 {

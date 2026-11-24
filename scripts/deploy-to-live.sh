@@ -131,7 +131,12 @@ RUNTIME_KEYS_JSON='[["model"],["effortLevel"],["theme"],["permissions","defaultM
 #                  versioned, public repo — not even filtered
 #                  through a publish transform. Generic template for the
 #                  content: templates/automode-environment.template.json.
-HAUS_ONLY_KEYS_JSON='[["autoMode"]]'
+#   ["deniedMcpServers"] — the denylist of claude.ai connectors the owner keeps out
+#                  of Claude Code without disconnecting them from the account
+#                  (IMP-287). Its values are the names of the owner's personal
+#                  connectors, i.e. private account data, so they stay out of the
+#                  published settings.json exactly like autoMode.
+HAUS_ONLY_KEYS_JSON='[["autoMode"],["deniedMcpServers"]]'
 
 # Union of both lists — for the check "does the live install diverge OUTSIDE the
 # protected paths?", BOTH categories are allowed to diverge without triggering
@@ -249,6 +254,54 @@ sync_runtime_prefs() {
   git -C "$workshop" add settings.json
   git -C "$workshop" commit -q -m "chore(config): pulled runtime preferences back from the live install ($changed)"
   note "config: workshop commit $(git -C "$workshop" rev-parse --short HEAD)"
+}
+
+# IMP-282: the live install never allocates ledger ids. What its routines queued in
+# global-observation/ledger-pending.jsonl is imported into the workshop ledger here
+# (fresh ids, the usual de-duplication and vault gate) and committed; only then is the
+# queue emptied. A failed import aborts the deploy with ledger and queue as they were.
+# Runs before the workshop check because it commits there, like sync_runtime_prefs.
+import_pending_ledger() {
+  local workshop="$1" live="$2"
+  local pending="$live/global-observation/ledger-pending.jsonl"
+  local ws_ledger="$workshop/global-observation/improvement-ledger.json"
+  [ -s "$pending" ] || return 0
+  note "config — importing the ledger proposals queued in the live install"
+  [ -f "$ws_ledger" ] || fail "config: $pending holds queued proposals, but the workshop has no ledger at $ws_ledger."
+  local out append
+  # claude-deploy is a symlink in /opt/homebrew/bin: follow it to the real script,
+  # otherwise dirname of BASH_SOURCE is /opt/homebrew/bin and the helper is not found.
+  local src="${BASH_SOURCE[0]}" link
+  while [ -L "$src" ]; do
+    link="$(readlink "$src")"
+    case "$link" in /*) src="$link" ;; *) src="$(dirname "$src")/$link" ;; esac
+  done
+  append="$(cd "$(dirname "$src")" && pwd)/ledger-append-proposed.sh"
+  [ -f "$append" ] || fail "config: ledger helper missing at $append."
+  # The append script leaves a backup beside the ledger. Here git is the backup (the
+  # ledger is restored from HEAD on failure and committed on success), and an untracked
+  # copy would fail the cleanliness check that follows: remove the copies of this run.
+  drop_import_backups() {
+    printf '%s\n' "$out" | sed -n 's/^.*\] backup: //p' | while IFS= read -r bak; do
+      case "$bak" in */global-observation/improvement-ledger.json.bak-append-*) rm -f "$bak" ;; esac
+    done
+  }
+  if ! out=$(CLAUDE_LEDGER_FILE="$ws_ledger" bash "$append" --import-pending "$pending" 2>&1); then
+    printf '%s\n' "$out"
+    drop_import_backups
+    git -C "$workshop" checkout -- global-observation/improvement-ledger.json 2>/dev/null || true
+    fail "config: importing the queued ledger proposals failed (above). The workshop ledger was restored and the queue $pending is untouched: fix the cause, then deploy again."
+  fi
+  printf '%s\n' "$out" | sed 's/^/  /'
+  drop_import_backups
+  if git -C "$workshop" diff --quiet -- global-observation/improvement-ledger.json; then
+    note "config: every queued proposal was already in the workshop ledger"
+  else
+    git -C "$workshop" add global-observation/improvement-ledger.json
+    git -C "$workshop" commit -q -m "chore(core): ledger carries the proposals queued in the live install - IMP-282"
+    note "config: workshop commit $(git -C "$workshop" rev-parse --short HEAD)"
+  fi
+  : > "$pending"
 }
 
 # IMP-243: refuse to deploy the config workshop unless every regression suite
@@ -439,6 +492,7 @@ deploy() {
 
   # Must run BEFORE the workshop check — the pull-back creates a commit there.
   [ "$name" = "config" ] && sync_runtime_prefs "$workshop" "$live"
+  [ "$name" = "config" ] && import_pending_ledger "$workshop" "$live"
 
   note "$name — checking the workshop"
   if [ -n "$(git -C "$workshop" status --porcelain)" ]; then

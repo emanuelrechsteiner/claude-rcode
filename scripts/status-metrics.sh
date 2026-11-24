@@ -16,7 +16,7 @@
 # `rcode-units.sh` (the ONE tracker-agnostic
 # parser — see its header) to learn which tracker is active, and to source
 # ALL plan-mode unit data — deliberately never re-implementing BRAINSTORM.md
-# parsing here (rules/testing-quality.md "Verify via the same code path, not
+# parsing here (rules/slop-prevention.md "Verification principles" "Verify via the same code path, not
 # a reimplementation": two independently-written counters drift).
 #
 # github mode is DELIBERATELY left calling `gh issue list` directly here too

@@ -1,6 +1,6 @@
 ---
 name: version-control
-description: Git operations and release management specialist. Handles branching strategies, conventional commits, PR management, release coordination, and clean Git history. Use when managing git operations, creating commits, handling branches, preparing releases, or managing PRs. Triggers on "git", "commit", "branch", "merge", "release", "PR", "pull request", "version", "tag", "push", "committe das", "commit machen", "branch erstellen", "branch anlegen", "PR öffnen", "pull request erstellen", "merge in main", "release vorbereiten", "tag setzen", "push auf origin", "rebase", "git state".
+description: "Runs git and GitHub work: branches, pushes, rebases, conventional commits, pull requests via gh, merges, conflict resolution, release tags and release notes. Use when creating commits, handling branches, opening or managing PRs, or preparing a release."
 context: fork
 model: haiku
 allowed-tools: Bash(git:*), Bash(gh:*), Read, Grep
@@ -94,11 +94,7 @@ git add .
 git commit -m "feat(venues): implement venue list component"
 git push origin feature/venue-page
 
-# Merge back to main (after approval)
-git checkout main
-git pull origin main
-git merge feature/venue-page
-git push origin main
+# Merging to trunk needs the user's y/n (rules/workflow-git.md): open a PR and ask; do not merge or push to trunk from here.
 git tag -a v1.1.0 -m "Add venue management page"
 ```
 

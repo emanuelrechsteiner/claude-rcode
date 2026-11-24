@@ -1,6 +1,6 @@
 ---
 name: tailwindcss-v4-styling
-description: TailwindCSS v4 specialist ensuring correct theme configuration, variable naming, and utility class usage. Validates @theme directives, prevents spacing/container naming conflicts, and enforces v4 best practices. Use when setting up TailwindCSS v4, creating theme customizations, debugging styling issues, or implementing UI components with Tailwind. Triggers on "TailwindCSS", "Tailwind v4", "@theme", "styling broken", "CSS not working", "max-w", "spacing utilities", "theme configuration", "styling kaputt", "css geht nicht", "tailwind einrichten", "theme konfigurieren", "abstände stimmen nicht", "klassen greifen nicht".
+description: "Sets up and checks TailwindCSS v4 themes with @theme: variable namespaces, the spacing and container naming conflict, and build output. Use when setting up Tailwind v4, changing theme tokens, building components with Tailwind, or debugging broken utilities, spacing or colors."
 user-invocable: false
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash(npm:*)
 ---

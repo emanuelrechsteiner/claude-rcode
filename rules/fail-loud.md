@@ -1,6 +1,11 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,swift,go,rs,java,kt,kts,rb,php,vue,svelte,astro,sh,bash,zsh,c,h,cc,cpp,hpp,cs,m,mm,dart,gd,lua,ex,exs,scala,sql,prisma,html,css,scss}"
+---
+
 # Fail Loud Rule
 
-> Ban silent fallbacks in agent-generated code. Always loaded.
+> Ban silent fallbacks in agent-generated code. Path-scoped: loads when a source file is read or edited.
 
 ## The Rule
 
@@ -8,55 +13,29 @@
 
 ## Why This Matters
 
-Agents are statistically prone to "defensive" code that hides bugs — including "just adding a check" that silently skips broken paths — and each silent fallback **compounds reliability degradation** (the slop-on-slop math in [[slop-prevention]]).
+Agents are statistically prone to "defensive" code that hides bugs, and each silent fallback **compounds reliability degradation** (the slop-on-slop math in [[slop-prevention]]).
 
 ## Forbidden Patterns
 
-### Python
-```python
-# ❌ FORBIDDEN
-except: pass
-except Exception: pass
-except: continue
-value = config.get("required_key") or "default"  # if key is REQUIRED
-try: x()
-except: return None  # masking the failure
-```
-
-### TypeScript / JavaScript
-```typescript
-// ❌ FORBIDDEN
-try { x() } catch { }                                       // empty catch
-try { x() } catch { return null }                           // mask
-const value = config.requiredKey ?? "default"              // if REQUIRED
-.catch(() => {})                                            // promise swallowing
-```
-
-### Detection regex (for `security-audit.sh` extension)
-```bash
-# Python
-grep -rE 'except\s*:\s*(pass|continue|return None)' src/
-grep -rE 'except\s+Exception\s*:\s*(pass|continue|return None)' src/
-
-# TypeScript
-grep -rE 'catch\s*\([^)]*\)\s*\{\s*\}' src/                # empty catch block
-grep -rE '\.catch\s*\(\s*\(\s*\)\s*=>\s*\{?\s*\}?\s*\)' src/   # promise.catch(() => {})
-```
+Python: `except: pass|continue|return None`, `except Exception: pass`, `value = cfg.get("required_key") or "default"` for a REQUIRED key. TypeScript/JavaScript: empty `catch {}`, `catch { return null }`, `.catch(() => {})`, `requiredKey ?? "default"` for a REQUIRED value.
 
 ## Repetition Without Escalation Is Also Silence (IMP-164, 2026-08-24)
 
-**A message that recurs unchanged eight times is functionally a non-message:** a warning printed every run that never changes shape when nobody acts on it does not satisfy fail-loud — the reader habituates, and a 20-day-old unresolved condition looks identical to a fresh one. **The fix is escalation, not volume:** a message-class that fires N times in a row must change its own presentation at a threshold (reference: `hooks/session-end-check.sh`'s `alarm_repeat_count` helper on the IMP-138 staleness reminder — 3rd consecutive occurrence switches to an explicit "ESKALATION" form, the 5th adds a note that a ledger entry is due). Deliberately **not an auto-fix** — the human stays the gate; it only makes the N-th occurrence impossible to mistake for the 1st.
+A message that recurs unchanged N times is functionally a non-message — the reader habituates. A message class that fires N times in a row must change its presentation at a threshold (reference: `alarm_repeat_count` in `hooks/session-end-check.sh`: 3rd consecutive occurrence switches to an explicit escalation form, the 5th adds that a ledger entry is due); escalation, not volume, and never an auto-fix.
 
 ## Allowed Patterns (Legitimate Fallbacks)
 
-Fallbacks are OK (1) **at system boundaries** — user input, external API, network — wrapped with explicit error reporting; (2) for **truly optional values** — feature flags, optional configs — where the default is documented behavior, not error-masking; (3) as **graceful degradation** — UI loading states, retry-with-backoff — with the failure **logged**, not silenced.
+Fallbacks are OK only:
+- at system boundaries (user input, external API, network), with explicit error reporting;
+- for truly optional values (feature flags, optional configs), where the default is documented behavior;
+- as graceful degradation (UI loading states, retry-with-backoff), with the failure logged.
 
 The distinction: **did the failure get reported somewhere observable?** Logged → OK; metric incremented → OK; returned but the caller doesn't know it's a fallback → NOT OK.
 
 ## Enforcement
 
-Extend `~/.claude/hooks/security-audit.sh` with the detection regexes above: PreToolUse on Edit/Write blocks edits introducing the forbidden patterns. If a fallback is genuinely needed, add an explicit `# ALLOWED: <reason>` comment that the hook can recognize as override.
+`hooks/security-audit.sh` blocks the forbidden patterns above in incoming `.py`, `.ts` and `.js` code (IMP-271): a bare `except`, `except Exception` or `except BaseException` whose body is only `pass`, `continue` or `return None`, an empty `catch` block, a `catch` that returns `null`, an empty `.catch` callback. Override: `# ALLOWED: <reason>` (Python) or `// ALLOWED: <reason>` (JS/TS) on the handler line or the line directly above. Test, fixture and mock paths are exempt; a handler for a specific exception, or one that logs or re-raises, never fires. Everything else in this rule stays behavioural.
 
 ## When to Override
 
-Test fixtures and mocks (test code may swallow expected exceptions); generated code from build tools; auto-formatters writing boilerplate; try/except around imports for optional dependencies (must log unavailable). Document the override in the commit message: `"allows fail-silent in test fixture per fail-loud.md exception"`.
+Test fixtures and mocks, generated code, formatter boilerplate, optional-dependency imports that log unavailability; document the override in the commit message.

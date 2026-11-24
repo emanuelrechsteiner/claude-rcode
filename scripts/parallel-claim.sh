@@ -22,6 +22,7 @@
 #   release-all <agent_id>                       → release ALL locks owned by this agent
 #                                                  (matches claim id OR bound harness id)
 #   release-session <session_id>                 → release ALL locks claimed by this session
+#   release-stale --older-than <minutes>         → release UNBOUND claims older than N min (IMP-286)
 #
 # ── THE TWO IDENTITY SPACES (IMP-114, 2026-08-01) ─────────────────────────────
 # This registry has always had two identifiers that never intersect:
@@ -66,7 +67,7 @@ now_epoch() { date +%s; }
 
 # Audit trail. Until IMP-114 only RELEASES were logged, so the coordination log
 # could not answer the most basic question — how often locks are actually
-# claimed. "exactly 1 multi-lock dispatch in 6 weeks" (rules/parallel-by-default.md)
+# claimed. "exactly 1 multi-lock dispatch in 6 weeks" (docs/reference/delegation.md, Parallel work)
 # was derived from that release-only view and was therefore not measurable.
 COORD_LOG="${CLAUDE_COORD_LOG:-$HOME/.claude/global-observation/parallel-coordination.jsonl}"
 log_event() {
@@ -357,6 +358,40 @@ cmd_release_session() {
     echo "released $released locks for session $session_id"
 }
 
+# ── release-stale --older-than <minutes> (IMP-286, 2026-11-11) ────────────────
+# Releases only UNBOUND claims (no harness id: no subagent has touched the file)
+# whose claimed_epoch is older than the age. Bound claims are never released by
+# age, and locks of other agents are not matched. Claims without a numeric
+# claimed_epoch (legacy or "recovered" records) are skipped, never guessed at.
+cmd_release_stale() {
+    local older_min=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --older-than) older_min="${2:-}"; shift 2 ;;
+            *) older_min=""; break ;;
+        esac
+    done
+    case "$older_min" in
+        ''|*[!0-9]*) echo "usage: release-stale --older-than <minutes>"; return 2 ;;
+    esac
+    local cutoff=$(( $(now_epoch) - older_min * 60 ))
+    local released=0 meta bound claimed owner file
+    for meta in "$LOCK_ROOT"/*/owner.json; do
+        [ -f "$meta" ] || continue
+        bound=$(jq -r '.harness_agent_id // ""' "$meta" 2>/dev/null)
+        [ -z "$bound" ] || continue
+        claimed=$(jq -r '.claimed_epoch // ""' "$meta" 2>/dev/null)
+        case "$claimed" in ''|*[!0-9]*) continue ;; esac
+        [ "$claimed" -le "$cutoff" ] || continue
+        owner=$(jq -r '.agent_id // ""' "$meta" 2>/dev/null)
+        file=$(jq -r '.file_path // ""' "$meta" 2>/dev/null)
+        log_event "release-stale" "$owner" "$file" "released"
+        rm -rf "$(dirname "$meta")"
+        released=$((released+1))
+    done
+    echo "released $released stale locks older than $older_min min"
+}
+
 case "${1:-}" in
     claim)           shift; cmd_claim "$@" ;;
     bind)            shift; cmd_bind "$@" ;;
@@ -366,6 +401,7 @@ case "${1:-}" in
     cleanup)         cmd_cleanup ;;
     release-all)     shift; cmd_release_all "$@" ;;
     release-session) shift; cmd_release_session "$@" ;;
+    release-stale)   shift; cmd_release_stale "$@" ;;
     *)
         cat >&2 <<USAGE
 Usage: $(basename "$0") <command> [args]
@@ -381,6 +417,7 @@ Commands:
   cleanup                                       Remove expired locks
   release-all <agent_id>                       Release all locks owned by agent (claim id OR bound harness id)
   release-session <session_id>                 Release all locks claimed by a session (unbound leftovers)
+  release-stale --older-than <minutes>         Release UNBOUND claims older than N minutes (IMP-286)
 USAGE
         exit 2
         ;;

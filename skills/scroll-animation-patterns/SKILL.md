@@ -1,8 +1,8 @@
 ---
 name: scroll-animation-patterns
-description: Reusable scroll-linked animation patterns for React/Next.js. Covers RAF-driven character-chaos effects, sticky card decks, scroll-snap overlays, and avoids common state/ref conflicts. Use when implementing scroll-linked effects, hero reveal animations, or text/character staggered animations. Triggers on "scroll animation", "sticky card", "parallax", "character chaos", "scroll-linked", "RAF animation", "hero animation".
+description: "Scroll-linked animation patterns for React and Next.js: RAF-driven character effects, sticky card decks, scroll-snap overlays, and transform-only updates that avoid state/ref conflicts. Use when building hero, text or character reveal animations, parallax effects, or janky scroll effects."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 

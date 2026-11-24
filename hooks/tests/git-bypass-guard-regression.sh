@@ -177,6 +177,15 @@ NOJQ="$WORK/nojq"; mkdir -p "$NOJQ"; for t in bash date mkdir dirname grep head 
 out=$(printf '{"tool_input":{"command":"git commit -n"}}' | PATH="$NOJQ" bash "$HOOK" 2>/dev/null)
 [[ "$out" == *'"permissionDecision":"ask"'* ]] && pass "missing jq asks for git-shaped input" || fail "no jq" "out=$out"
 
+echo "== IMP-275: a missing TMPDIR must not disable the classifier =="
+N_ERR=$(grep -c '"band":"ERROR"' "$LOG" 2>/dev/null || true)
+LAST_ERR=$(jq -nc --arg c 'git commit --no-verify -m x' --arg s "$SID" '{tool_input:{command:$c},session_id:$s}' \
+    | TMPDIR="$WORK/no-such-dir" bash "$HOOK" 2>&1 >/dev/null); RC=$?
+[[ "$RC" == 2 && "$LAST_ERR" == *"--no-verify"* ]] && pass "missing TMPDIR: bypass still blocked" || fail "missing TMPDIR block" "rc=$RC $LAST_ERR"
+out=$(jq -nc '{tool_input:{command:"git status"},session_id:"tmp"}' | TMPDIR="$WORK/no-such-dir" bash "$HOOK" 2>/dev/null); rc=$?
+[[ $rc == 0 && -z "$out" ]] && pass "missing TMPDIR: clean git command passes without an ask" || fail "missing TMPDIR allow" "rc=$rc out=$out"
+[[ "$(grep -c '"band":"ERROR"' "$LOG" 2>/dev/null || true)" == "$N_ERR" ]] && pass "missing TMPDIR logs no ERROR" || fail "missing TMPDIR log" "ERROR count changed"
+
 echo ""
 echo "Result: GREEN=$GREEN RED=$RED of $((GREEN + RED))"
 [[ "$RED" -eq 0 ]] || exit 1

@@ -85,10 +85,13 @@ if [ "${CLAUDE_GATE_TESTMODE:-}" = "1" ]; then
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then degraded "python3 not found" "$COMMAND"; fi
-ERRF=$(mktemp "${TMPDIR:-/tmp}/gbg-err.XXXXXX")
-VERDICT=$(GBG_CMD="$COMMAND" python3 "$(dirname "${BASH_SOURCE[0]}")/lib/git-bypass-classify.py" 2>"$ERRF")
+# The stderr capture file is optional: a missing or unwritable TMPDIR must never stop
+# the classifier from running (IMP-275: all 14 logged ERROR entries came from here).
+ERRF=$(mktemp "${TMPDIR:-/tmp}/gbg-err.XXXXXX" 2>/dev/null) || ERRF=$(mktemp /tmp/gbg-err.XXXXXX 2>/dev/null) || ERRF=""
+VERDICT=$(GBG_CMD="$COMMAND" python3 "$(dirname "${BASH_SOURCE[0]}")/lib/git-bypass-classify.py" 2>"${ERRF:-/dev/null}")
 RC=$?
-CRASH=$(head -c 1500 "$ERRF" | tr '\n' ' '); rm -f "$ERRF"
+CRASH=""
+if [ -n "$ERRF" ]; then CRASH=$(head -c 1500 "$ERRF" | tr '\n' ' '); rm -f "$ERRF"; fi
 if [ "$RC" -ne 0 ] || [ -z "$VERDICT" ]; then degraded "classifier failed rc=$RC: $CRASH" "$COMMAND"; fi
 [ "$VERDICT" = "ALLOW" ] && exit 0
 

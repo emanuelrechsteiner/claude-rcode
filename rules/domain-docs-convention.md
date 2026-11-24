@@ -1,6 +1,13 @@
+---
+paths:
+  - "**/CONTEXT.md"
+  - "**/docs/adr/**"
+  - "**/ADR-*.md"
+---
+
 # Domain-Docs Convention Rule (CONTEXT.md + ADRs)
 
-> Two lightweight per-project memory artifacts: a shared-language glossary (`CONTEXT.md`) for domain terms, and atomic Architecture Decision Records (`docs/adr/`). Always loaded.
+> Two lightweight per-project memory artifacts: a shared-language glossary (`CONTEXT.md`) for domain terms, and atomic Architecture Decision Records (`docs/adr/`). Path-scoped: loads when a matching file is read or edited.
 
 ## CONTEXT.md — the shared language
 
@@ -26,15 +33,9 @@
 - **Write one** for any decision someone might later ask "why?" about — architecture choices, rejected alternatives after a `grilling` session or `prototype` verdict, deliberate rule exceptions.
 - **R.Code exception:** project-level ADRs from R.Code's own template may use the `ADR-` prefix (`ADR-NNNN-slug.md`) and a two-tier model — inline `### ADR-NNN` in `ARCHITECTURE.md` at design time, filed to `docs/adr/` only once implemented/final — both valid alongside the bare-`NNNN` immutable form (`docs/adr/0002-rcode-plan-follows-practice.md`).
 
-## Enforcement — a correction becomes law immediately
+## Enforcement
 
-**On the FIRST "NIE X" / "IMMER X" (or "NEVER X" / "ALWAYS X") correction from the user, persist it IN THE SAME TURN** — the default action, not an offer and not a question back ("should I persist this?" is itself the violation). A correction that only lives in the chat transcript is not enforced; it has to land in an artifact the next session actually reads. **The SECOND occurrence of the identical correction is a process failure, not a reminder**: the first was heard but not persisted — treat it as a signal (per the observation pipeline), not as "say it again, more firmly."
-
-1. Recognize a categorical, non-negotiable rule statement ("NIE X", "IMMER X", "NEVER X", "ALWAYS X" or their unambiguous equivalents).
-1a. **Classify scope before persisting.** About *this codebase* (a file, term, vendor, invariant of this project) → CONTEXT.md / ADR / project memory. About *how the user works with the agent* (who tests, which model tier, branch naming, report format) → **user-global**: one line in `~/.claude/rules/preferences.local.md` (git-ignored, auto-loaded everywhere; copied from `templates/preferences.local.md.template`; edited in place per the `*.local.md` exception in `CLAUDE.md`), never project memory. Before writing a project memory, grep `~/.claude/projects/*/memory/` for the same stance; a hit elsewhere means user-global — consolidate, leaving a one-line pointer in the project copy.
-2. Project scope, same turn: add/amend the CONTEXT.md entry for a term or invariant, or write a mini-ADR for a decision (formats above).
-3. If mechanically checkable, add a test case that would have caught the violation before it recurs.
-4. Then proceed with the original task — persisting is a side-effect of the same turn, not a separate task requiring confirmation.
+The persist-on-first-correction duty (a NIE/IMMER correction becomes law in the same turn; project invariants land here, user-global preferences in `~/.claude/rules/preferences.local.md`) is stated in `rules/foundation.md` (section "Scope, knowledge and decisions"); this file carries the formats it points to.
 
 ## What this is NOT
 

@@ -262,11 +262,11 @@ Before treating an LLM judge's or sub-agent's FACTUAL claim as load-bearing for 
 
 ## Model-Era Review Trigger (IMP-080)
 
-When the runtime model generation changes (a new family appears in the session banner / model id — e.g. Opus 4.x → `claude-fable-5`), the NEXT `/meta-observe` run MUST open a **model-era review IMP** covering, at minimum:
+When the runtime model generation changes (a new family appears in the session banner / model id — e.g. Opus 4.x → `claude-fable-5`; further example: Haiku 5.5 (2026-10)), the NEXT `/meta-observe` run MUST open a **model-era review IMP** covering, at minimum:
 
-1. **Cost matrix** — re-derive `api-cost-optimization.md` tiers + escalation ladder (verify current pricing at docs.claude.com/pricing)
-2. **MAX_THINKING_TOKENS** — re-justify the `settings.json` env cap for the new family
-3. **Context thresholds** — re-check `context-engineering.md` %-of-window ceilings against the new window size (`[1m]` etc.)
+1. **Cost matrix** — re-derive the model tiers in `docs/reference/delegation.md` + escalation ladder (verify current pricing at docs.claude.com/pricing)
+2. **Effort default** — re-check the effort setting in `settings.json` for the new family (MAX_THINKING_TOKENS was removed from `settings.json` on 2026-11-23)
+3. **Context budget** — re-check what loads into the window (the `context-budget` skill) against the new window size (`[1m]` etc.)
 4. **Cache-TTL assumptions** — confirm prompt-cache TTL / write-premiums still match the cache-discipline guidance
 
 Era-tuned constants silently mislead in the next era; this trigger makes the refresh a pipeline obligation, not a lucky catch.

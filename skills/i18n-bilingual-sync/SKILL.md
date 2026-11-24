@@ -1,6 +1,6 @@
 ---
 name: i18n-bilingual-sync
-description: Mirror locale JSON edits across a bilingual pair (e.g. de.json ↔ en.json) so adding/modifying/removing a key in one file is reflected in the sibling. Triggers on "translate this key", "sync locale", "i18n sync", "add translation", "de.json", "en.json", "übersetzung ergänzen", "übersetze diesen key", "locale synchronisieren", "übersetzungen abgleichen", "sprachdateien synchron halten", "fehlende übersetzungen", or when editing one locale file in a pair.
+description: "Keeps a bilingual locale JSON pair (e.g. de.json and en.json) in sync: a key added, changed or deleted in one file is mirrored to its sibling in one write. The caller supplies the translation. Use when adding, editing or removing a locale key, or when a translation is missing."
 context: fork
 model: haiku
 allowed-tools: Read, Write, Edit, Bash, Glob

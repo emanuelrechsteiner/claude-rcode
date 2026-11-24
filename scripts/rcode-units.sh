@@ -2,7 +2,7 @@
 # rcode-units.sh — the ONE tracker-agnostic unit parser for the R.Code
 # workflow (spec: rcode-umbau-spec.md §9 A3). status-metrics.sh and
 # phase-gate-check.sh MUST call this script for unit counts rather than
-# re-implementing their own count — see rules/testing-quality.md "Verify via
+# re-implementing their own count — see rules/slop-prevention.md "Verification principles" "Verify via
 # the same code path, not a reimplementation": two independently-written
 # counters drift, and a test built on the drifted copy passes while the real
 # path stays broken.
@@ -44,7 +44,7 @@
 # below) also carries a `phase_name` (K-B, 2026-09-23) — the trimmed
 # <Name> suffix, or null when the heading carries no name — reported
 # per-unit so status-metrics.sh can build a milestone title without
-# re-reading BRAINSTORM.md itself (rules/testing-quality.md "same code
+# re-reading BRAINSTORM.md itself (rules/slop-prevention.md "Verification principles" "same code
 # path" discipline).
 # Completion: checkbox `[x]` -> closed, `[ ]` -> open. Table row: a column
 # whose header is `Status`/`State` (case-insensitive) with a value matching

@@ -90,6 +90,15 @@ RCODE="false"
 # Falls back to the previous printf form if jq is somehow unavailable — a
 # missing signal is worse than an imperfectly-escaped one.
 INTENT_SOURCE="commit-subject"
+# IMP-273: a lost signal must be visible. The ledger directory is created when it is
+# missing, and an append that still fails leaves a line in an error log and on stderr
+# (it used to end in `|| true`: no signal, no trace).
+mkdir -p "$(dirname "$LEDGER")" 2>/dev/null || true
+capture_failed() {
+    printf '[%s] observation-capture: cannot append to %s (signal lost)\n' "$TS" "$LEDGER" \
+        >> "${CLAUDE_OBS_ERROR_LOG:-${TMPDIR:-/tmp}/claude-observation-capture-errors.log}" 2>/dev/null || true
+    echo "observation-capture: cannot append to $LEDGER (signal lost)" >&2
+}
 if command -v jq >/dev/null 2>&1; then
     jq -nc --arg ts "$TS" --arg cwd "$CWD" --arg intent "$INTENT" \
            --arg file "$FILE_PATH" --arg branch "$BRANCH" \
@@ -97,12 +106,12 @@ if command -v jq >/dev/null 2>&1; then
            --arg tool "$TOOL_NAME" --arg session_id "$SESSION_ID" \
            --arg intent_source "$INTENT_SOURCE" \
         '{ts:$ts,cwd:$cwd,intent:$intent,file:$file,branch:$branch,rcode:$rcode,tool:$tool,session_id:$session_id,intent_source:$intent_source}' \
-        >> "$LEDGER" 2>/dev/null || true
+        >> "$LEDGER" 2>/dev/null || capture_failed
 else
     FILE_ESC=$(printf '%s' "$FILE_PATH" | sed 's/\\/\\\\/g; s/"/\\"/g')
     CWD_ESC=$(printf '%s' "$CWD" | sed 's/\\/\\\\/g; s/"/\\"/g')
     printf '{"ts":"%s","cwd":"%s","intent":"%s","file":"%s","branch":"%s","rcode":%s,"tool":"%s","session_id":"%s","intent_source":"%s"}\n' \
-        "$TS" "$CWD_ESC" "$INTENT" "$FILE_ESC" "$BRANCH" "$RCODE" "$TOOL_NAME" "$SESSION_ID" "$INTENT_SOURCE" >> "$LEDGER"
+        "$TS" "$CWD_ESC" "$INTENT" "$FILE_ESC" "$BRANCH" "$RCODE" "$TOOL_NAME" "$SESSION_ID" "$INTENT_SOURCE" >> "$LEDGER" 2>/dev/null || capture_failed
 fi
 
 # === Layer 2 Accumulator (2026-05-26) ===

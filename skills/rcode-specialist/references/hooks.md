@@ -10,17 +10,17 @@ x=exit2 block k=ask d=deny c=ctx JSON n=NOTE o=info; O/C=fail open/closed; +=see
 |event matcher (S line)|first S|hooks code:effect+fail|model sees (docs summary, re-verify)|
 |---|---|---|---|
 |SessionStart startup (51), other sources (88)|55|echo SX GC SG GR RL SF CE: oO; (88) CE only|stdout visible; echo prints literal $(date)|
-|PreToolUse Bash (99)|103|GU:xO GP:xO+ GB:xO+ GS:xO GE:oO EA:xO WF:kO CM:nO RA:nO|x: stderr to model; k: user prompt; n [INVISIBLE]|
+|PreToolUse Bash (99)|103|GU:xO GP:xO+ GB:xO+ GS:xO EA:xO WF:kO CM:nO RA:nO (GE unregistered 2026-11-23, design §4)|x: stderr to model; k: user prompt; n [INVISIBLE]|
 |PreToolUse WebFetch\|WebSearch (140); mcp__.* (166)|144; 170|WF:kO; MA:kO WF:kO|k: user prompt; MA NOTE [INVISIBLE]|
-|PreToolUse Task\|Agent (149)|153|DC:oO DS:kO CE|k: user prompt; DS NOTE [INVISIBLE]|
+|PreToolUse Task\|Agent (149)|153|DC:oO CE (DS unregistered 2026-11-23, design §4)|k: user prompt; DS NOTE [INVISIBLE]|
 |PreToolUse mcp__serena__.* \| mcp__plugin_serena_serena__.* (179)|183|SW:dC (also x, k)|deny reason to model|
-|PreToolUse Write\|Edit (188)|192|PL:dO GG:cO AR:xO CP:kO FP:xO GP:xO+ SA:xO+ VW:xO CM:nO echo,echo|x/c to model; echo, n [INVISIBLE]|
+|PreToolUse Write\|Edit (188)|192|PL:dO CP:kO FP:xO GP:xO+ SA:xO+ VW:xO CM:nO (GG, AR unregistered and the echo pair removed 2026-11-23, design §4)|x/c to model; n [INVISIBLE]|
 |PreToolUse MultiEdit (237)|241|GP VW only (PL GG AR CP FP SA CM never run); docs list no MultiEdit tool|docs summary, re-verify|
-|PostToolUse Edit\|Write (279)|283|AF:oO PV:xO OC:oO echo CE|PV stderr to model; echo [INVISIBLE]|
-|PostToolUse serena (270); Read (322); TaskCreate/Update (304,313)|274; 326|SP:xO; TR:oO; Task*: CE only|SP stderr to model|
+|PostToolUse Edit\|Write (279)|283|AF:oO PV:xO OC:oO CE (inline echo removed 2026-11-23, design §4)|PV stderr to model|
+|PostToolUse serena (270); Read (322); TaskCreate/Update (304,313)|274; 326|SP:xO; TR unregistered 2026-11-23 (design §4); Task*: removed 2026-11-23 (tools not offered)|SP stderr to model|
 |Stop (331)|336|SE:oO SB:cO SC:oO HW:oO CD(scripts/) CE BA:oO|SB c to model (continues turn); plain stdout [INVISIBLE?] see §6|
-|SubagentStop (365)|370|LR:oO WD:oO CF:oO echo CE|stdout [INVISIBLE?] see §6; WD stderr [INVISIBLE]|
-|UserPromptSubmit (412); PostToolUseFailure Bash (391); Notification (402)|417/397/407|PA CG BA:cO; PF NT:oO|c to model; PF [INVISIBLE]|
+|SubagentStop (365)|370|LR:oO WD:oO CF:oO CE (inline echo removed 2026-11-23, design §4)|stdout [INVISIBLE?] see §6; WD stderr [INVISIBLE]|
+|UserPromptSubmit (412); PostToolUseFailure Bash (391); Notification (402)|417/397/407|BA:cO; PF NT:oO (PA, CG unregistered 2026-11-23, design §4)|c to model; PF [INVISIBLE]|
 |PreToolUse Bash\|Grep (249); Read\|Glob (258)|254; 263|graphify hook-guard (external binary ~/.local/bin/graphify; not read)|not checked|
 ## 2 Hooks (h/<name>.sh; bypass: see §3; gpc,gbc,ncs=h/lib/governing-path-classify.py,git-bypass-classify.py,normalize-command.sh)
 |code name: decision (anchors)|log/suite (a=both, a/b, -=none)|
@@ -32,24 +32,24 @@ x=exit2 block k=ask d=deny c=ctx JSON n=NOTE o=info; O/C=fail open/closed; +=see
 |SA security-audit: secret regexes on new_string/content :64-107; missing lib blocks :43; edits[] unread :13|security-audit|
 |VW vault-write-gate: content -> vault.sh :222 (marked repos :158); rc2 blocks :234; infra error opens :251|vault-gate/vault-write-gate|
 |FP file-protection: blocks .env/.env.* (not .env.example) :21, .aws/credentials :27, .ssh/id_* :33, .gnupg/ :39, /secrets/ :45; CP config-protection: asks on linter cfg :77|-/serena-gate|
-|AR pretool-auto-read: unread file (/tmp/claude-reads-<sid>, exact path :32) blocks :80; GG gateguard: ctx note :97|signals/read-tracking|
+|AR pretool-auto-read: unread file (/tmp/claude-reads-<sid>, exact path :32) blocks :80; GG gateguard: ctx note :97 (AR, GG unregistered 2026-11-23, design §4)|signals/read-tracking|
 |SW serena-write-gate: Serena write -> Edit payload :205 -> PL FP SA VW CP :216; unknown tool deny :176|serena-gate-log.jsonl/serena-gate|
 |GP governing-path-guard: live-install governed write (gpc:56-63; Bash :159-205); parsefail+raw hit closed gpc:227|governing-path-guard|
 |GB git-bypass-guard: --no-verify, commit -n, hooksPath, HUSKY=0 incl. bash -c/eval/pipe-to-shell (gbc:122-134; env/config/git checks gbc:44-96); degraded asks :64|git-bypass-guard|
 |GS git-state-check: only cmd starting git :19; lock >300s deleted :43; conflicts/markers block commit/push/rebase :69|-/git-state-check|
-|DS dispatch-specialist-check: general-purpose needs AGENTENWAHL naming agent :157; 3rd grant asks :227; retry ok :240|dispatch-specialist|
+|DS dispatch-specialist-check: general-purpose needs AGENTENWAHL naming agent :157; 3rd grant asks :227; retry ok :240 (unregistered 2026-11-23, design §4)|dispatch-specialist|
 |PL parallel-lock-check: denies edit if locked by other agent; bind :56; no script=open :31; LR subagent-lock-release :27|-/parallel-lock|
-|CM controller-first-mutation-gate: no control-agent run: note only :209 (S:5), enforce x2 :273; exempt paths :156|controller-first|
-|CG controller-first-prompt-gate: flag :56, ctx :73; CF -subagent-flag: sets controller-ran for control-agent :29|controller-first|
-|PA parallel-analyze-prompt: ctx :80, skip tokens :38; RA read-tool-preference-advisory: one NOTE/session :67-82|read-tool-advisory|
+|CM controller-first-mutation-gate (RETIRED 2026-11-10, docs/adr/0011; not registered; never re-register as built): no control-agent run: note only, enforce x2; exempt paths (re-grep for lines)|controller-first|
+|CG controller-first-prompt-gate (unregistered 2026-11-23, design §4): reminder ctx once per session, automated turns skipped, writes no gate state, only its once-per-session marker (re-grep for lines); CF -subagent-flag (RETIRED with CM): set controller-ran for control-agent only|controller-first|
+|PA parallel-analyze-prompt (unregistered 2026-11-23, design §4): ctx :80, skip tokens :38; RA read-tool-preference-advisory (unregistered 2026-11-10): one NOTE/session :67-82|read-tool-advisory|
 |DC dispatch-capture: row per dispatch :53; WD subagent-watchdog: status :136-141 (marker regex :121); BA background-agent-check :104|dispatch-capture.jsonl, subagent-stops.jsonl/background-watchdog (WD BA), controller-first (DC)|
-|OC observation-capture: signals :94, queue :112, tracker :127; TR posttool-track-read :16|signals/observation-intent|
+|OC observation-capture: signals :94, queue :112, tracker :127; TR posttool-track-read :16 (unregistered 2026-11-23, design §4)|signals/observation-intent|
 |SP serena-post-tool: feeds AF/OC/PV :67-76; AF auto-format: silent :61; PV post-edit-validate: EOF digit :33 exit 2|-/serena-gate|
 |SB stop-batched-checks: line limit :94, lint, tsc/eslint/ruff :168 (GROUPS bug §6), ctx :225, 60 s limit :40|refactor-queue.jsonl/-|
 |SE session-end-check: archive :17, reminders :53-429 (alarm helper :164-181); SC self-critique-log :50; HW session-handoff-write :134|session-metrics.jsonl/session-end-staleness|
 |SX session-start-context :10-127; GC git-identity-check, SG sandbox-guard :27, GR git-remote-check: warn|-/session-start-path-canon|
 |RL routine-liveness-check :147; SF security-findings-check :51|-/routine-liveness, security-findings|
-|PF postbash-failure-recovery :60; NT notification-tts :22; GE git-identity-enforce: no-op placeholder :37; LL line-limit-check: dead|PF /tmp/postbash-hook.log, NT notifications.jsonl/-|
+|PF postbash-failure-recovery :60; NT notification-tts :22; GE git-identity-enforce: no-op placeholder :37 (unregistered 2026-11-23, design §4); LL line-limit-check: dead|PF /tmp/postbash-hook.log, NT notifications.jsonl/-|
 ## 3 Bypass tokens (env=hook process env: launch env/S:2-7, inline VAR=1 prefix does NOT reach hooks; cmd=grepped from command text)
 |token (drop CLAUDE_)|scope|read from|notes|
 |---|---|---|---|
@@ -84,11 +84,11 @@ x=exit2 block k=ask d=deny c=ctx JSON n=NOTE o=info; O/C=fail open/closed; +=see
 |AB:88 (basename AUTO-PASS)|EA:354-360, 401-407|absolute /x/node_modules ESCALATEs at :401 first; :354 set wider than AB; :404 redundant|
 |AB:42 (force push)|S:41; GU:510; GS:103|adjacent-text match: -f, trailing --force, --force-with-lease unmatched (inferred); GU only warns|
 |AB:45,116 (PROD, PR)|EA:199; MA:33,72|no vercel --prod arm; MA 'prod' substring mis-matches; PR/issue creation only behavioral|
-|AB:128-131; agents-as-users.md:27; CLAUDE.md:40|SG:12,27; §3|YOLO_SANDBOX only silences a warning; YOLO only warns; 17 more tokens|
+|AB:128-131; former agents-as-users rule:27; CLAUDE.md:40|SG:12,27; §3|YOLO_SANDBOX only silences a warning; YOLO only warns; 17 more tokens|
 |tool-discipline.md:10,46|GG:5-35,81-107; DS:240-244|GG = non-blocking ctx note, not JSON deny; identical retry passes past 3rd-grant ask|
 |fail-loud.md:35-58; security.md:14|SA:54-107; FP:21-48|no except:pass/empty-catch/ALLOWED detection; no filename block for *.pem/*.key on write; SA:55 blocks PEM private-key content only|
-|AB:3|EA:16,537 (path; label-only :508); MA:4,39; skills/worktree-consolidate/SKILL.md:15,188|stale pointers to absent rules/autonomy-arbiter.md|
-|mcp-tool-usage.md:36-37, :43-44; foundation.md|SX:111, :107-108; CG:65; CM:7-8|SX says Serena read-only (vs :36-37) and offers activate_project (vs :43-44); CG/CM cite missing Controller-First section/plan|
+|AB:3|EA:16,537 (path; label-only :508); MA:4,39; skills/worktree-consolidate/SKILL.md:15,188|stale pointers to absent rules/agency-bands.md (skill pointers fixed 2026-11-23; hook pointer per design §5)|
+|mcp-tool-usage.md:36-37, :43-44 (rule deleted 2026-11-23; long form docs/reference/tools.md); foundation.md|SX:111, :107-108; CG:65; CM:7-8|SX says Serena read-only (vs :36-37) and offers activate_project (vs :43-44); CG/CM cite missing Controller-First section/plan|
 ## 6 Known limits
 |limit|
 |---|
@@ -111,5 +111,5 @@ x=exit2 block k=ask d=deny c=ctx JSON n=NOTE o=info; O/C=fail open/closed; +=see
 |meta-observer SKILL.md:194|.last-run-ts|SE staleness >= 7 d :195|
 |/meta-observe; ledger-append-proposed.sh|plans/meta-proposal-*.md; improvement-ledger.json (proposed only)|SE :395-427; human promotes|
 |SE repeat >= 5 :221|ledger entry once per month (marker :233)|human|
-|CM RA PA SB NT LL|log: controller-first, read-tool-advisory, refactor-needed; jsonl: parallel-prompts, refactor-queue, notifications|none|
+|CM (retired 2026-11-10) RA (unregistered 2026-11-10) PA SB NT LL|log: controller-first and read-tool-advisory (no longer written), refactor-needed; jsonl: parallel-prompts, refactor-queue, notifications|none|
 Sources read: settings.json, hooks/**, agency-bands, dossiers; Not verified: CE cockpit-event, CD config-drift-check, graphify, test bodies

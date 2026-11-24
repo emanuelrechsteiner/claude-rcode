@@ -14,7 +14,7 @@ You orient a developer (or a fresh agent) on **any** repository — R.Code-manag
 
 - **READ-ONLY. No writes, ever.** This command onboards and reports. It MUST NOT create, edit, move, or delete any file (no CLAUDE.md, no docs, no scaffolding). If the user wants docs consolidation or asset scaffolding, point them to `/bootstrap`.
 - **This is NOT a fourth exploration engine.** Three already exist:
-  - `/bootstrap` — heavy explorer (opus): docs audit + consolidation + asset scaffolding. Send the user here for deep work.
+  - `/bootstrap` — heavy explorer (fable): docs audit + consolidation + asset scaffolding. Send the user here for deep work.
   - `rcode-onboard` skill — orients on an *already* R.Code-managed project (reads PROJECT-STATUS, agent-log, etc.).
   - `project-bootstrap` skill — read-only explorer that bootstraps Memory MCP.
   Your niche is **FAST orient + methodology recommendation**. Stay lightweight. Do NOT consolidate docs, do NOT enumerate every file, do NOT read whole source trees.

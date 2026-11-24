@@ -1,7 +1,8 @@
 ---
 name: code-reviewer-agent
 description: "Read-only code review specialist. Use when the user asks to 'review this code', 'check for bugs', 'audit security', 'review PR', 'check code quality', or mentions code review, security audit, performance review, best practices check, or wants feedback on implementation without making changes."
-model: sonnet
+model: haiku
+effort: high
 tools:
   - Read
   - Grep

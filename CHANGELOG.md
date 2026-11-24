@@ -12,6 +12,84 @@ repository and published with every release.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-24
+
+This release cuts the always-loaded instruction text by about two thirds and
+rebuilds it against Anthropic's current guidance for the Claude 5 models: write down
+only what the model cannot see, enforce only what must never bend, and delegate per
+task instead of by default. Workflows, commands, agents, skills and safety gates stay.
+
+### Breaking
+
+- The always-loaded set is now `CLAUDE.md` and four rules: `foundation`,
+  `agency-bands`, `slop-prevention`, `workflow-git` (about 21,000 characters, before
+  about 68,000). The rules `tool-discipline`, `parallel-by-default`,
+  `context-engineering`, `api-cost-optimization`, `recommend-on-ask`,
+  `agents-as-users`, `web-research-trust`, `docs-first-integration`, `identity` and
+  `mcp-tool-usage` are gone as separate files; `fail-loud` stays as a path-scoped rule. What still matters is
+  folded into the four rules, into the path-scoped rules, or into the long forms in
+  `docs/reference/` (agency-bands, delegation, slop-prevention, tools,
+  web-research-trust, workflow-git). The old texts are kept verbatim in
+  `docs/archive/rules-2026-11-23/`. Overlays or project files that point at a
+  removed rule need the new address.
+- Delegation is decided per task. A single-file edit, a task of about two minutes, a
+  question or an explanation always stays with the main session; helpers are for
+  independent parallel units, long outputs and fresh-eyes review.
+- `MAX_THINKING_TOKENS` (no effect on current models) and
+  `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` are no longer set; Claude Code compacts at its
+  default.
+
+### Added
+
+- Goal tracking per session (`scripts/goal.sh`, `hooks/goal-*.sh`, `goal-agent`):
+  atomic issues with estimates, measured pace, time to goal, and deviations that are
+  named in the report.
+- Knowledge library integration: library hits are injected into prompts and subagent
+  starts as advice (`hooks/knowledge-inject.sh`), with a background mirror refresh and
+  a read-only `knowledge-agent`. The write gate and the dispatch check from the
+  unreleased work exist as scripts with suites but ship switched off
+  (`CLAUDE_KNOWLEDGE_GATE=off`, `CLAUDE_KNOWLEDGE_BRIEF=off`).
+- `security-audit` blocks silent fallbacks in incoming Python, TypeScript and
+  JavaScript code (empty catch, `except: pass`), with an `ALLOWED:` marker.
+- The deploy imports ledger proposals queued in the live install.
+- Usage scan as a maintained tool, run monthly by the nightly routine.
+- Regression suites for ten hooks that had none, and a check that the counts in the
+  documents follow the generated inventory.
+- Skill `game-music-apple` (adaptive game music on iOS and macOS).
+
+### Changed
+
+- Hook registration: 42 registered scripts instead of 52 and 60 handlers instead of
+  79. Handlers that enforced preferences or whose output never reached the model are
+  unregistered (read-before-edit, specialist question at dispatch, per-prompt
+  reminders); the scripts and suites stay in `hooks/`. Every registration carries a
+  timeout.
+- Six domain rules load path-scoped instead of in every session; 18 commands no
+  longer put their description into every session (`disable-model-invocation`).
+- Helpers start on Haiku 5.5 with an explicit model and effort on every spawn;
+  `control-agent`, `planning-agent` and `visual-qa-agent` fall back to haiku. Command
+  pins use the `fable` alias.
+- The session-start hook in an R.Code project prints one line instead of seven.
+- The controller-first mutation gate is retired (ADR 0011).
+
+### Fixed
+
+- The shell gate stops force pushes, hard resets and package publishes in spellings
+  the native ask list does not match (`git -C <dir> push --force-with-lease`,
+  `command git push -f`, `git push origin +main`, `pnpm publish`).
+- `governing-path-guard` also guards `docs/` in the live install, where the long
+  forms now live, and no longer fails open without a writable `TMPDIR`.
+- The MCP agency gate asks on SQL it cannot classify as read-only (block comments,
+  side-effect functions, every whitespace class).
+- Safety gates fail closed without `jq`; the vault and Serena write gates survive a
+  missing `TMPDIR`.
+- The knowledge lookup no longer aborts under a UTF-8 locale.
+- The batched Stop checks run per project and report checks that did not run.
+- The deploy finds its ledger helper when started through the `claude-deploy`
+  symlink.
+- Stale file locks are released when a subagent stops; the routine runner logs every
+  exit path.
+
 ## [1.9.0] - 2026-10-31
 
 Six improvements from a meta-proposal of 2026-10-31, each traced to observed

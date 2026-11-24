@@ -1,7 +1,8 @@
 ---
 description: "Transform a rough app idea into a complete product foundation: research, specification, design, brand, architecture, and atomic development plan. Use when starting a new project from an idea."
+disable-model-invocation: true
 argument-hint: "[app idea with target group and user story]"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
   - Read
@@ -70,7 +71,7 @@ You are executing the R.Code `/brainstorm` command. This transforms a rough app 
 
 ## Phase 1: RESEARCH (Parallel Agents)
 
-Dispatch the **`research-agent`** via the Task tool (M6 fix, 2026-09-23: `research-agent` is live again at `~/.claude/agents/research-agent.md` since 2026-09-09, IMP-208 — the earlier "archived" note was stale). Prefer it over the `research` skill because it can `Write` the report file directly at the path you name in the brief (per `~/.claude/rules/foundation.md` Agent Selection table); fall back to the **`research`** skill only if the agent isn't available in this environment. Prompt (either way):
+Dispatch the **`research-agent`** via the Task tool (M6 fix, 2026-09-23: `research-agent` is live again at `~/.claude/agents/research-agent.md` since 2026-09-09, IMP-208 — the earlier "archived" note was stale). Prefer it over the `research` skill because it can `Write` the report file directly at the path you name in the brief (per `~/.claude/docs/reference/delegation.md` (Agent Selection)); fall back to the **`research`** skill only if the agent isn't available in this environment. Prompt (either way):
 
 ```
 Conduct comprehensive technology research for the following app idea:
@@ -143,7 +144,7 @@ Using the app idea "$ARGUMENTS" and the research findings in RESEARCH_FINDINGS.m
 
 ### 2b. UX Design
 
-Invoke the **`ux-design`** skill (R-4 stale-ref fix, 2026-07-15: `ux-agent` was archived 2026-05-27, replaced by the `ux-design` skill per `~/.claude/rules/foundation.md` Agent Selection table):
+Invoke the **`ux-design`** skill (R-4 stale-ref fix, 2026-07-15: `ux-agent` was archived 2026-05-27, replaced by the `ux-design` skill per `~/.claude/docs/reference/delegation.md` (Agent Selection)):
 
 ```
 Based on the feature specifications for "$ARGUMENTS", create UX design specifications:

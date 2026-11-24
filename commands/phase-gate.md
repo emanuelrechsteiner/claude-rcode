@@ -1,7 +1,8 @@
 ---
 description: "Verify phase completion with quality gates before unlocking the next phase. Run when all issues in a phase are closed."
+disable-model-invocation: true
 argument-hint: "<phase-number>"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
   - Read
@@ -215,7 +216,7 @@ Generate `.rcode/phase-summaries/phase-$ARGUMENTS-summary.md` using the PHASE-SU
 
 ---
 
-> **Version authority (2026-07-26):** phase-gate creates INTERNAL milestone tags only (`v0.N.0-<phase-name>`). User-facing semver releases (`vMAJOR.MINOR.PATCH`, changelog, `gh release`) are owned exclusively by `/launch-team` — never create them here. See `~/.claude/plans/team-phase-restructure-2026-07-26.md` §5. **This tag is optional but recommended** (traceability; Step 3's next-phase scope-drift diff uses it when present) — if skipped, say so explicitly in the phase summary and in the Gate Results output below.
+> **Version authority:** phase-gate creates INTERNAL milestone tags only (`v0.N.0-<phase-name>`). User-facing semver releases (`vMAJOR.MINOR.PATCH`, changelog, `gh release`) are owned exclusively by `/launch-team` — never create them here. **This tag is optional but recommended** (traceability; Step 3's next-phase scope-drift diff uses it when present) — if skipped, say so explicitly in the phase summary and in the Gate Results output below.
 
 ## Step 5: COMMIT (PASS/WARN only, tag optional, recommended)
 

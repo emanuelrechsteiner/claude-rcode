@@ -23,7 +23,7 @@ Check a deployed URL for regressions right after a release. Manual-only (`/canar
 ## Scope and safety
 
 - Read-only. Only requests that a normal visitor could make, to the URL the user named. No credentialed actions unless the user supplies a safe test account. No load generation.
-- Fetching the user's own deployed URL is AUTO per `web-research-trust`. `curl` at a command head is SOFT-ACK (`agency-bands`): state intent in one line. Prefer the Playwright MCP tools for browser-level checks.
+- Fetching the user's own deployed URL is AUTO per `rules/agency-bands.md` (web research). `curl` at a command head is SOFT-ACK (`agency-bands`): state intent in one line. Prefer the Playwright MCP tools for browser-level checks.
 - This skill verifies and reports. It does not roll back, redeploy, or change settings; a production mutation is ESCALATE-band even when a check fails. A failing critical check hands over to `incident-response`.
 
 ## What it checks

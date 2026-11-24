@@ -172,6 +172,5 @@ SOFTWARE.
 
 Each line registers one file and one `[provenance: ...]` token used on a marker line (see `scripts/provenance-check.sh`, header). An annotation counts only when its file and token are listed here; an unlisted annotation is reported as `UNREGISTERED ANNOTATION` and suppresses nothing. This section records decisions; it is not a waiver for an adopted upstream, which still needs a notice section above.
 
-- CLAUDE.md — [provenance: not-adopted] — karst (Moin105/karst) named as a candidate in the collaboration note; nothing from it is in this repo — 2026-10-31
 - ops/decisions/2026-10-06-kooperation-karst-impact-gate.md — [provenance: not-adopted] — karst (Moin105/karst) named as a candidate in the decision record; nothing from it is in this repo — 2026-10-31
 - docs/superpowers/specs/2026-05-27-claude-config-portability-design.md — [provenance: own] — the project's own former LICENSE (claude-code-framework, MIT), not a third-party adoption — 2026-10-31

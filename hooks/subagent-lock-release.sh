@@ -26,11 +26,17 @@ CLAIM="${HOME}/.claude/scripts/parallel-claim.sh"
 # parallel-lock-check.sh binds this harness id onto the lock on first touch.
 RESULT=$("$CLAIM" release-all "$AGENT_ID" 2>&1 || true)
 
+# IMP-286 (2026-11-11): a claim the subagent never bound carries no harness id,
+# so release-all cannot see it. Its owner id and the stopping agent id share no
+# data, and releasing by session would free sibling claims not yet started, so
+# the hook only sweeps UNBOUND claims older than 120 min (conservative age).
+"$CLAIM" release-stale --older-than 120 >/dev/null 2>&1 || true
+
 # IMP-140 (2026-08-22): this hook fires on EVERY SubagentStop — whether or not
 # that subagent ever held a lock. Because non-write dispatches vastly outnumber
 # write fan-outs, "released 0 locks" dominated the coordination log: measured
 # 4,349 subagent_release records against 10 claim records (99.8% noise),
-# burying the one signal (parallel-by-default.md) this log exists to answer.
+# burying the one signal (docs/reference/delegation.md, Parallel work) this log exists to answer.
 # The lock RELEASE itself (release-all above) is unchanged — only what gets
 # WRITTEN to the log changes. cmd_release_all's stdout is always the literal
 # "released N locks for <agent>" (scripts/parallel-claim.sh), so N is parsed

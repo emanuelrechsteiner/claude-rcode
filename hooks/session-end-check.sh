@@ -133,7 +133,7 @@ fi
 # Gate: if meaningful activity today → prompt /meta-observe
 if [[ $SIGNALS_TODAY -ge 5 && $COMMITS_RECENT -gt 0 ]]; then
     echo "ℹ️  $SIGNALS_TODAY observation signals, $COMMITS_RECENT commits in last 4h."
-    echo "    Run /meta-observe to extract patterns before context decays."
+    echo "    Run /meta-observer to extract patterns before context decays."
 fi
 
 # IMP-075: staleness ESCALATION on top of the per-session nudge above. The nudge
@@ -197,9 +197,9 @@ if [[ -f "$WATERMARK" ]]; then
             if [[ $REPEAT_N -ge 3 ]]; then
                 echo "🚨 ESCALATION — OBSERVATION LOOP STALLED reported unchanged for the ${REPEAT_N}th time (${DAYS_STALE}d stale, IMP-164):"
             else
-                echo "⚠️  OBSERVATION LOOP STALLED: last /meta-observe ran $DAYS_STALE days ago;"
+                echo "⚠️  OBSERVATION LOOP STALLED: last /meta-observer ran $DAYS_STALE days ago;"
             fi
-            echo "    $BACKLOG_SHARDS unprocessed daily signal shards since. Run /meta-observe (IMP-075)."
+            echo "    $BACKLOG_SHARDS unprocessed daily signal shards since. Run /meta-observer (IMP-075)."
 
             # ── IMP-192 coupling: name the CAUSE, not just the SYMPTOM ─────────
             # DAYS_STALE/BACKLOG_SHARDS describe the watermark's silence but say
@@ -239,7 +239,7 @@ if [[ -f "$WATERMARK" ]]; then
                             --arg title "Observation loop stalled: staleness alarm repeated ${REPEAT_N}x without remediation" \
                             --arg category "observability" \
                             --arg riskLevel "medium" \
-                            --arg recommendation "Investigate why /meta-observe has not run for ${DAYS_STALE}+ days; see hooks/session-end-check.sh IMP-138/164/192 staleness escalation." \
+                            --arg recommendation "Investigate why /meta-observer has not run for ${DAYS_STALE}+ days; see hooks/session-end-check.sh IMP-138/164/192 staleness escalation." \
                             --arg evidence "DAYS_STALE=${DAYS_STALE} REPEAT_N=${REPEAT_N} nightly_obs_last_status=${LAST_NIGHTLY_STATUS:-unknown}" \
                             '{finding:$finding,title:$title,category:$category,riskLevel:$riskLevel,recommendation:$recommendation,evidence:$evidence}')
                         if printf '%s\n' "$FINDING_JSON" | "$LEDGER_APPEND_SCRIPT" --proposal "$PROPOSAL_MONTH_KEY" >/dev/null 2>&1; then
@@ -314,7 +314,7 @@ fi
 # drove that day's refactor=228 / fix=310 intent spikes. Wall-clock alone is
 # a NOISY context-rot proxy — idle gaps burn no tokens (gap analysis found
 # ~30.4h of the 38h were >60min gaps, i.e. overnight pauses) — so this is a
-# SOFT surfacing warning per context-engineering.md, not a hard gate. Prefer
+# SOFT surfacing warning, not a hard gate. Prefer
 # an actual context-fill% signal where available; this is the wall-clock
 # fallback for when none is.
 SID_FOR_MARATHON="${SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
@@ -330,7 +330,7 @@ if [[ -f "$SIGNALS_FILE" && -n "$SID_FOR_MARATHON" ]] && command -v jq >/dev/nul
             SESSION_HOURS=$(( (LAST_EPOCH - FIRST_EPOCH) / 3600 ))
             if [[ $SESSION_HOURS -ge 12 ]]; then
                 echo "⚠️  Marathon session: ${SESSION_HOURS}h between first and last signal (session $SID_FOR_MARATHON)."
-                echo "    Per context-engineering.md: long wall-clock spans risk context rot even across idle gaps."
+                echo "    Long wall-clock spans risk context rot even across idle gaps."
                 echo "    Consider /clear if the next task is independent; check /context fill% before continuing."
             fi
         fi
@@ -378,7 +378,7 @@ fi
 
 GATE_TOTAL=$(( AGENCY_TODAY + SECURITY_TODAY + WEBFETCH_TODAY ))
 if [[ $GATE_TOTAL -gt 0 ]]; then
-    echo "ℹ️  Gate activity today NOT in signals.jsonl (invisible to /meta-observe, IMP-094):"
+    echo "ℹ️  Gate activity today NOT in signals.jsonl (invisible to /meta-observer, IMP-094):"
     echo "    excessive-agency=$AGENCY_TODAY security-audit=$SECURITY_TODAY web-fetch=$WEBFETCH_TODAY"
 fi
 

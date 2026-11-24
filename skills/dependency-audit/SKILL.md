@@ -1,6 +1,6 @@
 ---
 name: dependency-audit
-description: Audit npm dependencies for security vulnerabilities, outdated packages, and unused dependencies. Provides actionable upgrade recommendations. Use to maintain healthy dependencies. Triggers on "dependency audit", "npm audit", "outdated packages", "security vulnerabilities", "dependency check", "update dependencies", "dependencies prüfen", "abhängigkeiten aktualisieren", "veraltete pakete", "sicherheitslücken prüfen", "npm pakete checken", "ungenutzte abhängigkeiten".
+description: "Audits npm dependencies for security vulnerabilities, outdated packages and unused dependencies, with prioritized upgrade recommendations. Use before a production deploy, on a regular schedule, after security advisories, or when adding dependencies."
 allowed-tools: Read, Glob, Grep, Bash(npm *, npx depcheck *, npx npm-check *)
 ---
 

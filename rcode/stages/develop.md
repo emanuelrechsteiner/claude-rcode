@@ -8,12 +8,12 @@ via the `/develop-team` alias) once R.Code Mode has selected this Stage.
 
 | Asset | Kind | Use for |
 |---|---|---|
-| `backend-agent` | agent (sonnet) | APIs, database, server logic, auth |
-| `ui-agent` | agent (sonnet) | Components, visual design, implementation |
-| `testing-agent` | agent (sonnet) | Unit-local unit/integration tests |
-| `visual-qa-agent` | agent (sonnet, read-only) | Rendered check of implemented UI against the design spec before a unit is reported done |
+| `backend-agent` | agent (haiku) | APIs, database, server logic, auth |
+| `ui-agent` | agent (haiku) | Components, visual design, implementation |
+| `testing-agent` | agent (haiku) | Unit-local unit/integration tests |
+| `visual-qa-agent` | agent (haiku, read-only) | Rendered check of implemented UI against the design spec before a unit is reported done |
 | `cleanup-agent` | agent (haiku) | Dead code, debug-artifact removal |
-| `version-control-agent` | agent (sonnet) | Commits, branches, PRs when a unit runs standalone |
+| `version-control-agent` | agent (haiku) | Commits, branches, PRs when a unit runs standalone |
 | `import-fixer` | skill | Import-path repair after refactors |
 | `parallel-dispatch` | skill | True parallel fan-out across disjoint units (worktree discipline IMP-070/072) |
 
@@ -26,14 +26,13 @@ under `/team-lead`/`/develop-team`), or its **Standalone mode** when the
 unit is worked end-to-end by this turn alone (branch, commit, PR, status
 sync, agent-log all included). Units with disjoint file-sets may run in
 parallel via the `parallel-dispatch` skill, following the Write-mode
-Worktree & Follow-up Discipline (`~/.claude/rules/parallel-by-default.md`).
+Worktree & Follow-up Discipline (`~/.claude/docs/reference/delegation.md`, "Parallel work").
 
-**Per-unit fresh-context review.** Workers cannot spawn subagents, so
-after a worker's report-back and BEFORE the next wave or any merge, the
+**Per-unit fresh-context review.** A worker does not review its own unit. After a worker's report-back and BEFORE the next wave or any merge, the
 LEAD spawns, per unit, a fresh `code-reviewer-agent` (no prior context). It
 gets (a) the changed files as absolute paths, (b) the commit hash for
 context, (c) the unit's brief path, never a summary
-(`~/.claude/rules/slop-prevention.md` "Copy, don't interpret"). The reviewer
+(`~/.claude/docs/reference/slop-prevention.md` "Copy, don't interpret"). The reviewer
 has only Read/Grep/Glob and cannot run `git diff`; to show it the diff, the
 lead writes `git show <hash>` to a scratch file and passes that path. The
 lead records `**Review:** <agent> — <verdict> — <pointer>` in the agent-log
@@ -47,7 +46,7 @@ RED-first; allowed `RED evidence` values are defined once in
 A unit that renders something visible (a page, a component, a game state)
 is not reported done on a green test suite alone — route the rendered
 result through `visual-qa-agent` or the `human-testing` skill before
-closing it, per `~/.claude/rules/slop-prevention.md` Trigger 3.
+closing it, per `~/.claude/docs/reference/slop-prevention.md` Trigger 3.
 
 ## Env-key preflight
 
@@ -63,8 +62,7 @@ chain actually needs, from:
 **Validate every collected name before it touches a shell string or
 pattern.** A `Requires env:` line can come from a tracker-`github` issue
 body — text any collaborator with issue-write access can edit, i.e.
-untrusted input per `~/.claude/rules/security.md` and
-`~/.claude/rules/agents-as-users.md`. Keep a name only if it matches
+untrusted input per `~/.claude/rules/security.md`. Keep a name only if it matches
 `^[A-Za-z_][A-Za-z0-9_]*$`; skip any name that doesn't and report it once as
 an invalid/suspicious env-key name — never sanitize it and use a partial
 form. Only validated names may reach the presence checks below.

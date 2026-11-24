@@ -1,7 +1,8 @@
 ---
 description: "Migrate an already-started project INTO the R.Code framework. Reverse of /brainstorm + /decompose: derives the same artifact set from the existing CODEBASE + GIT HISTORY instead of from an idea. Use on an existing repo you want to bring under R.Code management."
+disable-model-invocation: true
 argument-hint: "[optional: short note on the project, e.g. 'internal admin dashboard, ~8 months old']"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
   - Read
@@ -93,7 +94,7 @@ There are two distinct classes. **Hard blockers** make migration technically imp
 | **No git repository** | R.Code's entire traceability model (commits → work units → phases) is built on git. There is no "Phase 0 baseline" to anchor to. | `git init`, make an initial commit of the current state, then re-run. |
 | **Already a R.Code project** (`.rcode/` exists) | Already migrated. Re-running migration would conflict with existing state. | Use `/status-sync` to reconcile state, or `/rcode-onboard` to get oriented. |
 
-> **No issue tracker is NO LONGER a hard blocker.** R.Code work units track under either tracker: `github` (GitHub issues + milestones) or `plan` (checkbox lines in `BRAINSTORM.md`, no GitHub needed). A repo with no GitHub issue tracker simply migrates onto the `plan` tracker — see Phase 0.4 below.
+> **A missing GitHub issue tracker does not block migration.** R.Code work units track under either tracker: `github` (GitHub issues + milestones) or `plan` (checkbox lines in `BRAINSTORM.md`, no GitHub needed). A repo with no GitHub issue tracker simply migrates onto the `plan` tracker — see Phase 0.4 below.
 
 **B) ADVISORY SIGNALS — recommend against, proceed only if the user confirms.** Surface these as a caution with the verdict; do NOT auto-abort:
 
@@ -126,7 +127,7 @@ Persist the answer into `.rcode/config.json`'s `tracker` field in Phase 2 (Class
 
 ## Phase 1 — ANALYZE (read-only)
 
-Reverse-engineer the project. Spawn an `Explore` (or `general-purpose`) agent via the **Task** tool for the heavy read work if the codebase is large (> ~20K tokens of reading) so the main context stays lean. Otherwise do it inline with `Glob`/`Grep`/`Read`.
+Reverse-engineer the project. Spawn an `Explore` agent via the **Task** tool for the heavy read work if the codebase is large (> ~20K tokens of reading) so the main context stays lean. Otherwise do it inline with `Glob`/`Grep`/`Read`.
 
 ### 1.1 Detect the stack
 

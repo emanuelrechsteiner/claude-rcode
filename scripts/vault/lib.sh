@@ -3,8 +3,8 @@
 # scripts/vault/vault.sh, scripts/scrub-check.sh (§7), and
 # publish-transforms.d/{30-placeholder-scan,50-pseudonymize}.sh. Welle 2 adds
 # hooks/vault-write-gate.sh and scripts/git-hooks/pre-commit as further
-# sourcers — no second matcher is written anywhere (rules/testing-quality.md
-# "Verify Via the Same Code Path"). Design: plans/vault-by-design-2026-09-25.md
+# sourcers — no second matcher is written anywhere (rules/slop-prevention.md
+# "Verification principles": "Verify Via the Same Code Path"). Design: plans/vault-by-design-2026-09-25.md
 # §2/§3.
 #
 # bash 3.2 (stock macOS): no mapfile, no associative arrays, no ${var,,}.
@@ -140,8 +140,8 @@ vault_default_token() {
 # vault_hmac_token_for <kind> <value> — the standalone `vault.sh token`
 # subcommand's derivation (round 3, finding #8): the SAME underlying
 # derivation primitive as vault_default_token (vault_hmac_hex6 — there is
-# only ever one HMAC computation in this file, rules/testing-quality.md
-# "same code path"), but with token's OWN allowed-kind set: project,
+# only ever one HMAC computation in this file, rules/slop-prevention.md
+# "Verification principles": "same code path"), but with token's OWN allowed-kind set: project,
 # account, and — new here — id as "id-<hex6>". Deliberately NOT folded
 # into vault_default_token itself: that function is add's own
 # no-explicit-token DEFAULT, and id has no such default there by design
@@ -438,7 +438,7 @@ vault_import_registry() {
 
 # ---------------------------------------------------------------------------
 # The matcher core (perl — ships on stock macOS). ONE script, mode-switched,
-# used by check/tokenize/resolve alike (rules/testing-quality.md).
+# used by check/tokenize/resolve alike (rules/slop-prevention.md "Verification principles").
 # ---------------------------------------------------------------------------
 _vault_write_matcher_pl() {
   cat > "$1" <<'PERLEOF'
@@ -882,7 +882,7 @@ for my $raw (@input_lines) {
     # attribution line (LICENSE:3, README.md:238) still got REWRITTEN by
     # tokenize even though check would never have flagged it, which is
     # exactly backwards for a WRITE tool. Same function as check
-    # (rules/testing-quality.md "same code path"), no second mechanism: an
+    # (rules/slop-prevention.md "Verification principles": "same code path"), no second mechanism: an
     # allowlisted line gets treated as if it had zero vault matches.
     my $line_allowlisted = is_allowlisted($file, $raw);
     my @vmatches = $line_allowlisted ? () : find_vault_matches($raw);

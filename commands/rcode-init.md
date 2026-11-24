@@ -1,7 +1,8 @@
 ---
-description: "Initialize a FRESH / greenfield project as a R.Code-managed project. Lays down the .rcode/ workflow state, installs + wires the rules, and seeds the bridge files — so every later command (/brainstorm, /decompose, /issue, /phase-gate) runs inside the framework. The greenfield counterpart to /rcode-migrate: it has no code to reverse-engineer, so it scaffolds the rails and runs a SHORT interview instead of inventing product content."
+description: "Sets up a fresh, greenfield project as R.Code-managed: .rcode/ state, workflow rules and bridge files, after a short interview, with no invented product content. Use for empty or boilerplate projects; for an existing codebase it recommends /rcode-migrate."
+disable-model-invocation: true
 argument-hint: "[optional: project name or a one-line description]"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
   - Read

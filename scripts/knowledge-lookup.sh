@@ -7,6 +7,10 @@
 # Reads the mirror; writes a private temp dir and one local usage log line (--no-log).
 # Scoring/selection: lib/knowledge-lookup-rank.sh; output/log: lib/knowledge-lookup-fields.sh.
 set -euo pipefail
+# Byte semantics for the whole lookup (IMP-267): under a UTF-8 locale the awk scanner aborts on bytes that
+# are not valid UTF-8 (towc), and cut/tr/awk regexes disagree with the byte-mode substr/index the libs use.
+# Case folding is ASCII plus the German capitals Ä Ö Ü (lf() in lib/knowledge-lookup-rank.sh), not locale tolower.
+export LC_ALL=C
 case "${BASH_SOURCE[0]}" in */*) SCRIPT_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)" ;; *) SCRIPT_DIR="$(pwd)" ;; esac # no dirname: tests hide tools
 for _lib in rank fields; do
   [ -r "$SCRIPT_DIR/lib/knowledge-lookup-$_lib.sh" ] || { echo "knowledge-lookup: missing $SCRIPT_DIR/lib/knowledge-lookup-$_lib.sh" >&2; exit 1; }
@@ -204,7 +208,8 @@ RK=(); NSET_KW=""; M=0; NS=0
 : > "$WORK/allkw.txt"
 run_set() { # <raw keyword file>: dedupe, spec, scan -> ranked.<i>.tsv; skips an empty set
   local i=$NS
-  awk '{ k = tolower($0) } !s[k]++ { print k }' "$1" > "$WORK/kw.$i.txt"
+  awk 'function lf(s) { s = tolower(s); if (index(s, "\303")) { gsub("\303\204", "\303\244", s); gsub("\303\226", "\303\266", s); gsub("\303\234", "\303\274", s) }; return s }
+    { k = lf($0) } !s[k]++ { print k }' "$1" > "$WORK/kw.$i.txt" # lf() = the scanner lowercase (IMP-267)
   [ -s "$WORK/kw.$i.txt" ] || return 0
   kl_kwspec "$WORK/kw.$i.txt" "$SCRIPT_DIR/lib/knowledge-lookup-collisions.tsv" "$WORK/kw.$i.spec"
   : > "$WORK/ranked.$i.tsv"

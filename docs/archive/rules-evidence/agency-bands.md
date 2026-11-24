@@ -1,6 +1,6 @@
 <!--
 Status: ARCHIVED
-Last Updated: 2026-09-24
+Last Updated: 2026-11-10
 Purpose: Evidence, incidents, and measurements moved verbatim out of rules/agency-bands.md on 2026-09-24 (IMP-217) — the rule itself stays there; this file carries the full-length "why".
 -->
 # Evidence for `rules/agency-bands.md`
@@ -163,3 +163,98 @@ Log: `~/.claude/global-observation/excessive-agency.log`.
 Regression suite: `hooks/tests/gate-regression.sh`.
 
 Companions: `agents-as-users.md`, `workflow-git.md` (lifecycle band mapping), the `cloud-cli-discipline` skill.
+
+## Moved 2026-11-10 (context diet)
+
+> Passages moved verbatim out of `rules/agency-bands.md` on 2026-11-10 (context diet). The rule keeps the normative text; each block below keeps the heading it had in the rule.
+
+### Second pass
+
+Text removed from `rules/agency-bands.md` by the second pass (FIXUP A1–A10, 2026-11-10), verbatim. The rule now carries its own replacement wording; the blocks below keep the original.
+
+#### A8 — section replaced by "### Bash gate: command position"
+
+### Bash-gate ESCALATE set (summary)
+
+Matched at command position only (start of command, or right after `;`, `&&`, `||`, `|` or a newline); op names inside quoted strings, heredoc bodies, `jq`/`python` literals or `echo` arguments do not fire. The set: `gh pr merge|close`, `gh release create`, `gh workflow disable`, `kubectl delete`, `cargo publish`, `pip upload`, `docker push`, `git branch -D`, `git clean -f`, the global machine-state commands above; `rm -rf` on absolute non-temp paths, `~`, `$HOME`, `/`, system paths, `.ssh`/`.git`/`.env`, `..`, `.` or any glob (AUTO-pass: `/tmp`, `/var/tmp`, `/var/folders`, `$TMPDIR`, relative paths, and build-artifact basenames such as `node_modules`, `dist`, `build`, `.next`, `target`, `.cache`, `.venv`, `coverage`); SQL `DROP TABLE`/`TRUNCATE` only when a SQL CLI is at command position. Source of truth: `hooks/excessive-agency-gate.sh` and `hooks/tests/gate-regression.sh`.
+
+#### A10 — paragraph replaced under "## MCP escalate set (IMP-078)"
+
+The bash gate cannot see MCP calls. `hooks/mcp-agency-gate.sh` classifies every `mcp__*` call by tool-name suffix: irreversible suffixes (`apply_migration`, `deploy_edge_function`, `firebase_deploy`, `pause_project`/`restore_project`, `merge|rebase|reset|delete_branch`, `merge_pull_request`, `execute_action`, calendar-event mutations) get a native ask. `execute_sql` is classified by statement: read-only (`SELECT`/`WITH`/`EXPLAIN`/`SHOW`) is allowed, write/DDL asks, an empty query asks; a non-empty statement the parser does not recognise is currently treated as read — the intended fail-safe-to-ask is open (IMP-235 A7). `deploy_to_vercel`: preview SOFT-ACK, prod ask. Behavioural backstop for what the suffix list misses: PR/issue/comment creation that notifies others is ESCALATE on MCP routes too; read-only and draft-only MCP calls are AUTO.
+
+#### Smaller removed fragments (A3, A4, A5, A6, A7, A9)
+
+- A3: `write forms of `git config --global|--system|--file <path>``
+- A4: `show the complete file manifest and get a y/n on it`
+- A5: `the ESCALATE set below` (layer 3 of the enforcement list)
+- A6: `The bash gate emits only AUTO (silent) or ESCALATE (exit 2) today; SOFT-ACK is your own one-line intent-and-undo note, not a hook output.`
+- A7: `- **exit 0, silent** → AUTO. Proceed.` and `- **exit 0 + stderr `NOTE:`** → SOFT-ACK. Proceed and emit your one-line intent+undo note.`
+- A9: `` `CLAUDE_GATE_TESTMODE=1` exempts the gate's own tests and log analysis. `` (ACK-token section; the "When to Override" list keeps the flag)
+
+## The Core Principle
+
+Default posture is permissive: **allow unless the op actually executed is genuinely irreversible, external, or production-affecting.** A read-only command, or one that merely *mentions* a dangerous op as string data, is not a dangerous op.
+
+### Global Machine-State Changes (IMP-163)
+
+A command that changes **identity or configuration outside the current project** is **always ESCALATE**, however harmless the one-liner looks: that state outlives the session and the **next, unaware run inherits it silently**. Repo-scoped or read-only forms stay AUTO. Covered, and matched by the bash gate:
+
+- `gh auth switch` (GitHub identity); `vercel switch` (Vercel team/scope); `gcloud config set account` (`gcloud config list` stays AUTO); `aws configure` (writes AWS CLI credentials/profile globally; `list`/`get` stay AUTO, read-only). Global options before the `vercel`/`gcloud`/`aws` subcommand (e.g. `aws --profile p configure set …`) match too (IMP-209).
+- `git config --global`, `--system`, `--file <path>`/`-f <path>` with a write action (IMP-209): they write `~/.gitconfig`, `/etc/gitconfig`, or any chosen path. Read-only forms (`--get`, `--get-all`, `--get-regexp`, `-l`/`--list`) and repo-local `git config` stay AUTO.
+- `npm config set … -g`/`--global`/`--location=global`/`-L global` (IMP-193/209; npm's global config, not the project's `.npmrc`), flag before or after `config set`, value possibly quoted (`--location='global'`). `--location=project` and `get`/`list` stay AUTO; the no-scope form and `--location=user` (both write the user's `~/.npmrc`) are an open scope decision, still AUTO.
+
+**If approved:** revert the change to its prior value before the session ends (state the revert command), or say explicitly in the same turn that it is meant to persist; silent, undocumented persistence is the failure mode this closes. The `cloud-cli-discipline` skill already describes the team/scope auto-pick risk for read commands (`teams ls`, `whoami`); this section is the gate for the *write* side of the same risk class.
+
+### Bulk-Pipeline Manifest Gate (IMP-152)
+
+A bulk run feeding a local file corpus through an **external** backend (e.g. `--backend <external-cli/-service>`) is **always ESCALATE**, however reversible it looks — the Meta Rule-of-Two fires: an **untrusted/unaudited** corpus that can hold **sensitive/private third-party data** (health, personal, financial) goes out as an **external send**. **Mandatory before the run:** a complete **file manifest** (every file/path the backend will see) plus an explicit y/n based on it; a blanket "go ahead, run it" without a manifest shown is not approval. No hook covers this gate: it is **behavioral-only**, your pre-run judgment. Proof for a data-sink fix: see [[testing-quality]] §"Verify at the Sink, Not the Suite (Data-Exfiltration Fixes) (IMP-158)".
+
+## Enforcement — Four Deterministic Layers + You
+
+1. **CRITICAL floor — native `deny[]` + `guard-unsafe.sh`:** never-allow hard-block on `rm -rf` of `/`, `~`, `$HOME`, or `*`; host-destruction (`mkfs`/`dd`/device writes); netcat/reverse-shells; `curl -o` to a critical filesystem path. WARNS (non-blocking) on force-push; curl/wget/scripted-HTTP data-upload is SOFT-ACK (IMP-146). Untouched by everything below.
+2. **Native `ask[]` (settings.json):** real y/n FIRST for `git push --force`, `git reset --hard`, `npm publish`; the bash gate deliberately does NOT re-match these.
+3. **Bash gate (`excessive-agency-gate.sh`), PreToolUse|Bash:** the patterns below; exit 0 or 2 only; fails OPEN on parse-failure/empty command (the floor still stands).
+4. **MCP gate (`mcp-agency-gate.sh`), PreToolUse `mcp__.*` (IMP-078):** the MCP ESCALATE set below.
+
+### Reading the classifier
+
+**Never route around a gate** — not via another tool, another language, `eval`, base64, or a subprocess (`subprocess.run`, `child_process`); if the gate blocked it, ask the user.
+
+### Bash-gate ESCALATE patterns (command-position only)
+
+Matched at **command position only**: start of command or right after `;`, `&&`, `||`, `|`, or a newline; op names inside quoted strings, heredoc bodies, `jq`/`python` literals, or `echo` args do NOT fire.
+
+- `gh pr merge`, `gh pr close`, `gh release create`, `gh workflow disable`; `kubectl delete`; `cargo publish`, `pip upload` (Twine), `docker push`; `git branch -D` (drops unmerged commits); `git clean -f`; the commands under "Global Machine-State Changes".
+- **`rm -rf`**, classified on the RAW (unstripped) target. **AUTO-PASS** under `/tmp`, `/var/tmp`, `/var/folders`, `$TMPDIR`/`${TMPDIR}`; for a **relative path** (`./x` or a bare name that is not `~`); or for a basename in `{node_modules, dist, build, .next, .nuxt, target, .cache, .venv, coverage, .turbo}` or matching `*.egg-info`. **ESCALATE** otherwise: absolute non-temp paths, `~`, `$HOME`, `/`, system paths (`/etc`, `/usr`, `/var` outside tmp, `/Users`), `.ssh`/`.git`/`.env`, `".."`, `"."`, or any target containing a glob `*`.
+- **SQL `DROP TABLE` / `TRUNCATE`** ONLY when a SQL-runner CLI is at command position (`psql`, `mysql`, `mariadb`, `sqlite3`, `mysqlsh`, `usql`, `cockroach sql`) AND its argument contains them (case-insensitive); a bare `echo`/`grep` mentioning `DROP TABLE` is AUTO.
+
+### ACK-token contract (`CLAUDE_AGENCY_ACK_ONCE`)
+
+- Value: sha256 of the **normalized op-signature** (data-stripped, whitespace-collapsed command), grepped inline from the command string (like `CLAUDE_GUARD_OVERRIDE`).
+- **Single-use** (consumed sha recorded per `$PPID`/session; a replay re-blocks) and **op-bound** (a mismatched sha logs `ack-mismatch` and still blocks); the allow is logged with `authorizer=user`.
+- The ESCALATE message always includes the exact re-run line + a one-line reason (which op, why irreversible).
+- **`CLAUDE_GATE_TESTMODE=1`**: early exemption (exit 0, logged) so the gate's own regression tests and log-analysis commands don't self-block.
+- `CLAUDE_GATEGUARD_OFF` is no bypass for this gate (it never worked inline); it scopes only `gateguard.sh` (Read-before-Edit).
+
+### ESCALATE in automatic-approval mode (don't-ask/Auto)
+
+Once it is apparent that the session runs in an automatic-approval mode with no working ask-channel (don't-ask / Auto / `--dangerously-skip-permissions`, or an `AskUserQuestion` attempt was just denied), handle an ESCALATE-band op as below — the ask-channel is structurally dead there (even `AskUserQuestion` and ops with a valid ACK token get denied), so retrying the ask does not help (IMP-145):
+
+1. **No ask-tool retry.** The op is NOT requested via `AskUserQuestion` or an equivalent dialog tool; a second attempt after a denial is forbidden.
+2. **The op is NOT executed:** no self-minted ACK token, no substitute op, no routing around the gate.
+3. **Queue entry** in `.rcode/escalation-queue.md` (project state), same file and format as `/autonomous-overnight` (`commands/autonomous-overnight.md` § Escalation Queue): one entry per op (op, band reason, R/S/T scores, why-now, if-approved, if-deferred, independent remaining work). No second format.
+4. **Name it in plain text:** file path + count of open entries in the output, so it is visible at the next interactive contact.
+
+## The MCP ESCALATE Set — two layers since IMP-078
+
+The bash gate cannot see MCP tool calls; two layers cover them.
+
+**Deterministic (`mcp-agency-gate.sh`):** fires on every `mcp__*` call, classifying by tool-name **suffix**. Irreversible-class suffixes (`apply_migration`, `deploy_edge_function`, `firebase_deploy`, `pause_project`/`restore_project`, `merge/rebase/reset/delete_branch`, `merge_pull_request`, `execute_action`, calendar-event mutations) get native `permissionDecision:"ask"` (real one-click y/n; unanswerable asks fail safe in headless runs). **`execute_sql` is classified by the STATEMENT:** read-only (`SELECT`/`WITH`/`EXPLAIN`/`SHOW`) gets an explicit `permissionDecision:"allow"` (AUTO); only write/DDL (`INSERT`/`UPDATE`/`DELETE`/`DROP`/`ALTER`/`CREATE`/`TRUNCATE`/`GRANT`/…) escalates to `ask`, and an unparseable query fails safe to `ask`. `deploy_to_vercel`: preview = SOFT-ACK (allow + stderr note); prod-flagged input = ask.
+
+**Behavioral (this rule):** backstop for whatever the suffix list misses — the decision table and its carve-outs apply unchanged to MCP routes: PR/issue/comment creation that notifies others is ESCALATE; read-only MCP calls and clearly reversible, notify-no-one actions (create a draft, add a label) are AUTO.
+
+## Delegation — Control-Agent Is the Single Escalation Point
+
+In delegated multi-agent work, sub-agents hitting an ESCALATE-band op report it UP to the **control-agent**, never prompting the user directly; it consolidates **one verbatim y/n per logical operation** and carries the approval (and ack token) back down: one audit trail, no N uncoordinated prompts. Also enforced via agent system prompts (irreversible-ops y/n clause regardless of mode flags) and the R.Code phase-gate (no phase advance after unconfirmed irreversible ops).
+
+**Anti-patterns:** trusting the agent with `git push --force` (always confirm); standing-allowlisting irreversible ops (the ACK token is per-op and single-use, NOT a standing bypass); subprocess/eval bypasses; "it's just my dev machine" (prompt-injection reaches personal machines).

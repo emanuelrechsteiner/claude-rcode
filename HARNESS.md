@@ -22,20 +22,22 @@ This setup implements all 7 parts. Most setups in the wild have only 3–5.
 
 | Layer | This Setup's Implementation |
 |-------|------------------------------|
-| **1. Rules** | Always-loaded rules in `~/.claude/rules/` — foundation, code-quality, security, testing-quality, tool-discipline, parallel-by-default, context-engineering, fail-loud, agents-as-users, slop-prevention, agency-bands, mcp-tool-usage, workflow-git, web-research-trust (IMP-088), … (exact counts: `scripts/framework-inventory.sh` — hand-maintained numbers drifted in 3 docs, IMP-083) |
+| **1. Rules** | Four always-loaded rules in `~/.claude/rules/` (foundation, agency-bands, slop-prevention, workflow-git), seven path-scoped rules that load when a matching file is read or edited (code-quality, security, testing-quality, documentation, domain-docs-convention, planning-doc-convention, fail-loud), and long forms on demand under `docs/reference/` (agency-bands, slop-prevention, workflow-git, web-research-trust, tools, delegation). Exact counts: `scripts/framework-inventory.sh` (the workshop tracks its rule files; the live install adds the git-ignored `*.local.md` overlays). The rule texts from before the 2026-11-23 rebuild are kept in `docs/archive/rules-2026-11-23/`. |
 | **2. Skills** | On-demand skills (forked context) — validate-build, research, pattern-document, meta-observer, quality-review, legacy-codebase-audit, rcode-ios, kokonutui-pro, framework-extraction, ux-design, version-control, documentation, … |
 | **3. MCP servers** | Multiple — context7-keyed (docs), filesystem, Notion, Supabase, Vercel, optional client-specific brand servers, … WRITE-capable tools gated by `mcp-agency-gate.sh` (IMP-078) |
-| **4. Subagents** | 10 active agents (control-agent, planning-agent, backend-agent, testing-agent, ui-agent, code-reviewer-agent, cleanup-agent, documentation-agent [Mode B only], version-control-agent, pattern-extractor-agent [`/lessons` Step 6 only]) + general-purpose + Explore + Plan. Dispatch volume is measurable since IMP-115 (`dispatch-capture.sh` → `agent_invocations`); before that the framework could not count its own delegations. |
+| **4. Subagents** | 14 agents (generated 2026-11-11, `scripts/framework-inventory.sh`): control-agent, planning-agent, backend-agent, testing-agent, ui-agent, code-reviewer-agent, cleanup-agent, documentation-agent [Mode B only], version-control-agent, pattern-extractor-agent [`/lessons` Step 6 only], knowledge-agent, research-agent, visual-qa-agent, goal-agent [read-only scope watcher, IMP-289] + general-purpose + Explore + Plan. Dispatch volume is measurable since IMP-115 (`dispatch-capture.sh` → `agent_invocations`); before that the framework could not count its own delegations. |
 | **5. LSP-equivalent** | Built-in tools (Glob, Grep) + Serena MCP for language-aware codebase navigation |
-| **6. Hooks** | Lifecycle-bound hooks (counts: `scripts/framework-inventory.sh`) — `guard-unsafe.sh`, `excessive-agency-gate.sh`, `mcp-agency-gate.sh`, `security-audit.sh`, `pretool-auto-read.sh`, `gateguard.sh`, `observation-capture.sh`, `session-end-check.sh`, `config-drift-check.sh`, `web-fetch-safety-gate.sh` (IMP-088), `dispatch-capture.sh` (IMP-115 — the only surface that can observe a subagent dispatch), `git-remote-check.sh` (IMP-122), … regression-pinned by `hooks/tests/gate-regression.sh` (73 cases), `web-fetch-gate-regression.sh` (97) and `parallel-lock-regression.sh` (12) — IMP-076/088/114/117. **One registered hook is NOT a `hooks/*.sh` script:** the external `graphify hook-guard` (PreToolUse, 2 entries, advisory nudge, fails open — IMP-109) — it is therefore invisible to `framework-inventory.sh`'s `*.sh`-based count; `settings.json` is the only complete registration truth. |
+| **6. Hooks** | Lifecycle-bound hooks (counts: `scripts/framework-inventory.sh`) — `guard-unsafe.sh`, `excessive-agency-gate.sh`, `mcp-agency-gate.sh`, `security-audit.sh`, `observation-capture.sh`, `session-end-check.sh`, `scripts/config-drift-check.sh` (invoked from a hook registration), `web-fetch-safety-gate.sh` (IMP-088), `dispatch-capture.sh` (IMP-115 — the only surface that can observe a subagent dispatch), `git-remote-check.sh` (IMP-122), `knowledge-inject.sh` (IMP-267 — the automatic library lookup for prompts, dispatches and subagent starts; the former write gate `knowledge-gate.sh` and the dispatch check `knowledge-brief-check.sh` stay on disk but are no longer registered since 2026-11-23), `goal-prompt.sh`, `goal-track.sh` and `goal-stop.sh` (IMP-289 — the goal of a prompt on Cockpit card 4, its progress and time to goal, and the stop check for unreported deviations), … regression-pinned by `hooks/tests/gate-regression.sh` (264 cases), `web-fetch-gate-regression.sh` (100) and `parallel-lock-regression.sh` (20), case counts generated 2026-11-24 — IMP-076/088/114/117. **One registered hook is NOT a `hooks/*.sh` script:** the external `graphify hook-guard` (PreToolUse, 2 entries, advisory nudge, fails open — IMP-109) — it is therefore invisible to `framework-inventory.sh`'s `*.sh`-based count; `settings.json` is the only complete registration truth. |
 | **7. Tests / Validation** | `validate-build` skill + per-project test discipline (R.Code) + phase-gate quality gates |
+
+**How the framework steers work (since 2026-11-23).** The always-loaded core is short: four rules, with long forms under `docs/reference/` that the core points to and that load only on demand. Delegation is a decision per task, not a default: the main session works directly when a task is small, sequential or depends on context it already holds, and hands independent, long-output or review units to helpers (`rules/foundation.md`, `docs/reference/delegation.md`). Rules that must hold without exception are hooks, not text: the safety gates in the table above. Library hits for a prompt and for each dispatched helper are injected automatically by `knowledge-inject.sh`; no mandatory lookup round precedes a dispatch. The rebuild record is in `CHANGELOG.md` and `docs/archive/rules-2026-11-23/`.
 
 ## The 5 Harness Properties
 
 1. **Master Loop** — Claude Code's `while tool_calls: run + return` agent loop (Zoneraich "How CC Works")
-2. **Context Budget** — window-relative thresholds (soft 50% / hard 75–80% / never the 90% auto-compact margin) per `~/.claude/rules/context-engineering.md`
+2. **Context Budget** — no fixed window thresholds since 2026-11-23: the old thresholds (soft 50% / hard 75–80%) had no source for current models and the rule was removed (text in `docs/archive/rules-2026-11-23/context-engineering.md`); the harness compacts on its own, and `/context` shows the fill
 3. **Verification Contract** — failing→passing tests written DURING planning (Boris Cherny RoboBun pattern) + phase-gate
-4. **Disposable Sessions** — `/clear` between issues (workflow-git.md) + subagent isolation per Task
+4. **Disposable Sessions** — the user clears the session between issues (`docs/reference/workflow-git.md`) + subagent isolation per Task
 5. **Self-Improving Layer** — observation pipeline (see below)
 
 ## Swiss Cheese Defense (Layered Security)
@@ -44,14 +46,13 @@ Per the Anthropic Agent SDK Workshop (Thariq Shihipar). This setup has 5+ overla
 
 | Layer | Implementation | Catches |
 |-------|----------------|---------|
-| Identity guard | `git-identity-check.sh` (SessionStart) + `git-identity-enforce.sh` (PreToolUse) | Wrong-identity commits (Identity A / Identity B — e.g. work vs. personal git identity) |
+| Identity guard | `git-identity-check.sh` (SessionStart); `git-identity-enforce.sh` stays on disk but is no longer registered (it was a placeholder that exited 0 on every call) | Wrong-identity commits (Identity A / Identity B — e.g. work vs. personal git identity) |
 | Unsafe command guard | `guard-unsafe.sh` (PreToolUse/Bash) | `rm -rf /`, `sudo`, network exfil |
 | Git state guard | `git-state-check.sh` (PreToolUse/Bash) | Operations on dirty/wrong branches |
 | File protection | `file-protection.sh` (PreToolUse/Write|Edit) | Sensitive files |
 | Security audit | `security-audit.sh` (PreToolUse/Write|Edit) | Secret patterns (`github_pat_*`, `sk-*`, `AIza*`) |
 | Excessive agency gate | `excessive-agency-gate.sh` (PreToolUse/Bash) + `mcp-agency-gate.sh` (PreToolUse/`mcp__*`) | `git push --force`, bulk deletes, prod migrations — see `rules/agency-bands.md` |
-| Read-before-Edit — Layer 1 (advisory) | `gateguard.sh` (PreToolUse/Write\|Edit) | On first-touch Edit/Write of a file per session: returns a JSON-deny **advisory** ("investigate first") — deliberately downgraded from hard-block to advisory by IMP-045. A second attempt is allowed immediately. The gate feels "inactive" to observers because it never permanently blocks. |
-| Read-before-Edit — Layer 2 (hard block) | `pretool-auto-read.sh` (PreToolUse/Write\|Edit) | The actual **exit-2 hard block**: if a file was never Read in this session, this hook denies the Edit/Write entirely. This is the enforcement layer; gateguard is only the advisory reminder. Both run PreToolUse on Write\|Edit — the two-layer split is intentional (IMP-045/IMP-048). |
+| Read-before-Edit (retired 2026-11-23) | `gateguard.sh` and `pretool-auto-read.sh` (PreToolUse/Write\|Edit) stay on disk, no longer registered | The harness no longer requires a Read before an Edit inside the working directory. The guidance is one line in `rules/foundation.md`. The former advisory (IMP-045) and hard block (IMP-033/IMP-048) are historical. |
 
 ## Self-Improvement Loop (The Rare Component)
 
@@ -63,9 +64,9 @@ Edit/Write ─▶ PostToolUse ─▶ observation-capture.sh ─▶ signals.jsonl
 Session End ─▶ Stop ─▶ session-end-check.sh ─▶ session-metrics.jsonl
                                                             │
                                         (threshold crossed) ▼
-                                 "Run /meta-observe to extract patterns"
+                                 "Run the meta-observer skill to extract patterns"
                                                             │
-                User invokes /meta-observe ─▶ meta-observer skill (Opus, fork)
+      User invokes the meta-observer skill ─▶ meta-observer skill (Opus, fork)
                                                             │
                                         ┌───────────────────┴─────────────────────┐
                                         ▼                                         ▼
@@ -82,7 +83,7 @@ Compounding effect: every observed friction becomes a rule that prevents future 
 
 All three tasks are LIVE. Authoritative definitions: `~/.claude/scheduled-tasks/<task>/SKILL.md` (read as prompt at fire time — editing the file updates the task). Runtime state: `mcp__scheduled-tasks__list_scheduled_tasks` / `/schedule` skill. The stale `routines/*.yaml` duplicate templates were removed 2026-07-03 (see `routines/README.md`).
 
-**Timer mechanism (since 2026-08-22, IMP-135; label genericized IMP-219, 2026-09-25):** local `launchd` timers bound to `~/.claude` — templates in `scripts/launchd/routine-<task>.plist.template` (placeholders `__HOME__`/`__LABEL__`), runner `scripts/routine-run.sh <task> [--dry-run]`, installer `scripts/install-routine-timers.sh` renders them to the generic label `com.claude-code.routine-<task>` and unloads the old, user-bound label `com.<user>.claude-routine-<task>` where present (idempotent; refuses to run until `routine-run.sh` is deployed to `~/.claude/scripts/`; `--uninstall` to remove). Replaces the unversioned cloud-cwd binding that broke silently for 20 days after a 2026-08-02 directory rename. Watchdog against a repeat silent death: a liveness sweep in the quarterly audit plus a session-end alarm decoupled from the routine it monitors (IMP-138, implemented 2026-08-22 — `session-end-check.sh` alarms on `DAYS_STALE` alone and reports the newest shard's age; regression `hooks/tests/session-end-staleness-regression.sh`, 8 cases).
+**Timer mechanism (since 2026-08-22, IMP-135; label genericized IMP-219, 2026-09-25):** local `launchd` timers bound to `~/.claude` — templates in `scripts/launchd/routine-<task>.plist.template` (placeholders `__HOME__`/`__LABEL__`), runner `scripts/routine-run.sh <task> [--dry-run]`, installer `scripts/install-routine-timers.sh` renders them to the generic label `com.claude-code.routine-<task>` and unloads the old, user-bound label `com.<user>.claude-routine-<task>` where present (idempotent; refuses to run until `routine-run.sh` is deployed to `~/.claude/scripts/`; `--uninstall` to remove). Replaces the unversioned cloud-cwd binding that broke silently for 20 days after a 2026-08-02 directory rename. Watchdog against a repeat silent death: a liveness sweep in the quarterly audit plus a session-end alarm decoupled from the routine it monitors (IMP-138, implemented 2026-08-22 — `session-end-check.sh` alarms on `DAYS_STALE` alone and reports the newest shard's age; regression `hooks/tests/session-end-staleness-regression.sh`, 22 cases, generated 2026-11-10).
 
 | Task | Schedule | Status |
 |---|---|---|
@@ -96,13 +97,13 @@ When adding a new capability, decide which layer to use:
 
 | You want to... | Use |
 |---|---|
-| Document a behavior that should apply every session | Rule (`~/.claude/rules/<name>.md`) |
+| Document a behavior that should apply every session | Rule (`~/.claude/rules/<name>.md`), kept short; the long form goes to `docs/reference/`. A behavior that must hold without exception belongs in a hook. |
 | Add a reusable workflow / domain knowledge | Skill (`~/.claude/skills/<name>/SKILL.md`) |
 | Trigger automation on a lifecycle event | Hook (`~/.claude/hooks/<name>.sh` + register in `settings.json`) |
 | Provide a fork()'d execution context | Subagent (`~/.claude/agents/<name>.md`) |
 | Connect to external system | MCP server |
 | Add a slash command | Command (`~/.claude/commands/<name>.md`) |
-| Schedule recurring cloud-side work | Routine (`~/.claude/routines/<name>.yaml`) |
+| Schedule recurring cloud-side work | Scheduled task (`~/.claude/scheduled-tasks/<task>/SKILL.md`) |
 
 ## Counter-Narrative — When NOT to Add to the Harness
 

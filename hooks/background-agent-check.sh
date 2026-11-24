@@ -122,7 +122,7 @@ if [ "$OPEN" -gt 0 ]; then
         if [ "$OLDEST_EPOCH" -gt 0 ] 2>/dev/null; then
             AGE_MIN=$(( (NOW_EPOCH - OLDEST_EPOCH) / 60 ))
             if [ "$AGE_MIN" -ge "$STALE_MIN" ]; then
-                LINE1="⏳ ${OPEN} background troop(s) with no stop signal for ${AGE_MIN} min (IMP-198) — check TaskOutput/Monitor"
+                LINE1="⏳ ${OPEN} background troop(s) with no stop signal for ${AGE_MIN} min (IMP-198) — check Monitor or the task's output file"
             fi
         fi
     fi

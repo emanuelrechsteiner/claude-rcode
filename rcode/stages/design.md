@@ -10,12 +10,12 @@ Loaded by `~/.claude/commands/team-lead.md` (directly, or via the
 |---|---|---|
 | `ux-design` | skill | User flows, wireframes, interaction design |
 | `ui-development` | skill | Component specs (spec-authoring portion) |
-| `ui-agent` | agent (sonnet) | Visual design systems, component specs |
+| `ui-agent` | agent (haiku) | Visual design systems, component specs |
 | `scroll-animation-patterns` | skill | RAF-driven scroll animation specs |
 | `tailwindcss-v4-styling` | skill | Design-token/theme configuration |
 | `kokonutui-pro` | skill | Component index for pre-built UI patterns |
 | `human-testing` | skill | Visual acceptance / click-through review |
-| `visual-qa-agent` | agent (sonnet, read-only) | Rendered check of a design-system demo/Storybook story against the spec before handoff |
+| `visual-qa-agent` | agent (haiku, read-only) | Rendered check of a design-system demo/Storybook story against the spec before handoff |
 | `grilling` | skill | Interview on open design decisions (flows, states, scope) before component specs are written |
 | `prototype` | skill | Throwaway UI variants or state-model build when "how should it look or behave" cannot be settled in discussion; the verdict goes into the design spec |
 
@@ -27,10 +27,10 @@ through the `ux-design` skill; design-system and component-spec authoring go
 through `ui-development` (spec-authoring portion) and `ui-agent`; the visual
 acceptance pass — confirming the result actually looks and behaves right
 before handoff — runs through `human-testing` or, for one rendered
-artifact, `visual-qa-agent` (per `~/.claude/rules/slop-prevention.md`
+artifact, `visual-qa-agent` (per `~/.claude/docs/reference/slop-prevention.md`
 Trigger 3: compare against the SOURCE spec, never a paraphrase of it). Tasks
 with disjoint file-sets may run in parallel per
-`~/.claude/rules/parallel-by-default.md`.
+`~/.claude/docs/reference/delegation.md`, "Parallel work".
 
 Open design decisions go through `grilling` first, one question at a time. A
 question that discussion cannot settle (layout, interaction feel, a state

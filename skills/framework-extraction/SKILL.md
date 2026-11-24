@@ -1,6 +1,6 @@
 ---
 name: framework-extraction
-description: Framework-in-Project pattern — develop a new framework (rules, commands, skills) INSIDE a host project first, then extract only when the 3-criteria trigger fires (stability + reuse need + pain frequency). Use when building or evolving a framework inside a host project, or deciding whether/how to extract it to a standalone repo. Triggers on "framework extraction", "extract framework", "framework-in-project", "when to extract", "extraction trigger", "extraction checklist", "standalone repo", "framework extrahieren", "framework auslagern", "in eigenes repo auslagern", "wann extrahieren".
+description: "Framework-in-Project pattern: build a framework (rules, commands, skills) inside a host project first and extract it only when stability, reuse need and pain frequency all hold. Use when building or evolving one in a host project or deciding whether and how to extract it to a standalone repo."
 ---
 
 # Framework-in-Project Extraction Pattern

@@ -186,7 +186,7 @@ EOF
 
 ## Output
 
-The first line of this report is `Done: yes` or `Done: no — missing: <list>`, scoped per visible surface (`verified` / `not checked`), per `~/.claude/rules/slop-prevention.md` Trigger 3 step 6.
+The first line of this report is `Done: yes` or `Done: no — missing: <list>`, scoped per visible surface (`verified` / `not checked`), per `~/.claude/docs/reference/slop-prevention.md` Trigger 3 step 6.
 
 ```
 Done: yes | Done: no — missing: <list>   (per surface: verified / not checked)

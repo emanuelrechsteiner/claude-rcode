@@ -8,18 +8,18 @@ run). Loaded by `~/.claude/commands/team-lead.md` (directly, or via the
 
 | Asset | Kind | Use for |
 |---|---|---|
-| `version-control-agent` | agent (sonnet) | Release commits, tags, PRs |
+| `version-control-agent` | agent (haiku) | Release commits, tags, PRs |
 | `worktree-consolidate` | skill | Merge-readiness audit before a cut |
 | `validate-build` | skill | Build/type/lint validation |
 | `dependency-audit` | skill | Pre-release dependency check |
 | `documentation` | skill | Release notes / changelog drafting |
-| `backend-agent` | agent (sonnet) | Production diagnosis and hotfix |
+| `backend-agent` | agent (haiku) | Production diagnosis and hotfix |
 | `nextjs-debug` | skill | Framework-level production diagnostics |
 | `react-perf-check` | skill | Performance regression diagnosis |
 | `research` | skill | Vendor/dependency incident status |
 | `pattern-document` | skill | Postmortem → reusable rule |
 | `memory-index` | skill | Cross-project repetition check |
-| `testing-agent` | agent (sonnet) | Regression test per Post-Fix Protocol |
+| `testing-agent` | agent (haiku) | Regression test per Post-Fix Protocol |
 
 ## Operating modes
 

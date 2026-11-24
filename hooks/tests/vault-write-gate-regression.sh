@@ -248,6 +248,16 @@ else
 fi
 rm -rf "$INFRA_ISOL"
 
+N=$((N + 1))
+printf '%s' "$(payload_edit "$FWREPO/src/tmpdir.ts" "const owner = \"$SYNTH_TERM\";")" |
+    CLAUDE_VAULT_DIR="$VDIR" TMPDIR="$T/no-such-dir" "$GATE" >/dev/null 2>"$T/stderr"
+CODE=$?
+if [ "$CODE" -eq 2 ]; then
+    PASS=$((PASS + 1)); printf '  ok %2d — missing TMPDIR: the check still runs and blocks (IMP-274)\n' "$N"
+else
+    FAIL=$((FAIL + 1)); printf 'FAIL %2d — missing TMPDIR: code=%s err=%s\n' "$N" "$CODE" "$(cat "$T/stderr" 2>/dev/null)"
+fi
+
 echo "──────────────────────────────────────────────────────────────────────"
 echo "vault-write-gate regression: $PASS/$N passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1

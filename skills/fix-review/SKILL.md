@@ -1,6 +1,6 @@
 ---
 name: fix-review
-description: Post-fix completeness checker. After making a code fix, this skill identifies the fix scope, searches for all related occurrences, verifies call sites are updated, and checks for cascading issues. Use after fixing bugs to ensure nothing was missed. Triggers on "review fix", "check fix", "fix complete", "verify fix", "did I miss anything", "cascading changes", "fix überprüfen", "fix checken", "nichts vergessen", "noch mehr stellen", "habe ich was übersehen", "gibt es noch weitere", "alle stellen gefunden", "komplette abdeckung", "sind wir vollständig".
+description: "Checks a just-made bug fix for completeness: finds every occurrence of the changed code, verifies call sites and importers, and looks for cascading type or export breakage. Use after fixing a bug to confirm nothing was missed."
 user-invocable: false
 allowed-tools: Read, Glob, Grep, Bash(git diff *), Bash(git log *)
 ---

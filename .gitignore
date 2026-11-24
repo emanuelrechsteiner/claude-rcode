@@ -99,6 +99,9 @@ global-observation/self-critique.jsonl
 global-observation/*.log
 global-observation/*.bak-*
 global-observation/observation-ledger-*-archive.json
+# Goal tracking state (IMP-289): one file per session with the start of the prompt, the
+# pace history and the lock files. Per machine, never versioned.
+global-observation/goals/
 
 # Misc per-machine state
 firebase-debug.log
@@ -108,6 +111,10 @@ firebase-debug.log
 settings.json.bak-*
 sessions/
 tasks/
+# The probe tasks of the 2026-11 modernization are evidence, not per-machine state.
+# Their R.Code fixture carries a .rcode/ folder that a local exclude would drop.
+!ops/modernization-2026-11/probe/tasks/
+!ops/modernization-2026-11/probe/tasks/_shared/rcode-project/.rcode/
 
 # Vendor / plugin runtime files
 vercel-plugin-device-id

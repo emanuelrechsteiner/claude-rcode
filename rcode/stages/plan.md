@@ -8,7 +8,7 @@ slicing. Loaded by `~/.claude/commands/team-lead.md` (directly, or via the
 
 | Asset | Kind | Use for |
 |---|---|---|
-| `planning-agent` | agent (opus) | Architecture, task breakdown, plans |
+| `planning-agent` | agent (haiku) | Architecture, task breakdown, plans |
 | `research-agent` | agent (haiku) | Tech/market research, prior-art, API survey; can write a report file |
 | `research` | skill | Lighter-weight research that doesn't need a standalone report file |
 | `project-planning` | skill | Roadmap structuring, dependency mapping |

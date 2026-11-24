@@ -1,6 +1,25 @@
+---
+paths:
+  - "**/PLANNING.md"
+  - "**/PLAN.md"
+  - "**/PLANS.md"
+  - "**/ARCHITECTURE.md"
+  - "**/ARCH.md"
+  - "**/SPEC.md"
+  - "**/SPECIFICATION.md"
+  - "**/SPECS.md"
+  - "**/DESIGN.md"
+  - "**/DESIGNS.md"
+  - "**/docs/plans/**"
+  - "**/docs/specs/**"
+  - "**/docs/architecture/**"
+  - "**/PLANNING-draft-*.md"
+  - "**/PLAN-draft-*.md"
+---
+
 # Planning-Doc Convention Rule
 
-> Planning docs are versioned single-source-of-truth artifacts, not draft notebooks (IMP-036). Always loaded.
+> Planning docs are versioned single-source-of-truth artifacts, not draft notebooks (IMP-036). Path-scoped: loads when a matching file is read or edited.
 
 ## Scope
 

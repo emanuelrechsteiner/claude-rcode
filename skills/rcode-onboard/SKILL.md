@@ -1,6 +1,6 @@
 ---
 name: rcode-onboard
-description: "This skill should be used when the user asks to 'onboard', 'get started', 'what should I work on', 'pick up project', 'where are we', 'continue project', 'what is the current state', 'wo stehen wir', or 'was ist der stand'. It reads project status, architecture, conventions, and recent agent activity to get a new agent productive in under 10 minutes on a R.Code-managed project."
+description: "Orients a new or returning agent on a R.Code-managed project: reads status, architecture, conventions and recent agent activity, then recommends the next work unit. Use when asked to onboard, get started, continue, or report where the project stands."
 allowed-tools:
   - Read
   - Glob

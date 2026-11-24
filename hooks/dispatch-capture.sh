@@ -18,7 +18,7 @@
 #
 # WHAT CHANGED vs. the probe: the probe dumped the ENTIRE raw PreToolUse JSON,
 # including tool_input.prompt — ~4.7 KB per record, and prompt text is untrusted
-# content that has no business sitting in an audit log (agents-as-users.md).
+# content that has no business sitting in an audit log (rules/security.md).
 # This version extracts five fields and nothing else. The raw-shape questions
 # that justified the unfiltered dump are answered, so the jq round-trip the
 # probe deliberately avoided is now correct.

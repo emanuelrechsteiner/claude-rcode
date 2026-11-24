@@ -1,6 +1,6 @@
 ---
 name: memory-index
-description: Cross-project memory query layer. Aggregates the 35+ project-specific memory directories under ~/.claude/projects/ into on-demand MCP Memory Graph entities. Enables queries like "what did I learn about Next.js middleware?" or "which projects use SwiftData?". Triggers on "memory search", "find project context", "cross-project query", "what have I learned about X", "search projects", "remember Y".
+description: "Answers cross-project questions from every project's memory: indexes ~/.claude/projects/ into MCP Memory Graph entities, then finds what was learned and which projects use a tool. On demand only. Use when asking what was learned across projects, or before starting in a known domain."
 context: fork
 model: haiku
 allowed-tools: Read, Glob, Grep, Bash(ls *), Bash(find *), Bash(wc *), Bash(head *), Bash(cat *), mcp__memory__search_nodes, mcp__memory__open_nodes, mcp__memory__create_entities, mcp__memory__add_observations, mcp__memory__create_relations, mcp__memory__read_graph
@@ -102,13 +102,12 @@ Ingestion reads many files. If the user is mid-task, ask before running a full r
 
 - **Depends on:** MCP Memory server (`mcp__memory__*` tools)
 - **Complements:** `meta-observer` skill (which focuses on signals.jsonl, not project transcripts)
-- **Addresses:** IMP-013 (Cross-Project Memory Query Layer) in improvement-ledger.json
 
 ## Success Criteria
 
 A query like "what did I learn about scroll animation" returns within 5 seconds:
 - A `project:<landing-page-project>` entity reference
-- Paths to relevant rules (`scroll-animation-patterns` skill, `api-cost-optimization.md`, etc.)
+- Paths to relevant rules (`scroll-animation-patterns` skill, `~/.claude/docs/reference/delegation.md`, etc.)
 - IMP-012 reference if relevant
 - 2–3 sentence synthesis with citations to sources
 

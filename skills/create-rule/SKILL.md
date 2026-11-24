@@ -1,8 +1,8 @@
 ---
 name: create-rule
-description: "Create Claude Code rules for persistent agent guidance. Use when adding coding standards, project conventions, security policies, workflow rules, or any guidance you want auto-loaded every session. Asks for missing scope/purpose, then writes a focused rule file to ~/.claude/rules/ (user-global) or .claude/rules/ (project)."
+description: "Creates an always-loaded rule file for persistent guidance: coding standards, project conventions, security policies, workflow rules. Writes to ~/.claude/rules/ (user-global) or .claude/rules/ (project). Use when guidance must apply in every session. Asks for missing scope or purpose first."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -68,11 +68,11 @@ Rules are `.md` files with optional YAML frontmatter and Markdown body. The Clau
 [Why this rule exists — incident reference, evidence, principle]
 ```
 
-Note: Unlike Cursor's `.mdc` rules with `globs` and `alwaysApply`, **all** Claude Code rules in `rules/` always-apply. There's no file-pattern matching at the rule level. If you need conditional rules, use Skills with descriptions that include trigger conditions.
+Note: Unlike Cursor's `.mdc` rules with `globs` and `alwaysApply`, rules in `rules/` load every session unless they carry `paths:` frontmatter; a path-scoped rule loads only when a matching file is read or edited. Use a skill for behavior needed only occasionally.
 
 ## Naming Conventions
 
-- Lowercase with hyphens: `code-quality.md`, `security.md`, `tool-discipline.md`
+- Lowercase with hyphens: `code-quality.md`, `security.md`, `workflow-git.md`
 - One concern per file (avoid mega-rules)
 - Group related sub-concerns within a file via `##` headings
 
@@ -82,7 +82,7 @@ Note: Unlike Cursor's `.mdc` rules with `globs` and `alwaysApply`, **all** Claud
 - **200-400 lines**: Acceptable for foundational rules (e.g., `foundation.md`)
 - **Over 400 lines**: Split into focused sub-rules
 
-The user's current `~/.claude/rules/` has 13 rules averaging ~150 lines each. Match that scale.
+Match the length of the existing rules in `~/.claude/rules/`.
 
 ## Writing Effective Rules
 
@@ -190,14 +190,12 @@ A 1000-line rule is no longer a rule — it's a manual. Either split or convert 
 
 ## Auto-Load Verification
 
-Rules in `~/.claude/rules/` are loaded via the auto-load mechanism (see `CLAUDE.md` reference to "13 auto-loaded rules"). When you add a new rule, the count in `CLAUDE.md` may need updating.
+Rules in `~/.claude/rules/` are loaded via the auto-load mechanism. After adding a rule, regenerate the counts with `scripts/framework-inventory.sh`; do not edit a number by hand.
 
 ## Examples From the User's Setup
 
 Strong rules from `~/.claude/rules/`:
-- `tool-discipline.md` — Cites specific failure counts ("50 Edit-before-Read errors over 30 days")
-- `identity-config-check.md` — References a hook (`git-identity-check.sh`) that enforces it
-- `api-cost-optimization.md` — Backed by production evidence (a two-phase email triage pipeline)
+- `workflow-git.md` (Identity) — References a hook (`git-identity-check.sh`) that warns on a mismatch
 
 The strongest rules in this codebase are derived from measured incidents, not abstract principles.
 

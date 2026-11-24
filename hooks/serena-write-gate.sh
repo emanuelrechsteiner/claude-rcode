@@ -23,13 +23,13 @@
 # "ask" (config-protection) LAST — so a user-approved ask cannot skip the
 # secret/path checks that would have run after it.
 #
-# Consciously NOT delegated (documented gap, see rules/mcp-tool-usage.md):
+# Consciously NOT delegated (documented gap, see docs/reference/tools.md):
 #   * gateguard.sh / pretool-auto-read.sh — read-before-edit is enforced for
 #     the native path; Serena's symbolic workflow reads symbols before editing
 #     by construction, and serena-post-tool.sh records Serena reads into the
 #     same tracker so a later NATIVE edit of that file is not blocked.
-#   * controller-first-mutation-gate.sh — orchestration discipline, not file
-#     safety; revisit if delegation metrics show Serena edits bypassing it.
+#   * controller-first-mutation-gate.sh — retired on 2026-11-10
+#     (docs/adr/0011-controller-first-mutation-gate-retired.md); nothing to delegate to.
 #
 # No bypass env var. A kill-switch here would be the same prompt-injection
 # hole that CLAUDE_GATEGUARD_OFF was for the bash gate (IMP-119 lineage).
@@ -218,7 +218,14 @@ for inspector in parallel-lock-check.sh file-protection.sh security-audit.sh vau
     if [ ! -x "$SCRIPT" ]; then
         deny "serena-write-gate: inspector $inspector missing/not executable at $HOOKS_DIR — fail-closed (a gate that cannot check must not wave through)."
     fi
-    OUT_F=$(mktemp); ERR_F=$(mktemp)
+    # A missing TMPDIR must not turn every Serena write into a block: fall back to /tmp,
+    # and deny with the real reason when no capture file can be made at all (IMP-274).
+    OUT_F=$(mktemp 2>/dev/null) || OUT_F=$(mktemp /tmp/swg-out.XXXXXX 2>/dev/null) || OUT_F=""
+    ERR_F=$(mktemp 2>/dev/null) || ERR_F=$(mktemp /tmp/swg-err.XXXXXX 2>/dev/null) || ERR_F=""
+    if [ -z "$OUT_F" ] || [ -z "$ERR_F" ]; then
+        rm -f "$OUT_F" "$ERR_F" 2>/dev/null
+        deny "serena-write-gate: cannot create a capture file (TMPDIR and /tmp unwritable) — fail-closed; repair the temp directory."
+    fi
     printf '%s' "$PAYLOAD" | "$SCRIPT" >"$OUT_F" 2>"$ERR_F"
     CODE=$?
     OUT=$(cat "$OUT_F"); ERR=$(cat "$ERR_F")

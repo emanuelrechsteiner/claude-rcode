@@ -1,6 +1,7 @@
 ---
 description: "Extract reusable patterns and lessons learned from completed work. Run after phase completion or after significant bug fixes."
-model: claude-fable-5-1[1m]
+disable-model-invocation: true
+model: fable
 allowed-tools:
   - Task
   - Read

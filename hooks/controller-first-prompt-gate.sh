@@ -8,27 +8,34 @@
 # FILE_HINT_RE) so this hook and the parallel-dispatch nudge never disagree on
 # what counts as "substantial".
 #
-# On a substantial prompt, this hook:
-#   1. ALWAYS writes the session-scoped substantial-flag
-#        /tmp/controller-first-<session_id>/substantial
-#      (read by controller-first-mutation-gate.sh — the deterministic backstop).
-#   2. Injects a SOFT additionalContext reminder recommending a Controller-First
-#      dispatch (control-agent / an /issue-style command) — UNLESS a
-#      controller-ran flag is already present for this session, in which case
-#      it stays silent (no need to re-nudge).
+# On a substantial prompt, this hook injects a SOFT additionalContext reminder
+# recommending a controller step (/team-lead, a control-agent dispatch or an
+# /issue-style command), once per session. Its only session file is the
+# once-per-session marker: the substantial flag and the controller-ran check served
+# the mutation gate, which was retired on 2026-11-10 (docs/adr/0011-controller-first-mutation-gate-retired.md).
 #
 # This hook NEVER blocks — no permissionDecision:"block"/"ask" is ever emitted.
 # See ~/.claude/plans/meta-proposal-2026-07-15-controller-first-enforcement.md
-# §IMP-090 L4(a). The hard backstop lives in controller-first-mutation-gate.sh.
+# §IMP-090 L4(a).
 #
 # Opt-out: none by design (this hook only ever adds context, never blocks —
 # there is nothing to opt out of that would change behavior for the user).
+#
+# Context diet (2026-11-10): automated turns (subagent hand-backs, task notifications, system text) are skipped
+# before anything is set, and the reminder is emitted once per session (marker under
+# ${TMPDIR:-/tmp}/claude-prompt-reminders/). Regression: hooks/tests/controller-first-regression.sh.
 set -u
 
 INPUT=$(cat)
 PROMPT=$(printf '%s' "$INPUT" | jq -r '.prompt // empty')
 SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty')
 [ -n "$PROMPT" ] || exit 0
+
+# Shared predicate (hooks/lib/prompt-turn.sh). Without the library no turn counts as automated: the pre-diet behaviour.
+. "$(dirname "$0")/lib/prompt-turn.sh" 2>/dev/null || { automated_turn() { return 1; }; printf 'controller-first-prompt-gate: cannot load lib/prompt-turn.sh\n' >&2; }
+
+# Automated turns are not user input: silent, nothing set.
+if automated_turn "$PROMPT"; then exit 0; fi
 
 PROMPT_LC=$(printf '%s' "$PROMPT" | tr '[:upper:]' '[:lower:]')
 
@@ -46,29 +53,33 @@ echo "$PROMPT_LC" | grep -qE "$STRONG_TASK_RE" && FIRE=1
 echo "$PROMPT_LC" | grep -qE "$MEDIUM_TASK_RE" && echo "$PROMPT_LC" | grep -qE "$MULTI_HINT_RE" && FIRE=1
 echo "$PROMPT_LC" | grep -qE "$FILE_HINT_RE" && echo "$PROMPT_LC" | grep -qE "$STRONG_TASK_RE|$MEDIUM_TASK_RE" && FIRE=1
 
-# Not substantial → silent, no flag, no context.
+# Not substantial → silent, no context.
 [ "$FIRE" = "1" ] || exit 0
 
-# ── Session state ─────────────────────────────────────────────────────────────
-SESS="${SESSION_ID:-${CLAUDE_SESSION_ID:-$PPID}}"
-STATE_DIR="/tmp/controller-first-$SESS"
-mkdir -p "$STATE_DIR" 2>/dev/null || true
-: > "$STATE_DIR/substantial" 2>/dev/null || true
+# ── Session id ────────────────────────────────────────────────────────────────
+# Sanitised before it becomes part of a path (the once-per-session marker below).
+SAFE_SESS=$(printf '%s' "$SESSION_ID" | tr -cd 'A-Za-z0-9_-')
 
-# A controller step already ran this session → mutation-gate is already
-# unlocked; no need to nudge again.
-if [ -f "$STATE_DIR/controller-ran" ]; then
-  exit 0
+# Once per session: the reminder is emitted on the first substantial prompt only. Without a session id
+# there is no marker, so the reminder repeats (the pre-diet behaviour).
+ONCE_MARK=""
+if [ -n "$SAFE_SESS" ]; then
+  ONCE_MARK="${TMPDIR:-/tmp}/claude-prompt-reminders/$SAFE_SESS.controller-first-prompt-gate"
+  if [ -e "$ONCE_MARK" ]; then
+    exit 0
+  fi
 fi
 
 REMINDER='[Controller-First — before this substantial task]
-This task looks substantial (task pattern detected). Per Controller-First Enforcement
-(rules/foundation.md; IMP-089/090): start with a Controller step — a control-agent
+This task looks substantial (task pattern detected). Per delegate-by-default
+(rules/foundation.md): start with a Controller step — /team-lead, a control-agent
 dispatch or a matching /issue-style command — that reads the prompt, decomposes it,
-and assigns model + effort per subagent BEFORE files are mutated. This is a
-SOFT reminder, not a block; controller-first-mutation-gate.sh checks the same state
-deterministically on Write/Edit/classified Bash (mode: CLAUDE_CONTROLLER_GATE_MODE,
-default "note").'
+and assigns model + effort per subagent BEFORE files are mutated. This is a SOFT reminder, not a block, shown once per session.'
+
+# Mark the session as shown (first emission only); a failed marker is reported, the reminder still goes out.
+if [ -n "$ONCE_MARK" ]; then
+  mkdir -p "$(dirname "$ONCE_MARK")" && : > "$ONCE_MARK" || printf 'controller-first-prompt-gate: cannot write %s\n' "$ONCE_MARK" >&2
+fi
 
 jq -n --arg ctx "$REMINDER" '{
     hookSpecificOutput: {

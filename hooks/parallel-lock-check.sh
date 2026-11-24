@@ -15,6 +15,15 @@ set -u
 [ "${CLAUDE_PARALLEL_LOCK_OFF:-0}" = "1" ] && exit 0
 
 INPUT=$(cat)
+
+# DEPENDENCY PREAMBLE — LOUD FAIL-OPEN (2026-11-06): hygiene gate, not the floor.
+# Without jq the lock target is unreadable; the old silent exit 0 hid that write
+# locks were not enforced. Stay fail-open, but say so.
+if ! command -v jq >/dev/null 2>&1; then
+    echo "NOTE: parallel-lock-check.sh is NOT enforcing write locks: jq is not installed or not on PATH (fail-open). Fix: brew install jq. dependency-check.sh warns at session start." >&2
+    exit 0
+fi
+
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty')

@@ -5,6 +5,14 @@
 # Read JSON input from stdin
 INPUT=$(cat)
 
+# DEPENDENCY PREAMBLE — LOUD FAIL-OPEN (2026-11-06): hygiene gate, not the floor.
+# Without jq the path is unreadable. The old silent exit 0 hid that the .env /
+# SSH / AWS / secrets block was not enforced; stay fail-open, but say so.
+if ! command -v jq >/dev/null 2>&1; then
+    echo "NOTE: file-protection.sh is NOT enforcing its path block: jq is not installed or not on PATH (fail-open). Fix: brew install jq. dependency-check.sh warns at session start." >&2
+    exit 0
+fi
+
 # Extract file path from tool_input
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty')
 

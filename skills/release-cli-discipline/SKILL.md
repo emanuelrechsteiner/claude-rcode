@@ -1,6 +1,6 @@
 ---
 name: release-cli-discipline
-description: Release and CLI value-handling discipline — local-first deploy testing, tarball-based publish verification, safe printf-based CLI/secret piping, and MCP generation-endpoint serialization. Use before deploying a serverless function/build, publishing a package, writing env vars/secrets into a CLI, or invoking a generation-style MCP tool. Triggers on "deploy", "vercel deploy", "build locally", "serverless function", "npm publish", "pnpm pack", "npm pack", "changeset publish", "tarball", "release a package", "env var", "secret", "set env", "printf", "heredoc", "generate screen", "Stitch", "Figma generate"; German: "deployen", "ausliefern", "veröffentlichen", "Paket veröffentlichen", "Release", "Umgebungsvariable setzen", "Secret setzen", "Bildschirm generieren".
+description: "Tests serverless functions and builds locally before deploying, verifies a packed tarball before publishing, pipes secrets with printf, and serializes generation MCP calls against the user's web UI. Use before deploying, publishing, setting env vars or secrets, or calling a generation MCP tool."
 ---
 
 # Release & CLI Discipline Rule
@@ -60,7 +60,7 @@ Anti-patterns:
 
 ## References
 
-- Companions: `api-cost-optimization.md` (§1 — cheapest per successful outcome), `testing-quality.md` (§2), `code-quality.md` (§3 — defensive parsing of external values), `mcp-tool-usage.md` (§4)
+- Companions: `docs/reference/delegation.md` (Model tiers; §1 — cheapest per successful outcome), `testing-quality.md` (§2), `code-quality.md` (§3 — defensive parsing of external values), `docs/reference/tools.md` (§4)
 - Distilled from multi-project experience (merge-intake 2026-05-28); consolidated per IMP-079 (2026-07-03) — originals in git history
 
 > Evidence and incident history (moved verbatim, IMP-217): `docs/archive/rules-evidence/release-cli-discipline.md`

@@ -1,6 +1,6 @@
 ---
 name: ios-simulator-testing
-description: Documents the iOS Simulator toolchain (MCP simulator control + build tools, xcrun simctl, xcodebuild) for building, launching, and interacting with native iOS apps in the Simulator across any project on this Mac. Use when the user wants to run, test, or debug an app on the iOS Simulator. Triggers on "iOS simulator", "run on iPhone", "test on simulator", "simulator testen", "app im simulator", "nativ testen", "iphone testen", "simulator screenshot", "xcodebuild", "simctl".
+description: "Drives the iOS Simulator for native iOS apps: builds with the MCP build tool or xcodebuild, launches, taps, swipes and takes screenshots, reads simctl logs. Simulator only, no physical device. Use when an iOS app must be run, tested or debugged on the Simulator."
 allowed-tools: Read, Glob, Grep, Bash(xcrun *), Bash(xcodebuild *), Bash(pod install*), Bash(xcode-select -p), mcp__Claude_Code_iOS_Simulator__control, mcp__Claude_Code_iOS_Simulator__build
 ---
 

@@ -1,6 +1,6 @@
 # Context Preservation System
 
-> **Note:** this is a design document for a checkpoint/restore system. Some of it (e.g. the `~/.claude/context-checkpoints/` store) is aspirational rather than currently wired into the shipped hooks — the closest live equivalent today is `/handoff` + `PROJECT-STATUS.md` for cross-session continuity, and `rules/context-engineering.md` for in-session context budgeting. May be superseded.
+> **Note:** this is a design document for a checkpoint/restore system. Some of it (e.g. the `~/.claude/context-checkpoints/` store) is aspirational rather than currently wired into the shipped hooks — the closest live equivalent today is `/handoff` + `PROJECT-STATUS.md` for cross-session continuity, and `/clear` between unrelated tasks for in-session context budgeting. May be superseded.
 
 ## Overview
 Addresses critical context loss issues observed between sessions where agents misunderstood requirements after session gaps, requiring 5+ minutes of re-clarification and causing scope confusion.

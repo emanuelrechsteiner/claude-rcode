@@ -57,7 +57,7 @@
 #
 # This file is SOURCED by scripts/ledger-append-proposed.sh only — it is not
 # standalone and does not set its own `set -e` (the caller already has one;
-# see rules/testing-quality.md style already used by scripts/vault/lib.sh).
+# see rules/slop-prevention.md "Verification principles" style already used by scripts/vault/lib.sh).
 # bash 3.2 (stock macOS): no mapfile, no associative arrays, no ${var,,}.
 # ─────────────────────────────────────────────────────────────────────────────
 

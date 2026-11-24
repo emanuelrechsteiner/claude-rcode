@@ -1,6 +1,6 @@
 ---
 name: check-parallelizable
-description: "Analyze whether a task can be parallelized into independent sub-agents. Returns a structured proposal with file claim-sets, agent assignments, and confirmation prompt — or a clear explanation why sequential is better. Auto-triggers BEFORE any non-trivial task that involves multiple files or units. Triggers on 'check parallel', 'analyze parallel', 'kann ich das parallel', 'can this be parallel', 'parallelization analysis', 'geht das parallel', 'parallel prüfen', 'parallelisierbar', 'lässt sich das aufteilen', 'kann man das gleichzeitig machen'."
+description: "Analyzes whether a task can run as independent sub-agents: returns a proposal with file claim-sets, agent assignments and a y/n prompt, or why sequential is better. Auto-triggers before non-trivial multi-file work. Use when parallel dispatch is in doubt or the user asks if work can be parallelized."
 user-invocable: true
 ---
 
@@ -14,7 +14,7 @@ Structured analysis to determine whether a task warrants parallel multi-agent di
 - You are about to dispatch sub-agents and want to check if parallel is safe
 - The user explicitly asks "can this be parallelized?"
 
-**Auto-triggered:** The `parallel-by-default` rule (always loaded) requires you to do this analysis BEFORE executing any non-trivial task. This skill provides the structured framework.
+**Auto-triggered:** The parallel-work guidance in `~/.claude/docs/reference/delegation.md` (Parallel work) asks you to do this analysis BEFORE executing any non-trivial task. This skill provides the structured framework.
 
 ## The 5-step analysis
 
@@ -96,7 +96,7 @@ When assigning agents in the proposal, pick the most specific:
 | Tests (unit, integration, E2E) | `testing-agent` |
 | Documentation | `documentation-agent` |
 | Cleanup / dead-code | `cleanup-agent` |
-| UX flows / wireframes | `ux-agent` |
+| UX flows / wireframes | `ux-design` skill |
 | Read-only investigation | `Explore` |
 | Architecture planning | `planning-agent` |
 | Mixed / orchestration | `control-agent` |
@@ -162,7 +162,7 @@ Hand off to `/parallel-dispatch` skill which:
 
 ## See also
 
-- `~/.claude/rules/parallel-by-default.md` — the behavioral norm
+- `~/.claude/docs/reference/delegation.md` (Parallel work) — the behavioral norm
 - `~/.claude/skills/parallel-dispatch/SKILL.md` — the executor
 - `~/.claude/scripts/parallel-claim.sh` — the lock registry
 - `~/.claude/agents/control-agent.md` — multi-agent orchestration

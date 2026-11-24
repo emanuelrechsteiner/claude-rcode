@@ -31,23 +31,18 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# 0a. HARD DISABLE (owner decision 2026-08-12, mirror-layer protection)
+# 0a. HARD DISABLE (owner decision 2026-08-12)
 #
-# Publishing is DISABLED until further notice. Reason: the private
-# mirror layer (rules/*.local.md and its injector blocks) must under no
-# circumstances leave the machine; the owner decided to cut the
-# publishing path completely rather than rely solely on the three
-# existing protection layers (git archive HEAD = tracked files only,
-# gitignore *.local.md, scrub-check).
+# Publishing is DISABLED until further notice, by the owner's deliberate
+# decision. The publish path is cut completely rather than relying on the
+# existing exclusion and scrub layers alone.
 #
 # Re-enable ONLY via a deliberate edit of this file: set the
-# PUBLISH_DISABLED line below to "0" AND make sure
-# scrub-check.sh still checks the mirror-layer pattern (_mirror, §2).
-# No env-var bypass — intentional.
+# PUBLISH_DISABLED line below to "0". No env-var bypass — intentional.
 # ---------------------------------------------------------------------------
-PUBLISH_DISABLED=0
+PUBLISH_DISABLED=1
 if [[ "$PUBLISH_DISABLED" == "1" ]]; then
-  echo "publish.sh: DISABLED (2026-08-12, mirror-layer protection)." >&2
+  echo "publish.sh: DISABLED (2026-08-12, owner decision)." >&2
   echo "  This publisher is hard-disabled by owner decision." >&2
   echo "  Re-enable: set PUBLISH_DISABLED=0 in this file (a deliberate edit," >&2
   echo "  no env override) — see the comment block above this message." >&2
@@ -230,8 +225,8 @@ echo "publish.sh: preparing staging tree for scrub-check (ephemeral git init)"
 # WHICH COPY OF scrub-check.sh RUNS THE GATE.
 #
 # UPDATED 2026-09-25 (IMP-219, vault-by-design): scrub-check.sh's §2 used to
-# hardcode real detection literals (name/email/project-codename/mirror-
-# marker values), and publish-transforms.d/60-declaw-scrub-check-pii.sh
+# hardcode real detection literals (name, email, project codename), and
+# publish-transforms.d/60-declaw-scrub-check-pii.sh
 # existed solely to rewrite the STAGING copy of that file, replacing those
 # literals with inert placeholders before anything shipped — running the
 # STAGING copy as the actual gate would then have meant gating a release

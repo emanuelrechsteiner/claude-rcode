@@ -24,7 +24,7 @@
 # project on the machine, so it always uses its own co-located vault CLI
 # (whichever copy of this repo the hook itself was deployed from), which in
 # turn defaults to the ONE machine-global vault
-# (rules/testing-quality.md "Verify Via the Same Code Path" — one matcher,
+# (rules/slop-prevention.md "Verification principles": "Verify Via the Same Code Path" — one matcher,
 # not two).
 #
 # HYGIENE GATE, NOT THE CRITICAL FLOOR: infrastructure failures (jq missing,
@@ -219,11 +219,19 @@ fi
 #    a marked test fixture. Not relevant to THIS gate's own inputs (it
 #    checks in-flight new_string/content, not a real file's first 5 lines),
 #    but load-bearing for scripts/git-hooks/pre-commit's per-file loop.
-ERR_TMP=$(mktemp "${TMPDIR:-/tmp}/vault-gate-err.XXXXXX")
-FINDINGS=$(printf '%s\n' "$CONTENT" | "$VAULT_SH" check --stdin --as "$REL_FILE" 2>"$ERR_TMP")
+# A session can outlive its temp directory (a reboot wipes it) and vault.sh needs mktemp:
+# repair TMPDIR or fall back to /tmp, so a missing directory cannot blind this gate (IMP-274).
+if [ -n "${TMPDIR:-}" ] && { [ ! -d "$TMPDIR" ] || [ ! -w "$TMPDIR" ]; }; then
+    mkdir -p "$TMPDIR" 2>/dev/null || true
+    { [ -d "$TMPDIR" ] && [ -w "$TMPDIR" ]; } || export TMPDIR=/tmp
+fi
+# The stderr capture file is optional: with a missing TMPDIR the redirect used to fail,
+# the check never ran and the gate allowed the write as an "internal error" (IMP-274).
+ERR_TMP=$(mktemp "${TMPDIR:-/tmp}/vault-gate-err.XXXXXX" 2>/dev/null) || ERR_TMP=$(mktemp /tmp/vault-gate-err.XXXXXX 2>/dev/null) || ERR_TMP=""
+FINDINGS=$(printf '%s\n' "$CONTENT" | "$VAULT_SH" check --stdin --as "$REL_FILE" 2>"${ERR_TMP:-/dev/null}")
 RC=$?
-GATE_ERR=$(cat "$ERR_TMP" 2>/dev/null || true)
-rm -f "$ERR_TMP"
+GATE_ERR=""
+if [ -n "$ERR_TMP" ]; then GATE_ERR=$(cat "$ERR_TMP" 2>/dev/null || true); rm -f "$ERR_TMP"; fi
 
 case "$RC" in
     0)

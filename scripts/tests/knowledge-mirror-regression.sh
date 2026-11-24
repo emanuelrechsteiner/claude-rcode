@@ -11,7 +11,7 @@
 #
 # MECHANICS — builds a synthetic HOME under mktemp -d and calls the REAL script
 # ("$REPO_ROOT/scripts/knowledge-mirror.sh") with HOME pointed at it; no
-# reimplementation of the mirror logic (rules/testing-quality.md "Verify Via
+# reimplementation of the mirror logic (rules/slop-prevention.md "Verification principles" "Verify Via
 # the Same Code Path"). Sinks are checked on disk (grep -r over the target
 # tree), not via the script's own counters. Never touches the real ~/.claude.
 # The sentinel is a fixture string, not real private content.

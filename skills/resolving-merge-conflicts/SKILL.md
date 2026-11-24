@@ -1,6 +1,6 @@
 ---
 name: resolving-merge-conflicts
-description: "Work through an in-progress git merge or rebase conflict hunk by hunk, resolving by original intent traced to each side's primary sources (commits, PRs, issues), then run the project's checks and finish the operation. Use on merge/rebase conflicts, 'resolve conflict', 'merge-konflikt', 'rebase-konflikt', 'konflikt auflösen', 'CONFLICT (content)'."
+description: "Resolves an in-progress git merge or rebase conflict hunk by hunk, tracing each side's intent to its commits, PRs and issues, then runs the checks and finishes the operation. Use on merge or rebase conflicts. Never auto-merges into trunk."
 context: main
 ---
 
@@ -18,7 +18,7 @@ Resolve by **intent**, not by picking sides mechanically. Every conflict is two 
 
 4. **Discover the project's automated checks and run them** — typically typecheck, then tests, then format. Fix anything the merge broke. A conflict resolution that was never compiled is unverified per `rules/slop-prevention.md`.
 
-5. **Finish the operation — with the trunk gate.** Stage everything and commit; if rebasing, continue until all commits are rebased. **House rule per `rules/workflow-git.md`:** completing a merge INTO trunk after conflict resolution is SOFT-ACK at minimum — state what was resolved and how to undo, and never auto-merge to trunk; a human verifies correctness before that merge proceeds. Rebase/merge completion on a feature branch proceeds normally.
+5. **Finish the operation — with the trunk gate.** Stage everything and commit; if rebasing, continue until all commits are rebased. **House rule per `rules/workflow-git.md`:** completing a merge INTO trunk after conflict resolution is ESCALATE: state what was resolved, ask the user a yes/no, and complete the merge only after a yes. Never auto-merge to trunk. Rebase/merge completion on a feature branch proceeds normally.
 
 ## Report
 

@@ -26,7 +26,7 @@ If `$ARGUMENTS` provided: treat as a space-separated list of file paths or globs
 
 ## Execution protocol
 
-Dispatch all 6 specialists in a **single message with 6 parallel Agent tool calls**. Use `subagent_type: code-reviewer-agent` (read-only) for all 6 with a specialized prompt per agent. Each agent returns a structured report under 300 words.
+Dispatch all 6 specialists in a **single message with 6 parallel Agent tool calls**. Use `subagent_type: code-reviewer-agent` (read-only) for all 6 with a specialized prompt per agent. Each agent returns a short structured report.
 
 ### The 6 specialists
 
@@ -52,9 +52,9 @@ Then send 6 Agent calls in parallel, each with subagent_type=code-reviewer-agent
 Prompt template per agent:
   "Review these files specifically for {ROLE_FOCUS}.
    Files: <list>
-   Return: top 3-5 findings prioritized 🔴 CRITICAL / 🟡 WARN / 🟢 OK.
+   Return the most important findings, ranked 🔴 CRITICAL / 🟡 WARN / 🟢 OK.
    Each finding = 1-2 sentences + file:line reference.
-   Under 300 words total."
+   Keep it short: the findings that matter most, each with file:line."
 ```
 
 ## Synthesis
@@ -68,9 +68,9 @@ After all 6 reports arrive:
 
 ## Cost model
 
-- 6 parallel `code-reviewer-agent` calls (Sonnet) on a small file set
+- 6 parallel `code-reviewer-agent` calls (haiku; sonnet only on recorded failure) on a small file set
 - Wall time: ~30s (parallel, not serial)
-- Token cost: ~$0.20 per full review at current Sonnet pricing
+- Token cost per full review: measure it on the current Haiku 5.5 setup.
 - Use threshold: only invoke when the work-unit is meaningful (10+ lines changed across 2+ files)
 
 ## Output format example
@@ -100,9 +100,9 @@ After all 6 reports arrive:
 - No file exceeds 400 lines
 ```
 
-## Why this complements Layer 1 (gateguard) + Layer 2 (stop-batched-checks)
+## Why this complements Layer 1 (investigation before edit) + Layer 2 (stop-batched-checks)
 
-- **Layer 1** (gateguard) prevents iteration waste by forcing investigation BEFORE edit
+- **Layer 1** (investigation before edit: read the file, grep its callers) is a working habit, not a gate; the gateguard note was unregistered on 2026-11-23
 - **Layer 2** (stop-batched-checks) catches mechanical issues (types, lint, line-count) at session-end
 - **Layer 3** (this skill) catches **structural and judgment issues** that no linter sees — architecture drift, security gaps, missing tests, unclear naming
 

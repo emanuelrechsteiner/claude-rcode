@@ -5,7 +5,7 @@
 #     A2 grammar over BRAINSTORM.md)
 #   status-metrics.sh, phase-gate-check.sh, resume-state.sh — call
 #     rcode-units.sh for unit data instead of parsing themselves
-#     (rules/testing-quality.md "Verify via the same code path").
+#     (rules/slop-prevention.md "Verification principles" "Verify via the same code path").
 #
 # Why this suite exists: before M14, GitHub was a hard prerequisite in
 # all three consumer scripts, even though 2 of 5 real R.Code projects

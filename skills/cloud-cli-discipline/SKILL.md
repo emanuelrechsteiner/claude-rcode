@@ -1,6 +1,6 @@
 ---
 name: cloud-cli-discipline
-description: Guidance for inspecting cloud-CLI state before destructive or scope-changing operations (env rm, link --yes, --force) and avoiding team/account auto-pick; covers when --yes is safe, preferring the web UI for per-environment values, and the Vercel team-mismatch pre-deploy check (vercel whoami, teams ls, env ls, switch). Use before running a destructive or scope-changing cloud-CLI command, or when a deploy might target the wrong team or account. Triggers on "vercel", "vercel deploy", "vercel link", "vercel env rm", "vercel switch", "netlify", "firebase deploy", "gcloud", "aws cli", "fly", "railway", "supabase cli", "--yes", "--force", "--dry-run", "dry run", "env rm", "teams ls", "whoami", "wrong team", "wrong account", "web UI", "Web-UI", "per-environment value", "Cloud-CLI", "falsches Team", "falscher Account", "Umgebungsvariable löschen", "pro Umgebung", "deployen auf Vercel".
+description: "Inspect-first rules for cloud CLIs (Vercel, Netlify, Firebase, gcloud, AWS, Fly, Railway, Supabase): check state before deletes, overwrites or scope changes; verify team before deploys; --yes only when reversible; web UI for per-environment values. Use before destructive or scope-changing commands."
 ---
 
 # Cloud-CLI Discipline Rule
@@ -46,7 +46,7 @@ vercel teams ls        # lists all teams; the active one is marked
 vercel env ls          # confirms env vars are scoped to the intended project
 ```
 
-If the active team is wrong, switch before deploying:
+If the active team is wrong, ask the user for a y/n before switching: `vercel switch` changes machine-wide state (`rules/agency-bands.md`). Afterwards switch back, or say that the change persists:
 
 ```bash
 vercel switch <team-slug>

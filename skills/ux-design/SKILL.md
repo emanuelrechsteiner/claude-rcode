@@ -1,6 +1,6 @@
 ---
 name: ux-design
-description: User experience design specialist focusing on workflow optimization, information architecture, and WCAG 2.1 AA compliance. Creates wireframes, user flows, and accessibility specifications. Use when designing user interfaces, planning user journeys, or ensuring accessibility. Triggers on "UX", "user experience", "wireframe", "user flow", "accessibility", "WCAG", "usability", "user journey".
+description: "Designs user experience and workflows: user flows, wireframes, information architecture and WCAG 2.1 AA accessibility specifications. Use when designing user interfaces, planning user journeys, or checking accessibility and usability."
 allowed-tools: Read, Grep, Glob
 ---
 

@@ -1,8 +1,8 @@
 ---
 name: documentation
-description: Technical documentation specialist. Maintains API docs, architecture documentation, developer guides, JSDoc, README updates, and Storybook stories. Use when creating or updating documentation, writing guides, documenting APIs, or maintaining project documentation. Triggers on "document", "documentation", "README", "API docs", "developer guide", "JSDoc", "architecture docs", "write docs".
+description: "Writes and updates technical documentation: API docs, architecture docs, developer guides, JSDoc, READMEs, Storybook stories. Use when documentation is to be created, updated or brought in line with the code."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Edit, Write, Glob, Grep
 ---
 

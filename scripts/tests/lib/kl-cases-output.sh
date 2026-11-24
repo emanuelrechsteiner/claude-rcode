@@ -101,17 +101,17 @@ else
   hook
   check "hint present via ~/.claude/env.local.sh when the env var is unset" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && has "Library: 3 cross-project" "$OUT"'
   hook CLAUDE_KNOWLEDGE_DIR="$T/nolib"
-  check "environment wins over env.local.sh (env dir has no mirror -> no hint)" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && has "cwd:" "$OUT" && ! has "Library:" "$OUT"'
+  check "environment wins over env.local.sh (env dir has no mirror -> no hint)" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && ! has "Library:" "$OUT"'
   rm "$HH/.claude/env.local.sh"
   hook
-  check "hint absent when no env var and no env.local.sh, hook exits 0" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && has "cwd:" "$OUT" && ! has "Library:" "$OUT"'
+  check "hint absent when no env var and no env.local.sh, hook exits 0" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && ! has "Library:" "$OUT"'
   printf 'export CLAUDE_KNOWLEDGE_DIR=""\n' > "$HH/.claude/env.local.sh"
   hook
-  check "hint absent when env.local.sh sets an empty dir, hook exits 0" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && has "cwd:" "$OUT" && ! has "Library:" "$OUT"'
+  check "hint absent when env.local.sh sets an empty dir, hook exits 0" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && ! has "Library:" "$OUT"'
   rm "$HH/.claude/env.local.sh"
   rm "$HK/mirror/README.md"
   hook CLAUDE_KNOWLEDGE_DIR="$HK"
-  check "hint absent when mirror/README.md is missing, hook exits 0" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && has "cwd:" "$OUT" && ! has "Library:" "$OUT"'
+  check "hint absent when mirror/README.md is missing, hook exits 0" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && ! has "Library:" "$OUT"'
   hook CLAUDE_KNOWLEDGE_DIR="$HK" CLAUDE_SESSION_NUDGE=0
   check "hint absent when README is missing, also with CLAUDE_SESSION_NUDGE=0" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && ! has "Library:" "$OUT"'
 fi

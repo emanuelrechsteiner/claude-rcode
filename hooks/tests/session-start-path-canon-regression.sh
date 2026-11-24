@@ -128,6 +128,69 @@ else
 fi
 rm -rf "$BLANK_HOME"
 
+# ── Harness-supplied lines are gone: no cwd, project or branch line. ──
+out=$(cd "$BAUHOF_DIR" && HOME="$TESTHOME" \
+      CLAUDE_BAUHOF_ROOT="$BAUHOF_DIR" CLAUDE_HAUS_ROOT="$TESTHOME/.claude" \
+      CLAUDE_SESSION_NUDGE=0 \
+      bash "$HOOK" </dev/null 2>&1)
+if printf '%s' "$out" | grep -qE '📍 cwd:|📦 project:|🌿 branch:'; then
+    bad "cwd, project and branch lines are not printed" "$out"
+else
+    ok "cwd, project and branch lines are not printed"
+fi
+
+# ── Case "R.Code line": .rcode/ present, nudges on -> exactly one R.Code pointer. ──
+RCODE_DIR="$(mktemp -d)"
+mkdir -p "$RCODE_DIR/.rcode"
+out=$(cd "$RCODE_DIR" && HOME="$TESTHOME" \
+      CLAUDE_BAUHOF_ROOT="$BAUHOF_DIR" CLAUDE_HAUS_ROOT="$TESTHOME/.claude" \
+      env -u CLAUDE_SESSION_NUDGE bash "$HOOK" </dev/null 2>&1)
+if [[ "$(printf '%s' "$out" | grep -cF 'R.Code project: start work through /team-lead')" == "1" ]]; then
+    ok "R.Code project: one pointer line to /team-lead"
+else
+    bad "R.Code project: one pointer line to /team-lead" "$out"
+fi
+
+# ── Case "other project": plain project, nudges on -> no canon, no R.Code line. ──
+PLAIN_DIR="$(mktemp -d)"
+echo '{}' > "$PLAIN_DIR/package.json"
+out=$(cd "$PLAIN_DIR" && HOME="$TESTHOME" \
+      CLAUDE_BAUHOF_ROOT="$BAUHOF_DIR" CLAUDE_HAUS_ROOT="$TESTHOME/.claude" \
+      env -u CLAUDE_SESSION_NUDGE bash "$HOOK" </dev/null 2>&1)
+if printf '%s' "$out" | grep -qF "$MARKER" || printf '%s' "$out" | grep -qF 'R.Code project'; then
+    bad "other project: no path canon, no R.Code line" "$out"
+else
+    ok "other project: no path canon, no R.Code line"
+fi
+
+# ── Case "worktree": a git worktree of the workshop repo gets the canon;
+#    a repository of another project does not. ──
+WS_REPO="$(mktemp -d)"
+OTHER_REPO="$(mktemp -d)"
+WT_PARENT="$(mktemp -d)"
+HOME="$TESTHOME" git -C "$WS_REPO" init -q
+HOME="$TESTHOME" git -C "$WS_REPO" -c user.name=test -c user.email=test@example.invalid commit -q --allow-empty -m init
+HOME="$TESTHOME" git -C "$WS_REPO" worktree add -q "$WT_PARENT/wt"
+HOME="$TESTHOME" git -C "$OTHER_REPO" init -q
+HOME="$TESTHOME" git -C "$OTHER_REPO" -c user.name=test -c user.email=test@example.invalid commit -q --allow-empty -m init
+out=$(cd "$WT_PARENT/wt" && HOME="$TESTHOME" \
+      CLAUDE_BAUHOF_ROOT="$WS_REPO" CLAUDE_HAUS_ROOT="$TESTHOME/.claude" \
+      env -u CLAUDE_SESSION_NUDGE bash "$HOOK" </dev/null 2>&1)
+if printf '%s' "$out" | grep -qF "$MARKER"; then
+    ok "worktree of the workshop: canon appears"
+else
+    bad "worktree of the workshop: canon appears" "$out"
+fi
+out=$(cd "$OTHER_REPO" && HOME="$TESTHOME" \
+      CLAUDE_BAUHOF_ROOT="$WS_REPO" CLAUDE_HAUS_ROOT="$TESTHOME/.claude" \
+      env -u CLAUDE_SESSION_NUDGE bash "$HOOK" </dev/null 2>&1)
+if printf '%s' "$out" | grep -qF "$MARKER"; then
+    bad "other git repository: canon absent" "$out"
+else
+    ok "other git repository: canon absent"
+fi
+rm -rf "$RCODE_DIR" "$PLAIN_DIR" "$WS_REPO" "$OTHER_REPO" "$WT_PARENT"
+
 echo "──────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

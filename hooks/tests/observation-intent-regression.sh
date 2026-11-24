@@ -141,6 +141,20 @@ else
     bad "intent_source:\"commit-subject\" is emitted" "commit-subject" "$SRC" "(n/a)"
 fi
 
+echo ""
+echo "── IMP-273: a missing ledger directory is created; a failed append is logged ──"
+FRESH_LEDGER="$WORK/fresh/global-observation/signals.jsonl"
+printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/x.md"}}' "$WORK" \
+    | CLAUDE_OBS_LEDGER="$FRESH_LEDGER" bash "$HOOK" >/dev/null 2>&1
+if [ -s "$FRESH_LEDGER" ]; then ok "missing ledger directory is created and the signal lands"
+else FAIL=$((FAIL+1)); printf '  ❌ %s\n' "missing ledger directory: no signal written"; fi
+mkdir -p "$WORK/blocked/signals.jsonl" # a directory where the file should be: the append must fail
+printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/x.md"}}' "$WORK" \
+    | CLAUDE_OBS_LEDGER="$WORK/blocked/signals.jsonl" CLAUDE_OBS_ERROR_LOG="$WORK/capture-errors.log" bash "$HOOK" >/dev/null 2>&1
+CAPTURE_RC=$?
+if [ "$CAPTURE_RC" -eq 0 ] && grep -q "cannot append" "$WORK/capture-errors.log" 2>/dev/null; then ok "a failed append exits 0 and is logged"
+else FAIL=$((FAIL+1)); printf '  ❌ %s (rc=%s)\n' "a failed append is not logged" "$CAPTURE_RC"; fi
+
 echo "──────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
 [ "$FAIL" -eq 0 ] || exit 1

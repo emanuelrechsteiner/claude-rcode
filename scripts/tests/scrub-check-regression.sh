@@ -506,6 +506,259 @@ OUT22C="$(run_scrub "$T22" "$NOVAULT" --staged)"; RC22C=$?
 check_exit "carve-out cost: staged new mention in CHANGELOG.md exits 0 (documented, accepted)" 0 "$RC22C"
 must_not_contain "carve-out cost: staged chronicle file is not reported" "$OUT22C" "[REBRAND] CHANGELOG.md"
 
+# ---------------------------------------------------------------------------
+# FAIL LOUD (2026-11-06, defect sweep): every vault.sh call in scrub-check.sh
+# §6 used to run as `... 2>/dev/null) || true`, so a crashed vault.sh produced
+# zero rows and the run printed "scrub-check: clean" with exit 0. The cases
+# below pin the fixed behavior with DELIBERATELY broken vault.sh stubs, copied
+# into the throwaway temp repo only (never the real script): a crash exits
+# non-zero with a named FAILED line; vault.sh's own stderr reaches the user;
+# exit 2 WITHOUT finding rows is not a finding (bash syntax errors and perl
+# dies also exit 2); a genuine finding (exit 2 + well-formed rows) still is one.
+# ---------------------------------------------------------------------------
+stub_vault() {  # stub_vault <repo> <body> — replaces the copied vault.sh
+  local repo="$1" body="$2"
+  printf '#!/usr/bin/env bash\n%s\n' "$body" > "$repo/scripts/vault/vault.sh"
+  chmod +x "$repo/scripts/vault/vault.sh"
+}
+
+echo "== vault.sh crash (exit 1 + stderr): exit 1, FAILED named, vault.sh stderr forwarded =="
+T23="$(new_temp_repo)"
+printf 'harmless\n' > "$T23/plain.txt"
+commit_files "$T23" "seed plain" plain.txt
+stub_vault "$T23" 'echo "vault.sh: simulated crash in matcher (test stub)" >&2
+exit 1'
+OUT23="$(run_scrub "$T23" "$NOVAULT")"; RC23=$?
+check_exit "vault crash exit 1: scrub-check exits 1" 1 "$RC23"
+must_not_contain "vault crash exit 1: never prints 'scrub-check: clean'" "$OUT23" "scrub-check: clean"
+must_contain "vault crash exit 1: names the failed step on stderr" "$OUT23" "scrub-check: FAILED — vault.sh check (tracked files)"
+must_contain "vault crash exit 1: vault.sh's own stderr reaches the user (not /dev/null)" "$OUT23" "simulated crash in matcher (test stub)"
+
+echo "== vault.sh exit 2 WITHOUT finding rows (bash-syntax / perl-die shape): not a finding, not clean =="
+T24="$(new_temp_repo)"
+printf 'harmless\n' > "$T24/plain.txt"
+commit_files "$T24" "seed plain" plain.txt
+stub_vault "$T24" 'echo "vault.sh: simulated perl die (test stub)" >&2
+exit 2'
+OUT24="$(run_scrub "$T24" "$NOVAULT")"; RC24=$?
+check_exit "exit 2 without rows: scrub-check exits 1" 1 "$RC24"
+must_not_contain "exit 2 without rows: never prints 'scrub-check: clean'" "$OUT24" "scrub-check: clean"
+must_contain "exit 2 without rows: reported as FAILED" "$OUT24" "scrub-check: FAILED"
+
+echo "== vault.sh exit 2 with a MALFORMED row (not five tab fields): not a finding =="
+T25="$(new_temp_repo)"
+printf 'harmless\n' > "$T25/plain.txt"
+commit_files "$T25" "seed plain" plain.txt
+stub_vault "$T25" 'printf "a row with no tab fields\n"
+exit 2'
+OUT25="$(run_scrub "$T25" "$NOVAULT")"; RC25=$?
+check_exit "exit 2 with malformed row: scrub-check exits 1" 1 "$RC25"
+must_contain "exit 2 with malformed row: reported as FAILED" "$OUT25" "scrub-check: FAILED"
+must_not_contain "exit 2 with malformed row: never prints 'scrub-check: clean'" "$OUT25" "scrub-check: clean"
+
+echo "== vault.sh exit 0 but printing rows (contract violation): FAILED, not clean =="
+T26="$(new_temp_repo)"
+printf 'harmless\n' > "$T26/plain.txt"
+commit_files "$T26" "seed plain" plain.txt
+stub_vault "$T26" 'printf "plain.txt\t1\tphrase\tsynthprobe-term\t\n"
+exit 0'
+OUT26="$(run_scrub "$T26" "$NOVAULT")"; RC26=$?
+check_exit "exit 0 with rows: scrub-check exits 1" 1 "$RC26"
+must_contain "exit 0 with rows: reported as FAILED" "$OUT26" "scrub-check: FAILED"
+
+echo "== vault.sh missing: exit 1 with a named FAILED line (not a silent skip) =="
+T27="$(new_temp_repo)"
+printf 'harmless\n' > "$T27/plain.txt"
+commit_files "$T27" "seed plain" plain.txt
+rm -f "$T27/scripts/vault/vault.sh"
+OUT27="$(run_scrub "$T27" "$NOVAULT")"; RC27=$?
+check_exit "vault.sh missing: scrub-check exits 1" 1 "$RC27"
+must_contain "vault.sh missing: names the missing helper" "$OUT27" "vault.sh not found"
+must_not_contain "vault.sh missing: never prints 'scrub-check: clean'" "$OUT27" "scrub-check: clean"
+
+echo "== vault present + crash: PII and private-leak sections say NOT CHECKED, never 'clean' =="
+T28="$(new_temp_repo)"
+VDIR28="$SCRATCH/vault28"
+CLAUDE_VAULT_DIR="$VDIR28" bash "$T28/scripts/vault/vault.sh" init >/dev/null 2>&1
+printf 'harmless\n' > "$T28/plain.txt"
+commit_files "$T28" "seed plain" plain.txt
+stub_vault "$T28" 'echo "vault.sh: simulated crash with vault present (test stub)" >&2
+exit 1'
+OUT28="$(run_scrub "$T28" "$VDIR28")"; RC28=$?
+check_exit "vault present + crash: scrub-check exits 1" 1 "$RC28"
+must_contain "vault present + crash: PII section reports NOT CHECKED" "$OUT28" "NOT CHECKED"
+must_not_contain "vault present + crash: no 'clean (0 real vault term(s) found)' claim" "$OUT28" "clean (0 real vault term(s) found)"
+
+echo "== --staged + crash: exit 1, FAILED names the staged file =="
+T29="$(new_temp_repo)"
+printf 'seed\n' > "$T29/staged.txt"
+commit_files "$T29" "seed" staged.txt
+printf 'seed\nstaged change\n' > "$T29/staged.txt"
+git -C "$T29" add staged.txt
+stub_vault "$T29" 'echo "vault.sh: simulated staged crash (test stub)" >&2
+exit 1'
+OUT29="$(run_scrub "$T29" "$NOVAULT" --staged)"; RC29=$?
+check_exit "--staged + crash: scrub-check exits 1" 1 "$RC29"
+must_contain "--staged + crash: names the staged file in FAILED" "$OUT29" "scrub-check: FAILED — vault.sh check (staged.txt)"
+must_not_contain "--staged + crash: never prints 'scrub-check: clean'" "$OUT29" "scrub-check: clean"
+
+echo "== genuine finding (exit 2 + well-formed rows) is still a finding, not a failure =="
+T30="$(new_temp_repo)"
+printf 'harmless\n' > "$T30/plain.txt"
+commit_files "$T30" "seed plain" plain.txt
+stub_vault "$T30" 'printf "plain.txt\t1\tphrase\tsynthprobe-term\t\n"
+exit 2'
+OUT30="$(run_scrub "$T30" "$NOVAULT")"; RC30=$?
+check_exit "well-formed findings with exit 2: scrub-check exits 1 (BLOCKED)" 1 "$RC30"
+must_contain "well-formed findings with exit 2: reported as a [PII] finding" "$OUT30" "[PII] plain.txt:1: kind=phrase"
+must_contain "well-formed findings with exit 2: run is BLOCKED" "$OUT30" "scrub-check: BLOCKED"
+must_not_contain "well-formed findings with exit 2: not reported as FAILED" "$OUT30" "scrub-check: FAILED"
+
+echo "== vault.sh stderr on a clean run is forwarded, not discarded =="
+T31="$(new_temp_repo)"
+printf 'harmless\n' > "$T31/plain.txt"
+commit_files "$T31" "seed plain" plain.txt
+stub_vault "$T31" 'echo "vault: WARNING: informational probe (test stub)" >&2
+exit 0'
+OUT31="$(run_scrub "$T31" "$NOVAULT")"; RC31=$?
+check_exit "clean run with vault.sh stderr: scrub-check exits 0" 0 "$RC31"
+must_contain "clean run with vault.sh stderr: the stderr line reaches the user" "$OUT31" "informational probe (test stub)"
+must_contain "clean run with vault.sh stderr: still prints 'scrub-check: clean'" "$OUT31" "scrub-check: clean"
+
+echo "== no vault: scrub-check's own warning shows once; vault.sh's duplicate is dropped =="
+T32="$(new_temp_repo)"
+printf 'harmless\n' > "$T32/plain.txt"
+commit_files "$T32" "seed plain" plain.txt
+OUT32="$(run_scrub "$T32" "$NOVAULT")"
+must_contain "no vault: scrub-check's own WARNING is printed" "$OUT32" "scrub-check: WARNING"
+must_not_contain "no vault: vault.sh's duplicate WARNING is dropped" "$OUT32" "vault: WARNING"
+
+echo "== names-only crash: content still scanned (real vault term), the file-NAME section says NOT CHECKED =="
+T33="$(new_temp_repo)"
+VDIR33="$SCRATCH/vault33"
+CLAUDE_VAULT_DIR="$VDIR33" bash "$T33/scripts/vault/vault.sh" init >/dev/null 2>&1
+CLAUDE_VAULT_DIR="$VDIR33" bash "$T33/scripts/vault/vault.sh" add project "SynthScrubNamesProbe" --group scrubnames33 >/dev/null 2>&1
+printf 'owner: SynthScrubNamesProbe\n' > "$T33/leak.txt"
+commit_files "$T33" "seed leak" leak.txt
+cp "$T33/scripts/vault/vault.sh" "$T33/scripts/vault/vault-real.sh"
+stub_vault "$T33" 'if [ "$1" = check ] && [ "$2" = --stdin ]; then
+  echo "vault.sh: simulated names-pass crash (test stub)" >&2
+  exit 1
+fi
+exec bash "$(dirname "$0")/vault-real.sh" "$@"'
+OUT33="$(run_scrub "$T33" "$VDIR33")"; RC33=$?
+check_exit "names-only crash: scrub-check exits 1" 1 "$RC33"
+must_contain "names-only crash: FAILED names the file-name step" "$OUT33" "scrub-check: FAILED — vault.sh check (tracked file names)"
+must_contain "names-only crash: the content step still reported its finding" "$OUT33" "[PII] leak.txt:1: kind=project term=SynthScrubNamesProbe"
+must_contain "names-only crash: the file-name section says NOT CHECKED" "$OUT33" "NOT CHECKED"
+
+echo "== --staged + genuine vault finding (real vault, exit 2 + rows): BLOCKED, not FAILED =="
+T34="$(new_temp_repo)"
+VDIR34="$SCRATCH/vault34"
+CLAUDE_VAULT_DIR="$VDIR34" bash "$T34/scripts/vault/vault.sh" init >/dev/null 2>&1
+CLAUDE_VAULT_DIR="$VDIR34" bash "$T34/scripts/vault/vault.sh" add project "SynthScrubNamesProbe" --group scrubnames34 >/dev/null 2>&1
+printf 'harmless\n' > "$T34/staged34.txt"
+commit_files "$T34" "seed staged34" staged34.txt
+printf 'owner: SynthScrubNamesProbe\n' > "$T34/staged34.txt"
+git -C "$T34" add staged34.txt
+OUT34="$(run_scrub "$T34" "$VDIR34" --staged)"; RC34=$?
+check_exit "--staged + real vault finding: scrub-check exits 1 (BLOCKED)" 1 "$RC34"
+must_contain "--staged + real vault finding: reported as a [PII] finding at the staged file" "$OUT34" "[PII] staged34.txt:1: kind=project term=SynthScrubNamesProbe"
+must_not_contain "--staged + real vault finding: not reported as FAILED" "$OUT34" "scrub-check: FAILED"
+
+# ---------------------------------------------------------------------------
+# FAIL LOUD, git layer (2026-11-06, follow-up review): three more places read
+# a failed git call as clean — the file list (ls-files / staged name list via
+# process substitution, which never fails the script), the §1 secret and §6
+# rebrand `git grep` (`|| true` swallowed exit 128), and the staged rebrand
+# `git diff` (`|| true` silently dropped the file from the check). The cases
+# below put a git SHIM first on PATH that exits 128 for ONE chosen sub-command
+# (matched as a substring of its arguments; only the shimmed runs see it), plus
+# a run outside any work tree. Exit 1 = findings, so a FAILED run must exit 1
+# and print "scrub-check: FAILED", never "scrub-check: clean".
+# ---------------------------------------------------------------------------
+REAL_GIT_BIN="$(command -v git)"
+GIT_SHIM_DIR="$SCRATCH/git-shim"
+mkdir -p "$GIT_SHIM_DIR"
+printf '%s\n' '#!/usr/bin/env bash' \
+  'case " $* " in *"$SCRUB_TEST_GIT_FAIL"*) echo "fatal: simulated git failure (test shim)" >&2; exit 128;; esac' \
+  "exec \"$REAL_GIT_BIN\" \"\$@\"" > "$GIT_SHIM_DIR/git"
+chmod +x "$GIT_SHIM_DIR/git"
+
+run_scrub_gitshim() {  # run_scrub_gitshim <repo> <vdir> <git-arg-substring> [scrub args...]
+  local repo="$1" vdir="$2" fail="$3"
+  shift 3
+  ( cd "$repo" && env -u GITHUB_ACTIONS -u CI PATH="$GIT_SHIM_DIR:$PATH" SCRUB_TEST_GIT_FAIL="$fail" CLAUDE_VAULT_DIR="$vdir" bash scripts/scrub-check.sh "$@" 2>&1 )
+}
+
+echo "== run outside any git work tree: FAILED, exit 1, never 'clean' (follow-up #1) =="
+NOGIT="$SCRATCH/not-a-repo"
+mkdir -p "$NOGIT/scripts/vault"
+cp "$SCRUB_SRC" "$NOGIT/scripts/scrub-check.sh"
+cp "$ALLOWLIST_SRC" "$NOGIT/scripts/scrub-allowlist.txt"
+cp "$VAULT_SRC" "$NOGIT/scripts/vault/vault.sh"
+cp "$LIB_SRC" "$NOGIT/scripts/vault/lib.sh"
+OUTG1="$( cd "$NOGIT" && env -u GITHUB_ACTIONS -u CI CLAUDE_VAULT_DIR="$NOVAULT" bash scripts/scrub-check.sh 2>&1 )"; RCG1=$?
+check_exit "outside a work tree: scrub-check exits 1" 1 "$RCG1"
+must_contain "outside a work tree: prints scrub-check: FAILED" "$OUTG1" "scrub-check: FAILED"
+must_not_contain "outside a work tree: never prints 'scrub-check: clean'" "$OUTG1" "scrub-check: clean"
+
+echo "== git ls-files fails (in a repo): FAILED, exit 1, never clean (follow-up #1) =="
+TG2="$(new_temp_repo)"
+printf 'harmless\n' > "$TG2/plain.txt"
+commit_files "$TG2" "seed plain" plain.txt
+OUTG2="$(run_scrub_gitshim "$TG2" "$NOVAULT" "ls-files")"; RCG2=$?
+check_exit "ls-files fails: scrub-check exits 1" 1 "$RCG2"
+must_contain "ls-files fails: prints scrub-check: FAILED" "$OUTG2" "scrub-check: FAILED"
+must_not_contain "ls-files fails: never prints 'scrub-check: clean'" "$OUTG2" "scrub-check: clean"
+must_not_contain "ls-files fails: never prints 'no tracked files to scan'" "$OUTG2" "no tracked files to scan"
+
+echo "== §1 secret git grep fails (full tree): FAILED, exit 1, never clean (follow-up #2) =="
+TG3="$(new_temp_repo)"
+printf 'harmless\n' > "$TG3/plain.txt"
+commit_files "$TG3" "seed plain" plain.txt
+OUTG3="$(run_scrub_gitshim "$TG3" "$NOVAULT" "-nIE")"; RCG3=$?
+check_exit "secret grep fails (full): scrub-check exits 1" 1 "$RCG3"
+must_contain "secret grep fails (full): prints scrub-check: FAILED" "$OUTG3" "scrub-check: FAILED"
+must_not_contain "secret grep fails (full): never prints 'scrub-check: clean'" "$OUTG3" "scrub-check: clean"
+
+echo "== §1 secret git grep fails (--staged): FAILED, exit 1, never clean (follow-up #2) =="
+TG4="$(new_temp_repo)"
+printf 'seed\n' > "$TG4/staged-g.txt"
+commit_files "$TG4" "seed" staged-g.txt
+printf 'seed\nstaged change\n' > "$TG4/staged-g.txt"
+git -C "$TG4" add staged-g.txt
+OUTG4="$(run_scrub_gitshim "$TG4" "$NOVAULT" "-nIE" --staged)"; RCG4=$?
+check_exit "secret grep fails (--staged): scrub-check exits 1" 1 "$RCG4"
+must_contain "secret grep fails (--staged): prints scrub-check: FAILED" "$OUTG4" "scrub-check: FAILED"
+must_not_contain "secret grep fails (--staged): never prints 'scrub-check: clean'" "$OUTG4" "scrub-check: clean"
+
+echo "== §6 rebrand git grep fails (full tree): FAILED, exit 1, never clean (follow-up #2) =="
+TG5="$(new_temp_repo)"
+printf 'harmless\n' > "$TG5/plain.txt"
+commit_files "$TG5" "seed plain" plain.txt
+OUTG5="$(run_scrub_gitshim "$TG5" "$NOVAULT" "-niI")"; RCG5=$?
+check_exit "rebrand grep fails (full): scrub-check exits 1" 1 "$RCG5"
+must_contain "rebrand grep fails (full): prints scrub-check: FAILED" "$OUTG5" "scrub-check: FAILED"
+must_not_contain "rebrand grep fails (full): never prints 'scrub-check: clean'" "$OUTG5" "scrub-check: clean"
+
+echo "== §6 staged rebrand git diff fails: FAILED, exit 1, the file is not silently dropped (follow-up #3) =="
+TG6="$(new_temp_repo)"
+printf 'seed\n' > "$TG6/diff-fail.txt"
+commit_files "$TG6" "seed" diff-fail.txt
+printf 'seed\nnew leak: %s\n' "$_rebrand2" > "$TG6/diff-fail.txt"
+git -C "$TG6" add diff-fail.txt
+OUTG6="$(run_scrub_gitshim "$TG6" "$NOVAULT" "-U0" --staged)"; RCG6=$?
+check_exit "staged rebrand diff fails: scrub-check exits 1" 1 "$RCG6"
+must_contain "staged rebrand diff fails: prints scrub-check: FAILED" "$OUTG6" "scrub-check: FAILED"
+must_not_contain "staged rebrand diff fails: never prints 'scrub-check: clean'" "$OUTG6" "scrub-check: clean"
+
+echo "== control: a repo with NO tracked files is legitimate: exit 0 (follow-up #1, keep) =="
+TG7="$(new_temp_repo)"
+OUTG7="$(run_scrub "$TG7" "$NOVAULT")"; RCG7=$?
+check_exit "no tracked files: scrub-check exits 0" 0 "$RCG7"
+must_contain "no tracked files: prints 'no tracked files to scan'" "$OUTG7" "no tracked files to scan"
+
 echo ""
 echo "scrub-check-regression: $PASS passed, $FAIL failed"
 

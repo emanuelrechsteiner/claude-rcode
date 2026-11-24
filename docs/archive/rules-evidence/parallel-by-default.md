@@ -114,3 +114,75 @@ Ask yourself:
 ### Second pass — keyword index after the `parallel-dispatch/SKILL.md` pointer (first-pass wording)
 
 (isolation per writer, work-slicing before the first commit, smallest-PR-first merge order, short-lived branches, per-worktree `node_modules`/dev-PORT, protected main)
+
+## Moved 2026-11-10 (context diet)
+
+Source: pre-diet rules/parallel-by-default.md (2026-11-10 snapshot). Verbatim blocks, original headings kept.
+
+## Decision Matrix — when YES, when NO
+
+| Pattern | Parallel? | Reason |
+|---|---|---|
+| Refactor 3+ similar files (routes, components, services) | ✅ YES | Same mechanical operation, disjoint files |
+| Build feature requiring backend + frontend + tests | ✅ YES | Different specialists, different file trees |
+| Investigate 3+ separate repos/docs | ✅ YES | No shared state, read-only |
+| Add tests to 4 different modules | ✅ YES | Each test file independent |
+| Migrate N components from lib X to lib Y | ✅ YES | Same operation per file |
+| Audit M sub-systems (settings, agents, skills, hooks) | ✅ YES | Disjoint scopes |
+| Single-file edit | ❌ NO | No decomposition possible |
+| Pipelined work (plan → implement → test) | ❌ NO | Sequential dependency |
+| Tiny tasks (<2min each) | ❌ NO | Overhead exceeds gain |
+| Cross-file rename where A's change affects B's imports | ❌ NO | Coupled state |
+| Read-then-decide flow (each step depends on previous) | ❌ NO | Pipeline shape |
+
+## The Proposal Format (for ESCALATE-band or ambiguous-scope work)
+
+Only when step 4 requires the handshake: present the plan in this exact format BEFORE executing and wait for confirmation.
+
+```markdown
+🔀 **Parallelization detected**
+
+Task: <one-sentence summary>
+Decomposition: N independent units identified
+
+| # | Agent ID | Subagent | Model | Effort | Goal | Files (exclusive) |
+|---|---|---|---|---|---|---|
+| 0 | pdispatch-<sid>-0 | ui-agent | haiku | medium | Refactor X | src/routes/X.tsx |
+
+Estimated wall-time:
+- Sequential: ~12min
+- Parallel:   ~4min (3x speedup)
+
+Token cost: ~$0.X (parallel does not change token cost vs sequential — same total work)
+
+Safety: All file sets are disjoint ✅. Lock claims will be pre-acquired.
+SubagentStop hooks will auto-release. parallel-lock-check.sh will block any
+cross-agent collision.
+
+**Proceed with parallel dispatch? (y/n/modify)**
+```
+
+After the user confirms → the `/parallel-dispatch` skill handles the claim → dispatch → synthesis protocol.
+
+## Failure modes to watch for
+
+| Mode | Symptom | Mitigation |
+|---|---|---|
+| Over-decomposition | 8 agents for trivial work | Sweet spot is 3-6 units; if more, you're probably over-fragmenting |
+| Hidden dependency | A renames X, B references X | Spot during the disjoint-fileset check; if found, merge or sequence |
+| Unrealistic parallelism | Pipelined work shoved into parallel | If A's output is B's input, they're sequential |
+| Proposal fatigue | User says "just do it" repeatedly | After 3 same-task-type proposals accepted, propose adding to your own pattern memory |
+
+## Write-mode dispatches: worktree & follow-up discipline (IMP-070/072)
+
+For any WRITE-mode dispatch — especially chained follow-up writers, which inherit the parent's worktree+branch instead of getting a fresh one — follow `~/.claude/skills/parallel-dispatch/SKILL.md` §"Worktree & Follow-up Discipline (IMP-070/072)" (isolation per writer, work-slicing before the first commit, smallest-PR-first merge order, short-lived branches, per-worktree `node_modules`/dev-PORT, protected main). The lock protocol is for WRITE fan-outs only; read-only swarms need no claims. **Actual usage is currently unmeasured** (IMP-114) — do not cite a usage rate until the new claim log has accumulated. Regression suite: `hooks/tests/parallel-lock-regression.sh`.
+
+### Second pass
+
+Text removed from `rules/parallel-by-default.md` by the second pass (2026-11-10, fix-up items B10–B12), verbatim:
+
+```text
+B10 removed: For ESCALATE-band or ambiguous-scope parallel work present the proposal (units, agent/model/effort, exclusive file sets, wall-time, safety line) and wait for y/n; the template lives in `docs/archive/rules-evidence/parallel-by-default.md`, the executor is the `parallel-dispatch` skill.
+B11 removed: Watch for over-decomposition (sweet spot 3–6 units), hidden dependencies (spotted in the disjoint-file-set check), pipelined work forced parallel, and proposal fatigue.
+B12 removed path (every occurrence): `skills/parallel-dispatch/SKILL.md`
+```

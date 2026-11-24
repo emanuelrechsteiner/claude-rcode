@@ -209,6 +209,157 @@ $out"
 fi
 rm -rf "$DIR10"
 
+# ── Case 11: file order is NOT time order (2026-11-06: daily-docs-log.jsonl
+#    has backfill lines interleaved with runner lines). The LAST line is an
+#    old error pair (20d, 19d) — position-based reading counts that as a streak
+#    of 2 — but the newest entry BY TIME is an ok from 1h ago. Must stay silent. ──
+DIR11=$(fresh_dir)
+{
+    printf '{"ts":%s,"status":"ok"}\n' "$(epoch_hours_ago 1)"
+    printf '{"ts":%s,"status":"error","note":"runner: claude exited 1 for daily-docs"}\n' "$(epoch_days_ago 20)"
+    printf '{"ts":%s,"status":"error","note":"runner: claude exited 1 for daily-docs"}\n' "$(epoch_days_ago 19)"
+} > "$DIR11/daily-docs-log.jsonl"
+out=$(run_hook "$DIR11")
+if [[ -z "$out" ]]; then
+    ok "out-of-order file: trailing old errors do not alarm when newest-by-time is ok"
+else
+    bad "out-of-order file: trailing old errors do not alarm" "unexpected output:
+$out"
+fi
+rm -rf "$DIR11"
+
+# ── Case 12: "fail" (SKILL's own ABORT) counts as a failed run. Three newest
+#    entries are status:"fail" -> streak of 3, carrying the latest reason. ──
+DIR12=$(fresh_dir)
+{
+    printf '{"ts":%s,"status":"ok"}\n' "$(epoch_days_ago 5)"
+    printf '{"ts":%s,"status":"fail","reason":"ABORT(13): first"}\n' "$(epoch_hours_ago 3)"
+    printf '{"ts":%s,"status":"fail","reason":"ABORT(13): second"}\n' "$(epoch_hours_ago 2)"
+    printf '{"ts":%s,"status":"fail","reason":"ABORT(14): third"}\n' "$(epoch_hours_ago 1)"
+} > "$DIR12/daily-docs-log.jsonl"
+out=$(run_hook "$DIR12")
+if printf '%s' "$out" | grep -q "ROUTINE LIVENESS: 'daily-docs' — 3 consecutive failed runs"; then
+    ok "3 newest 'fail' lines: streak alarm fires with count=3"
+else
+    bad "3 newest 'fail' lines: streak alarm fires with count=3" "no matching line in:
+$out"
+fi
+if printf '%s' "$out" | grep -q "ABORT(14): third"; then
+    ok "3 newest 'fail' lines: blocker carries the reason text of the latest fail"
+else
+    bad "3 newest 'fail' lines: carries the latest fail's reason" "reason text missing from:
+$out"
+fi
+rm -rf "$DIR12"
+
+# ── Case 13: the status set is exact. "partial" (and "ok", "backfill") end a
+#    streak; they are not failures. Newest is partial after error+fail -> silent.
+#    Guards against widening the set to "anything not ok". ──
+DIR13=$(fresh_dir)
+{
+    printf '{"ts":%s,"status":"error","note":"runner: claude exited 1 for daily-docs"}\n' "$(epoch_hours_ago 3)"
+    printf '{"ts":%s,"status":"fail","reason":"ABORT(13): x"}\n' "$(epoch_hours_ago 2)"
+    printf '{"ts":%s,"status":"partial"}\n' "$(epoch_hours_ago 1)"
+} > "$DIR13/daily-docs-log.jsonl"
+out=$(run_hook "$DIR13")
+if printf '%s' "$out" | grep -q "consecutive failed runs"; then
+    bad "newest 'partial' ends the failure streak (partial is not a failure)" "unexpected alarm:
+$out"
+else
+    ok "newest 'partial' ends the failure streak (partial is not a failure)"
+fi
+rm -rf "$DIR13"
+
+# ── Case 14: equal timestamps resolve by file position (later line = newer).
+#    Two errors at the same newest epoch, preceded by an ok -> streak of 2. ──
+DIR14=$(fresh_dir)
+{
+    printf '{"ts":%s,"status":"ok"}\n' "$(epoch_hours_ago 5)"
+    printf '{"ts":%s,"status":"error","note":"runner: claude exited 1 for nightly-observation"}\n' "$(epoch_hours_ago 1)"
+    printf '{"ts":%s,"status":"error","note":"runner: claude exited 1 for nightly-observation"}\n' "$(epoch_hours_ago 1)"
+} > "$DIR14/nightly-obs-log.jsonl"
+out=$(run_hook "$DIR14")
+if printf '%s' "$out" | grep -q "ROUTINE LIVENESS: 'nightly-observation' — 2 consecutive failed runs"; then
+    ok "equal timestamps: deterministic order, streak of 2 counted"
+else
+    bad "equal timestamps: deterministic order, streak of 2 counted" "no matching line in:
+$out"
+fi
+rm -rf "$DIR14"
+
+# ── Case 15: jq missing from PATH. The reader must say so in one visible line
+#    and exit 0 — not go silent. The PATH is EMPTY (bash builtins only, no jq),
+#    and the logs are healthy, so the only possible output is the jq notice. ──
+DIR15=$(fresh_dir)
+EMPTY_BIN=$(mktemp -d "${TMPDIR:-/tmp}/routine-liveness-nobin.XXXXXX")
+printf '{"ts":%s,"status":"ok"}\n' "$(epoch_hours_ago 1)" > "$DIR15/daily-docs-log.jsonl"
+out=$(/usr/bin/env -i PATH="$EMPTY_BIN" CLAUDE_ROUTINE_LOG_DIR="$DIR15" /bin/bash "$HOOK" </dev/null 2>&1)
+RC=$?
+if [[ "$RC" -eq 0 ]] && printf '%s' "$out" | grep -q "ROUTINE LIVENESS: not checked — jq is missing"; then
+    ok "jq missing from PATH: one visible 'not checked' line, exit 0"
+else
+    bad "jq missing from PATH: one visible 'not checked' line, exit 0" "rc=$RC out:
+$out"
+fi
+rm -rf "$DIR15" "$EMPTY_BIN"
+
+# ── Case 16: log exists but holds ONLY garbage (no parseable JSON object).
+#    Must not read as healthy: one line naming the routine. ──
+DIR16=$(fresh_dir)
+{
+    echo 'not even json'
+    echo '{"ts": '
+    echo '[1,2,3]'
+} > "$DIR16/daily-docs-log.jsonl"
+out=$(run_hook "$DIR16")
+if printf '%s' "$out" | grep -q "ROUTINE LIVENESS: 'daily-docs' log exists but has no readable entries"; then
+    ok "log with only garbage lines: reported as 'exists but has no readable entries'"
+else
+    bad "log with only garbage lines: reported as 'exists but has no readable entries'" "unexpected output:
+$out"
+fi
+rm -rf "$DIR16"
+
+# ── Case 17: log exists but jq cannot read it (permission denied -> jq exit
+#    non-zero). Reported as a jq failure, distinct from zero parseable lines.
+#    Skipped (visibly) when running as root, where chmod 000 does not block. ──
+DIR17=$(fresh_dir)
+printf '{"ts":%s,"status":"ok"}\n' "$(epoch_hours_ago 1)" > "$DIR17/daily-docs-log.jsonl"
+chmod 000 "$DIR17/daily-docs-log.jsonl"
+if [[ "$(id -u)" -eq 0 ]]; then
+    echo "  ⏭  unreadable log (jq exit non-zero): SKIPPED — running as root, chmod 000 does not block reads"
+else
+    out=$(run_hook "$DIR17")
+    if printf '%s' "$out" | grep -q "ROUTINE LIVENESS: 'daily-docs' log exists but jq could not read it (jq exit [1-9]"; then
+        ok "unreadable log: reported as jq failure with non-zero jq exit"
+    else
+        bad "unreadable log: reported as jq failure with non-zero jq exit" "unexpected output:
+$out"
+    fi
+fi
+chmod 644 "$DIR17/daily-docs-log.jsonl" 2>/dev/null
+rm -rf "$DIR17"
+
+# ── Case 18 (IMP-273): three ok nightly runs that rotated 0 signals — one warning. ──
+DIR18=$(fresh_dir)
+for h in 50 26 2; do printf '{"date":"d","ts":%s,"status":"ok","entries_rotated":0,"error":""}\n' "$(epoch_hours_ago "$h")"; done > "$DIR18/nightly-obs-log.jsonl"
+out=$(run_hook "$DIR18")
+if [[ "$out" == *"rotated 0 signals"* ]]; then ok "three ok runs with 0 rotated signals: warned"
+else bad "three ok runs with 0 rotated signals: warned" "output: $out"; fi
+rm -rf "$DIR18"
+
+# ── Case 19 (IMP-273): one of the last three runs rotated signals — silent. ──
+DIR19=$(fresh_dir)
+{
+    printf '{"date":"d","ts":%s,"status":"ok","entries_rotated":0,"error":""}\n' "$(epoch_hours_ago 50)"
+    printf '{"date":"d","ts":%s,"status":"ok","entries_rotated":12,"error":""}\n' "$(epoch_hours_ago 26)"
+    printf '{"date":"d","ts":%s,"status":"ok","entries_rotated":0,"error":""}\n' "$(epoch_hours_ago 2)"
+} > "$DIR19/nightly-obs-log.jsonl"
+out=$(run_hook "$DIR19")
+if [[ -z "$out" ]]; then ok "signals flowed in one of the last three runs: silent"
+else bad "signals flowed in one of the last three runs: silent" "output: $out"; fi
+rm -rf "$DIR19"
+
 echo "──────────────────────────────────────"
 echo "PASS: $PASS   FAIL: $FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

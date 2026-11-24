@@ -1,7 +1,7 @@
 #!/bin/bash
 # IMP-033: PreToolUse hook on Edit/Write — block if file not yet Read in session.
 # Evidence: "File has not been read yet" fired 89 times across 78 sessions in 30-day window.
-# Per tool-discipline.md Rule 1: Read before Edit or Write on existing files.
+# Read before Edit or Write on existing files.
 set -u
 
 INPUT="$(cat)"
@@ -64,7 +64,7 @@ fi
 printf '%s\t%s\n' "$NOW_EPOCH" "$FILE_PATH" >> "$BLOCK_LOG"
 
 # IMP-075: emit a first-class error event into signals.jsonl so the
-# tool-discipline Rule-1 KPI ("read-before-edit blocks per 30d", baseline 89)
+# KPI ("read-before-edit blocks per 30d", baseline 89)
 # is measurable from the signal stream instead of ad-hoc transcript mining.
 SIG_FILE="$HOME/.claude/global-observation/signals.jsonl"
 jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg cwd "$(pwd)" \
@@ -74,7 +74,7 @@ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg cwd "$(pwd)" \
 
 cat >&2 <<MSG
 BLOCKED: '$FILE_PATH' has not been Read in this session.
-Per tool-discipline.md Rule 1, you must Read a file before Edit or Write modifies it.
+You must Read a file before Edit or Write modifies it.
 Read the file first, then retry the $TOOL.${REPEAT_DIAG}
 MSG
 exit 2

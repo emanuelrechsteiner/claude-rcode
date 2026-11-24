@@ -2,7 +2,7 @@
 name: migrate-to-skills
 description: "Migrate legacy rule/command files (Cursor .mdc rules, slash-command markdown, old-format skills) to Claude Code SKILL.md format. Use when consolidating cross-platform configs, importing Cursor or Antigravity workflows to Claude Code, or refactoring old rules into the skills/ directory."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
@@ -52,7 +52,7 @@ Body content...
 name: <kebab-name>
 description: "<original description, expanded with WHEN trigger>"
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 # Title
@@ -220,7 +220,7 @@ If something goes wrong:
 | `alwaysApply: true` | (moved to `rules/` directory; no equivalent field) |
 | `disable-model-invocation: true` | (not needed — skills aren't auto-invoked in Claude Code unless description triggers match) |
 | — | `context: fork` (new — controls context isolation) |
-| — | `model: haiku\|sonnet\|opus` (new — preferred model) |
+| — | `model: haiku\|sonnet\|opus` (new — preferred model; default haiku) |
 | — | `allowed-tools: ...` (new — tool allowlist) |
 
 ## Related Skills

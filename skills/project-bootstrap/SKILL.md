@@ -1,6 +1,6 @@
 ---
 name: project-bootstrap
-description: Repository exploration and project bootstrap specialist. Explores repos, audits docs, and optionally bootstraps Memory MCP context. Use when starting a new project, exploring a codebase, or setting up project structure. Triggers on "bootstrap", "explore repo", "new project", "codebase exploration", "project setup", "audit docs", "repo erkunden", "projekt aufsetzen", "codebase erkunden", "neues projekt starten", "projektstruktur anlegen", "verschaff dir einen überblick".
+description: "Explores an unfamiliar repository: detects stack, structure, entry points and commands, audits docs and plans their consolidation, optionally bootstraps Memory MCP, skips .env files unless authorized. Use when starting a new project, exploring a codebase or setting up project structure."
 model: haiku
 allowed-tools: Read, Glob, Grep, Bash(git status:*), Bash(git rev-parse:*), Bash(git branch:*), Bash(git log:*), Bash(pwd:*), Bash(ls:*)
 ---

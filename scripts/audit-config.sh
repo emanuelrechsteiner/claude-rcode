@@ -55,15 +55,44 @@ EOF
 # ============================================================================
 # settings.json checks
 # ============================================================================
+# Keys Claude Code writes itself, and live-install-only keys (IMP-278). The
+# single source is scripts/deploy-to-live.sh (RUNTIME_KEYS_JSON and
+# HAUS_ONLY_KEYS_JSON), read at run time so the lists cannot drift apart.
+# agentPushNotifEnabled is named here: Claude Code writes it, but
+# deploy-to-live.sh does not list it.
+DEPLOY_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deploy-to-live.sh"
+read_deploy_list() {   # read_deploy_list <VAR> -> the JSON array assigned to VAR
+    local line value
+    line=$(grep -E "^$1='" "$DEPLOY_LIB" 2>/dev/null | head -1)
+    value=${line#*=}
+    value=${value#\'}
+    value=${value%\'}
+    printf '%s' "$value"
+}
+KNOWN_TOP_KEYS=""
+RUNTIME_JSON=$(read_deploy_list RUNTIME_KEYS_JSON)
+HAUS_ONLY_JSON=$(read_deploy_list HAUS_ONLY_KEYS_JSON)
+if jq -e 'type == "array"' <<<"$RUNTIME_JSON" >/dev/null 2>&1 \
+    && jq -e 'type == "array"' <<<"$HAUS_ONLY_JSON" >/dev/null 2>&1; then
+    KNOWN_TOP_KEYS=$(jq -c -n --argjson a "$RUNTIME_JSON" --argjson b "$HAUS_ONLY_JSON" \
+        '[($a + $b)[] | select(length == 1) | .[0]] + ["agentPushNotifEnabled"]')
+else
+    emit_warn "invalid-field check skipped this run: RUNTIME_KEYS_JSON / HAUS_ONLY_KEYS_JSON not readable from $DEPLOY_LIB"
+fi
+
 SETTINGS="$CLAUDE_DIR/settings.json"
 if [[ -f "$SETTINGS" ]]; then
 
-    # Invalid top-level fields
-    for bad_field in theme agentPushNotifEnabled skipAutoPermissionPrompt observations hangoutDocsAt autoCompactThreshold autoCompactPctOverride agentMatching authRefresh fontFamily; do
-        if jq -e --arg k "$bad_field" 'has($k)' "$SETTINGS" >/dev/null 2>&1; then
-            emit_critical "settings.json has invalid field \`$bad_field\` (not in official schema)"
-        fi
-    done
+    # Invalid top-level fields. Keys in KNOWN_TOP_KEYS are runtime-written or
+    # live-install-only and are never reported as invalid (IMP-278).
+    if [[ -n "$KNOWN_TOP_KEYS" ]]; then
+        for bad_field in theme agentPushNotifEnabled skipAutoPermissionPrompt observations hangoutDocsAt autoCompactThreshold autoCompactPctOverride agentMatching authRefresh fontFamily; do
+            if jq -e --arg k "$bad_field" 'has($k)' "$SETTINGS" >/dev/null 2>&1 \
+                && ! jq -n -e --arg k "$bad_field" --argjson known "$KNOWN_TOP_KEYS" '$known | any(. == $k)' >/dev/null 2>&1; then
+                emit_critical "settings.json has invalid field \`$bad_field\` (not in official schema)"
+            fi
+        done
+    fi
 
     # Deprecated fields
     for dep_field in voiceEnabled includeCoAuthoredBy; do
@@ -110,7 +139,7 @@ fi
 # ============================================================================
 INVALID_TOOLS_REGEX='TaskCreate|TaskUpdate|TaskList|TaskGet|ExitPlanMode|NotebookEdit'
 NON_SCHEMA_FIELDS='^(permissionMode|skills|hooks):'
-STALE_MODEL_REGEX='claude-(opus|sonnet|haiku)-(3|4-1)-[0-9]{8}|claude-haiku-4-2025|claude-opus-4-1-2025'
+STALE_MODEL_REGEX='claude-(opus|sonnet|haiku)-(3|4|4-1|4-5)-[0-9]{8}'
 
 for f in "$CLAUDE_DIR"/agents/*.md; do
     [[ -f "$f" ]] || continue

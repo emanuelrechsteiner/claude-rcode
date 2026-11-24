@@ -1,4 +1,14 @@
 #!/bin/bash
+# RETIRED 2026-11-10 by owner decision (IMP-285, docs/adr/0011-controller-first-mutation-gate-retired.md).
+# The controller-first mutation gate and its SubagentStop flag hook are not registered in settings.json,
+# and no hook writes their session state any more. Why:
+#   1. In note mode the gate's only output was a stderr NOTE on exit 0, which PreToolUse never shows to the
+#      model: 49,390 note entries in 218 sessions and no block since 2026-07-15 (archives plus log, counted 2026-11-10).
+#   2. The unlock flag was set only for a finished sub-agent of type control-agent (17 times, in two sessions), which
+#      commands/team-lead.md tells the lead not to dispatch: the gate could never see the framework's main entrance.
+# Do NOT re-register as built: in enforce mode the gate exits 2 on the first non-exempt mutation of a session
+# marked substantial, and nothing /team-lead does sets the unlock. A rebuild needs the three changes in the ADR.
+# Kept for history together with the regression cases in hooks/tests/controller-first-regression.sh.
 # controller-first-mutation-gate.sh — IMP-090 (2026-07-15, Controller-First Enforcement)
 # ─────────────────────────────────────────────────────────────────────────────
 # PreToolUse hook on Write|Edit and (narrowly classified) Bash. Enforces the

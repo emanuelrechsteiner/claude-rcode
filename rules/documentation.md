@@ -1,6 +1,18 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,swift,go,rs,java,kt,kts,rb,php,vue,svelte,astro,sh,bash,zsh,c,h,cc,cpp,hpp,cs,m,mm,dart,gd,lua,ex,exs,scala,sql,prisma,html,css,scss}"
+  - "**/README*"
+  - "**/docs/**"
+  - "**/*.mdx"
+  - "**/CHANGELOG*"
+  - "**/CONTRIBUTING*"
+  - "**/plans/**"
+  - "/*.md"
+---
+
 # Documentation Rules
 
-> Standards for documentation, comments, and knowledge management.
+> Standards for documentation, comments, and knowledge management. Path-scoped: loads when a source or documentation file is read or edited.
 
 ## Documentation Categories
 

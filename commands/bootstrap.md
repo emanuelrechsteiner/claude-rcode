@@ -1,7 +1,8 @@
 ---
 description: Explore the repo, audit+consolidate docs, and (optionally) bootstrap Claude assets (CLAUDE.md, subagents, hooks). Read-only by default; asks before writing.
+disable-model-invocation: true
 argument-hint: "[--docs-only | --bootstrap-only | --agents | --hooks | --yes] [notes]"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools: Task, Read, Glob, Grep, LS, Bash(git status:*), Bash(git rev-parse:*), Bash(git branch:*), Bash(git log:*), Bash(pwd:*), Bash(echo:*)
 ---
 

@@ -302,7 +302,12 @@ properly.
 
 - Two-location model, compact: section "Two Locations: Workshop and Live
   Install" in `CLAUDE.md`
-- Deploy tool: `scripts/deploy-to-live.sh` (aliased as `claude-deploy`)
+- Deploy tool: `scripts/deploy-to-live.sh`, invoked as `claude-deploy`. The
+  command is a machine-local symlink in a `bin` directory on PATH (on this
+  machine `/opt/homebrew/bin/claude-deploy`); it is not tracked by git and is
+  not an alias or a shell-profile entry. On a fresh machine or after a
+  reinstall, recreate it with:
+  `ln -s <WORKSHOP>/scripts/deploy-to-live.sh /opt/homebrew/bin/claude-deploy`
 - Framework architecture: `HARNESS.md`
 - Full inventory with history (hook table, routine status, IMP evidence —
   moved out of `CLAUDE.md` since 2026-09-24): `docs/FRAMEWORK-REFERENCE.md`;

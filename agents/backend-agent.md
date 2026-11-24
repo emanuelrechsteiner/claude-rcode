@@ -1,7 +1,8 @@
 ---
 name: backend-agent
-description: "Backend implementation. Use when the user asks to 'build an API', 'create endpoints', 'set up database', 'implement authentication', 'add server logic', 'create cloud functions', 'write backend code', or mentions Firebase, Firestore, Express, Node.js server, REST API, GraphQL, JWT, OAuth, database schema, migrations, or server-side validation."
-model: sonnet
+description: "Implements backend code with tests: REST or GraphQL APIs, database schemas and migrations, JWT or OAuth auth, server-side validation, business logic and cloud functions. Use for server work with Firebase, Firestore, Express or Node.js servers."
+model: haiku
+effort: high
 tools:
   - Glob
   - Grep
@@ -46,7 +47,7 @@ tools:
 - Use parameterized queries
 - Implement proper auth checks
 - Follow OWASP guidelines
-- Honor `~/.claude/rules/agents-as-users.md` — scope credentials per-task
+- Honor `~/.claude/rules/security.md` (Access for agents and LLM-backed apps) — scope credentials per-task
 
 ## Output Requirements
 

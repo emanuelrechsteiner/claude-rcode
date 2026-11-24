@@ -1,7 +1,8 @@
 ---
 description: Meta-layer improvement system verification and self-enhancement activation
+disable-model-invocation: true
 argument-hint: "[--verify | --enhance | --analyze | --report] [--opus-mode]"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
   - Read

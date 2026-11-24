@@ -1,6 +1,6 @@
 ---
 name: worktree-consolidate
-description: "Safe worktree consolidation specialist. Discovers all active git worktrees, audits their status (dirty state, ahead/behind trunk, open PR), classifies each by merge-readiness, presents a read-only consolidation plan to the user, then gates every mutation (merge, push, prune, branch-delete) behind a one-per-operation y/n via the autonomy-arbiter. Never auto-merges. Triggers on 'merge worktrees', 'consolidate worktrees', 'bring branches together', 'worktree consolidation', 'clean up worktrees', 'prune worktrees', 'worktrees zusammenführen', 'gittrees zusammenführen', 'auf main zusammenführen', 'branches zusammenführen', 'worktree aufräumen'."
+description: "Safely consolidates git worktrees: discovers them, audits dirty state, ahead/behind trunk and open PRs, classifies merge-readiness, shows a read-only plan. Each merge, push, prune or branch delete needs its own y/n; never auto-merges. Use when merging, consolidating or pruning worktrees."
 context: fork
 model: haiku
 allowed-tools: Bash(git:*), Bash(gh:*)
@@ -12,7 +12,7 @@ This skill helps users with many active git worktrees (common in heavy parallel-
 
 ## Safety Invariant (Non-Negotiable)
 
-All merge / push / prune / branch-delete operations are **ESCALATE-band** per `autonomy-arbiter.md`. This skill NEVER auto-merges, auto-pushes, or auto-prunes. Every mutation is offered as a gated y/n. Do not add any bypass.
+All merge / push / prune / branch-delete operations are **ESCALATE-band** per `rules/agency-bands.md`. This skill NEVER auto-merges, auto-pushes, or auto-prunes. Every mutation is offered as a gated y/n. Do not add any bypass.
 
 ---
 
@@ -113,9 +113,9 @@ For each user-selected worktree in the `clean-mergeable` or `already-merged` cla
 
 **For `clean-mergeable`:**
 
-Present the exact commands you intend to run, then ask the user for explicit y/n approval before running EACH of the following (they are separate ESCALATE-band operations):
+Present the exact commands you intend to run, then ask the user for explicit y/n approval before each ESCALATE-band operation below (items 2 and 3):
 
-1. `git fetch origin` (non-destructive — AUTO-allowed, no gate)
+1. `git fetch origin` (non-destructive, AUTO, runs without a prompt)
 2. `git checkout <trunk>` and `git merge --no-ff <branch>` OR `git merge --ff-only <branch>` — ask user which style they prefer
 3. `git push origin <trunk>` — **ESCALATE** (gated y/n, surfaces the exact command)
 4. After push confirmed: offer to prune worktree and delete branch (Step 8)
@@ -185,4 +185,4 @@ Skipped (user):     [list]
 - **Every ESCALATE op** (push, prune, remote branch delete) gets an individual y/n.
 - **`-d` not `-D`** for branch deletes; the safety check is a feature, not a nuisance.
 - **Open PRs** — surface them before local merge; ask which path the user prefers.
-- **No bypass tokens** — this skill does not emit `CLAUDE_AGENCY_ACK_ONCE` or any gate-bypass. The autonomy-arbiter gate fires naturally on each gated command; the user supplies the ack.
+- **No bypass tokens** — this skill does not emit `CLAUDE_AGENCY_ACK_ONCE` or any gate-bypass. The agency-band gate (`hooks/excessive-agency-gate.sh`) fires naturally on each gated command; the user supplies the ack.

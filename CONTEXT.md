@@ -1,6 +1,6 @@
 <!--
 Status: ACTIVE
-Last Updated: 2026-10-09
+Last Updated: 2026-11-01
 Purpose: Framework glossary for claude-code-config — terms coined once (rules/domain-docs-convention.md), reused everywhere
 -->
 
@@ -63,5 +63,11 @@ Purpose: Framework glossary for claude-code-config — terms coined once (rules/
 **Knowledge lint** — `scripts/knowledge-lint.sh`: a read-only report (exit 0) over the knowledge mirror that flags memory notes lacking a description, Why/How, a date or a resolving link, plus contradiction, reference and graph queries (built 2026-10-09; the write-time advisory hook is wave B, not built). See `docs/OBSIDIAN.md` § Stage 3.
 
 **Retrieval protocol** — the fixed way an agent searches the knowledge mirror: rewrite the question into 2–4 keyword sets (own words, translation, technical terms), run them in one `--alt` lookup call, judge by the `»` description lines, open only the top note's section; the lookup stays lexical and no vector index exists. See `docs/adr/0009-agentic-retrieval-over-lexical-lookup.md`, `docs/OBSIDIAN.md` § Stage 3.
+
+**Knowledge round** — the Lead's pre-dispatch retrieval step (IMP-268); no longer mandatory before every worker dispatch since 2026-11-23, when the Lead runs one lookup for a unit that touches an area with history: the Lead writes 2–4 keyword sets, the `knowledge-agent` returns verbatim excerpts with paths, the Lead judges relevance on them, and the verdict goes into the brief's KNOWLEDGE field. See `agents/control-agent.md` §2, `docs/adr/0010-lead-supplied-knowledge-for-worker-briefs.md`.
+
+**KNOWLEDGE field** — the sixth field of a worker brief (`templates/auftragsbrief.md.template`), optional since 2026-11-23 (fill it when library notes fit the unit), with three verdicts: **cited** (verbatim excerpts with paths), **none** (`none relevant after 2 searches`, with the sets) or **unavailable** (`unavailable —` with a reason). Checked by `hooks/knowledge-brief-check.sh` (IMP-268) until 2026-11-23; the hook is no longer registered, so a brief without a verdict is not denied. Where a verdict is written, verdict words beat incidental paths, and cited excerpts must appear verbatim in the cited notes.
+
+**Lead-supplied** — knowledge the Lead chose for a worker. As a knowledge record kind (`lead-supplied`) it satisfies the knowledge gate for that worker; an unavailable verdict does not. A deliberate exception to the rule that a parent's record never satisfies a subagent. See `docs/adr/0010-lead-supplied-knowledge-for-worker-briefs.md`. The knowledge gate is switched off since 2026-11-23 (`CLAUDE_KNOWLEDGE_GATE=off`).
 
 **Collision list** — `scripts/lib/knowledge-lookup-collisions.tsv`: the tracked keyword-to-mode table (`cs` or `code`) that stops the library lookup matching a package name against an everyday word, such as `zustand` against the German noun. See `docs/OBSIDIAN.md` § Stage 3.

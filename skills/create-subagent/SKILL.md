@@ -1,8 +1,8 @@
 ---
 name: create-subagent
-description: "Create custom Claude Code subagents (specialized AI agents with focused system prompts and tool allowlists). Use when adding a new agent type like code-reviewer, debugger, doc-writer, or domain-specific assistant. Asks for missing scope/purpose, then writes the agent .md file with proper frontmatter."
+description: "Creates a custom Claude Code subagent: a specialized agent .md file with a focused system prompt and tool allowlist. Use when adding a new agent type, such as a reviewer, debugger or domain assistant. Asks for missing scope or purpose first."
 context: fork
-model: sonnet
+model: haiku
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -35,7 +35,7 @@ Create a `.md` file with YAML frontmatter + Markdown body (the system prompt):
 ---
 name: code-reviewer
 description: "Reviews code for quality, security, and team standards. Use proactively after writing or modifying code."
-model: sonnet
+model: haiku
 tools:
   - Read
   - Grep
@@ -61,7 +61,7 @@ When invoked:
 |-------|----------|--------|---------|
 | `name` | yes | lowercase-hyphens | Unique identifier; how the agent is invoked |
 | `description` | yes | non-empty | Triggers automatic invocation; critical for discovery |
-| `model` | recommended | `opus`, `sonnet`, `haiku` | Preferred model for this agent's work |
+| `model` | recommended | `haiku`, `sonnet`, `opus` | Preferred model for this agent's work; default `haiku`, `sonnet` only on a recorded Haiku failure (docs/reference/delegation.md, Model tiers) |
 | `tools` | recommended | YAML list | Restricts what tools the agent can call |
 | `skills` | optional | YAML list | Skills the agent has access to |
 | `permissionMode` | optional | `acceptEdits` | Auto-accept edits without prompting |
@@ -70,8 +70,8 @@ When invoked:
 
 | Agent Type | Model |
 |------------|-------|
-| Orchestrator, planner | `opus` |
-| Implementation specialist (backend, frontend, testing) | `sonnet` |
+| Orchestrator, planner | `haiku` (a higher tier only per invocation, on a recorded Haiku failure) |
+| Implementation specialist (backend, frontend, testing) | `haiku` (`sonnet` only on a recorded Haiku failure) |
 | Fast utility (cleanup, validation) | `haiku` |
 
 ### Choosing the Tools
@@ -85,7 +85,7 @@ List **only** what the agent needs. Common combinations:
 | Researcher | `WebFetch, WebSearch, Read, Grep, Glob` |
 | Doc writer | `Read, Write, Edit, Glob, Grep` + MCP doc tools |
 | Cleanup | `Bash, Read, Glob, Grep, Edit` |
-| Orchestrator | `Read, Write, Edit, TaskCreate, TaskUpdate, TaskList, Glob, Grep` |
+| Orchestrator | `Read, Write, Edit, TaskList, Glob, Grep` |
 
 ## Writing Effective Descriptions
 
@@ -111,7 +111,7 @@ Include "use proactively" to encourage automatic delegation when the trigger con
 ---
 name: code-reviewer
 description: "Code review specialist. Reviews recent changes for quality, security, and team standards. Use proactively after writing or modifying code."
-model: sonnet
+model: haiku
 tools:
   - Read
   - Grep
@@ -152,7 +152,7 @@ Include specific examples of how to fix issues.
 ---
 name: debugger
 description: "Debugging specialist for errors, test failures, and unexpected behavior. Use proactively when encountering any issue."
-model: sonnet
+model: haiku
 tools:
   - Read
   - Grep
@@ -195,7 +195,7 @@ Focus on fixing the underlying issue, not symptoms.
 ---
 name: data-analyst
 description: "Data analysis expert for SQL queries, CSV/Excel files, and data insights. Use proactively for data tasks and queries."
-model: sonnet
+model: haiku
 tools:
   - Read
   - Write
@@ -241,7 +241,7 @@ Always optimize for cost + clarity.
 ### Phase 2: Design
 - Pick name (lowercase, hyphens)
 - Write description (specific, trigger terms, "use proactively" where appropriate)
-- Choose model (opus / sonnet / haiku)
+- Choose model (`haiku`; a higher tier is passed per invocation on a recorded Haiku failure, never pinned in the definition)
 - List minimal tools
 - Optionally: skills, permissionMode
 

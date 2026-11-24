@@ -229,5 +229,4 @@ npx type-coverage 2>/dev/null || echo "Install: npm i -D type-coverage"
 
 Works with:
 - `/validate-build` - Type errors block build
-- `build-validator-agent` - Reports type issues
 - CI/CD - Add coverage gate to pipeline

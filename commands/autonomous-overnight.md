@@ -1,7 +1,8 @@
 ---
 description: "Run a scoped autonomous work session that can continue without human supervision, queuing irreversible operations rather than skipping or auto-approving them. Invoke at the start of a pre-vetted night-run or long unattended session."
+disable-model-invocation: true
 argument-hint: "<scope description or issue list>"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Read
   - Write
@@ -17,8 +18,6 @@ allowed-tools:
   - Bash(pytest:*)
   - Agent
   - Task
-  - TaskCreate
-  - TaskUpdate
 ---
 
 <!-- controller-contract:v1 -->

@@ -1,6 +1,6 @@
 ---
 name: ui-development
-description: React component implementation specialist. Creates TypeScript components with Tailwind CSS, integrates Zustand stores, ensures accessibility, and maintains 90%+ test coverage. Use when building React components, implementing UI, working with Tailwind, or creating frontend interfaces. Triggers on "React", "component", "UI", "Tailwind", "frontend", "interface", "form", "button", "modal", "Storybook".
+description: "Implements React components in TypeScript with Tailwind CSS, Zustand store integration, forms, accessibility, Storybook stories and 80%+ line test coverage. Use when building React components, UI or frontend interfaces, or working with Tailwind."
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash(npm:*)
 ---
 
@@ -156,7 +156,7 @@ src/components/
 - **Loading States**: Smooth transitions and proper feedback
 
 ### Testing Coverage
-- **Unit Tests**: >90% coverage for all components
+- **Unit Tests**: coverage per `rules/testing-quality.md` (line ≥80%) for all components
 - **Storybook Stories**: All components documented with use cases
 - **Integration Tests**: Component interaction validation
 - **Accessibility Tests**: Automated a11y compliance checking

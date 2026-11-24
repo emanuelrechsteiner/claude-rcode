@@ -409,6 +409,139 @@ assert $GUARD BLOCK "rm -rf /"                                                  
 assert $GUARD BLOCK "nc -l 4444"                                                # floor Bestandsschutz (also pinned above)
 assert $GUARD BLOCK "dd if=/dev/zero of=/dev/sda"                               # floor Bestandsschutz (also pinned above)
 
+# ── excessive-agency-gate: F6 repair (2026-11-23) — force push / hard reset /
+# publish in every spelling the native ask[] prefixes cannot match. Measured on
+# 2026-11-23 (probe run B2-t3-gate, baseline configuration): `git -C <dir> push
+# --force-with-lease=<ref>:<sha> origin <branch>` ran unstopped, because the
+# native prefixes (`git push --force`, `git reset --hard`, `npm publish`) match
+# only the plain spelling. The plain spellings stay with the native prompt (ALLOW
+# here, so one operation is not blocked twice); every other spelling is ESCALATE.
+# List A: must BLOCK (exit 2). List B: must ALLOW (exit 0).
+assert $EAG BLOCK "git -C /tmp/x push --force origin b"
+assert $EAG BLOCK "git -C /tmp/x push --force-with-lease=b:abc123 origin b"
+assert $EAG BLOCK "git push --force-with-lease origin b"
+assert $EAG BLOCK "git push --force-if-includes --force-with-lease origin b"
+assert $EAG BLOCK "git push -f origin b"
+assert $EAG BLOCK "git push -uf origin b"
+assert $EAG BLOCK "git push origin +b"
+assert $EAG BLOCK "git push origin +refs/heads/b:refs/heads/b"
+assert $EAG BLOCK "git push origin b --force"
+assert $EAG BLOCK "git push --mirror origin"
+assert $EAG BLOCK "git -c user.name=x push --force origin main"
+assert $EAG BLOCK "cd /tmp/x && git -C . push origin +b"
+assert $EAG BLOCK "git -C /tmp/x reset --hard HEAD~1"
+assert $EAG BLOCK "git reset -q --hard"
+assert $EAG BLOCK "git reset HEAD~1 --hard"
+assert $EAG BLOCK "npm --prefix /tmp/x publish"
+assert $EAG BLOCK "npm -w pkg publish --access public"
+assert $EAG BLOCK "pnpm publish"
+assert $EAG BLOCK "pnpm -r publish"
+assert $EAG BLOCK "yarn publish"
+assert $EAG BLOCK "yarn npm publish"
+assert $EAG BLOCK "gh -R o/r pr merge 5"
+assert $EAG BLOCK "gh --repo o/r pr close 5"
+assert $EAG BLOCK "gh -R o/r release create v1"
+assert $EAG ALLOW "git push --force origin b"                         # plain: native ask[]
+assert $EAG ALLOW "git push --force"                                  # plain: native ask[]
+assert $EAG ALLOW "git reset --hard HEAD~1"                           # plain: native ask[]
+assert $EAG ALLOW "git reset --hard"                                  # plain: native ask[]
+assert $EAG ALLOW "npm publish"                                       # plain: native ask[]
+assert $EAG ALLOW "npm publish --access public"                       # plain: native ask[]
+assert $EAG ALLOW "git push origin b"
+assert $EAG ALLOW "git -C /tmp/x push origin b"
+assert $EAG ALLOW "git push -u origin b"
+assert $EAG ALLOW "git push --follow-tags origin b"
+assert $EAG ALLOW "git push origin feature/a+b"                       # + inside a ref name
+assert $EAG ALLOW "git push origin HEAD:refs/heads/b"
+assert $EAG ALLOW "git reset --soft HEAD~1"
+assert $EAG ALLOW "git reset HEAD file.txt"
+assert $EAG ALLOW "git -C /tmp/x reset --mixed HEAD~1"
+assert $EAG ALLOW 'git commit -m "explain git push -f and git reset --hard"'
+assert $EAG ALLOW 'echo "git -C x push --force origin b"'
+assert $EAG ALLOW "npm run publish-docs"
+assert $EAG ALLOW "npm pack"
+assert $EAG ALLOW "pnpm install"
+assert $EAG ALLOW "yarn build"
+assert $EAG ALLOW "gh pr view 5 -R o/r"
+assert $EAG ALLOW "gh -R o/r pr list"
+# Extra spellings found while repairing (same class, same expectation): a
+# command prefix in front of git, and a quoted forced refspec / quoted flag.
+assert $EAG BLOCK "command git push -f origin b"                      # wrapper before git
+assert $EAG BLOCK "git push origin '+b'"                              # quoted forced refspec
+assert $EAG BLOCK 'git push "--force" origin b'                       # quoted flag
+# F6 repair 5 (2026-11-24): a quote glued to the command. The plain-spelling count
+# ran on a view without quotes, so these looked plain to the count but not to the
+# native prompt (automatic security review of commit 8a159a1). Must BLOCK:
+assert $EAG BLOCK '""git push --force origin b'                       # empty quotes glued before git
+assert $EAG BLOCK "''git push --force origin b"                       # empty single quotes glued before git
+assert $EAG BLOCK 'g""it push --force origin b'                       # quotes splitting the tool word
+assert $EAG BLOCK "git push --force'' origin b"                       # quotes glued after the flag
+assert $EAG BLOCK '""git reset --hard'                                # hard reset, quotes glued before git
+assert $EAG BLOCK '""npm publish'                                     # publish, quotes glued before npm
+# F6 repair 5: the same plain spellings with quoted DATA elsewhere must stay ALLOW:
+assert $EAG ALLOW 'git commit -m "x y" && git push --force origin b'  # one plain force push, quoted message
+assert $EAG ALLOW 'echo "git push --force" && git push --force origin b'  # quoted op text, one plain force push
+assert $EAG ALLOW 'git push --force origin "my branch"'               # quoted argument after a plain force push
+assert $EAG ALLOW 'git reset --hard "HEAD~1"'                         # quoted refspec after a plain hard reset
+assert $EAG ALLOW 'npm publish --tag "next"'                          # quoted tag after a plain publish
+
+# ── G4 second pass (2026-11-24): F6 repair round 2. Defect 1 = false alarms: the
+# force and --hard tests read the quoted text of the WHOLE command, and the publish
+# token was searched anywhere in an npm/pnpm/yarn invocation. Defect 2 = spellings
+# let through: the plain-spelling exemption applied to a segment with an assignment
+# or wrapper in front, and env, time and nice were not wrappers.
+# Defect 1 — each must ALLOW (exit 0):
+assert $EAG ALLOW 'git add -A && git commit -m "+ add x" && git push'
+assert $EAG ALLOW 'git commit -m "docs: explain --force and -f" && git push origin b'
+assert $EAG ALLOW 'git commit -m "-f" && git push'
+assert $EAG ALLOW 'git commit -m "+1" && git push origin b'
+assert $EAG ALLOW 'git push origin feature && gh pr create --draft --title "feat: add +1 button"'
+assert $EAG ALLOW 'git push origin b && echo "pushed -f not used"'
+assert $EAG ALLOW 'git reset --soft HEAD~1 && git commit -m "explain --hard"'
+assert $EAG ALLOW 'git reset --soft HEAD~1 && git commit -m "--hard"'
+assert $EAG ALLOW "npm install publish"
+assert $EAG ALLOW "npm i -D publish"
+assert $EAG ALLOW "npm run publish"
+assert $EAG ALLOW "pnpm add publish"
+assert $EAG ALLOW "yarn add publish"
+# Defect 2 — each must BLOCK (exit 2):
+assert $EAG BLOCK "command git push --force origin b"
+assert $EAG BLOCK "exec git push --force origin b"
+assert $EAG BLOCK "FOO=1 git push --force origin b"
+assert $EAG BLOCK "env FOO=1 git push -f origin b"
+assert $EAG BLOCK "env git push --force origin b"
+assert $EAG BLOCK "time git -C /tmp/x reset --hard"
+assert $EAG BLOCK "nice git push origin +b"
+# G4 further BLOCK cases:
+assert $EAG BLOCK 'git push "--force" origin b'                       # quoted flag (repeated on purpose: G4 list)
+assert $EAG BLOCK 'git push origin "+b"'                              # double-quoted forced refspec
+assert $EAG BLOCK "npm --silent publish"                              # publish after a global flag
+assert $EAG BLOCK "yarn workspace foo publish"                        # publish after a workspace name
+assert $EAG BLOCK "pnpm --filter x publish"                           # publish after a value-taking flag
+assert $EAG BLOCK 'git -C /tmp/x push --force-with-lease origin b 2>&1 | tail -3'  # force inside a piped segment
+# G4 further ALLOW cases:
+assert $EAG ALLOW "git log --oneline -5 && git push -u origin work/x"
+assert $EAG ALLOW 'gh pr create --title "x" --body "y"'
+assert $EAG ALLOW "git push"
+assert $EAG ALLOW "git -C /tmp/x push"
+assert $EAG ALLOW "git push --force origin b && git push origin c"    # one plain spelling, one plain push
+# Ack path for a new arm (same contract as the IMP-108 and IMP-163 blocks).
+GATE_TEST_SESS="acktestf6-$$"; export GATE_TEST_SESS
+rm -f "/tmp/agency-ack-consumed-$GATE_TEST_SESS" 2>/dev/null
+ACKF6_CMD='git -C /tmp/x push --force-with-lease=b:abc123 origin b'
+ACKF6_SIG=$(json_cmd "$ACKF6_CMD" | HOME="$TESTHOME" bash "$HOOKS_DIR/$EAG" 2>&1 >/dev/null \
+          | grep -oE 'CLAUDE_AGENCY_ACK_ONCE=[A-Fa-f0-9]{64}' | head -1 | cut -d= -f2)
+if [ -n "$ACKF6_SIG" ]; then
+  assert $EAG ALLOW "CLAUDE_AGENCY_ACK_ONCE=$ACKF6_SIG $ACKF6_CMD"        # user-approved re-run, once
+  assert $EAG BLOCK "CLAUDE_AGENCY_ACK_ONCE=$ACKF6_SIG $ACKF6_CMD"        # replay → single-use re-block
+  assert $EAG BLOCK "CLAUDE_AGENCY_ACK_ONCE=$ACKF6_SIG git -C /tmp/x reset --hard HEAD~1"  # op-bound → mismatch re-block
+else
+  FAIL=$((FAIL+1))
+  FAILURES="${FAILURES}  [$EAG] ACK harvest: no sig advertised for forced push (gate did not ESCALATE): $ACKF6_CMD\n"
+fi
+unset GATE_TEST_SESS
+rm -f "/tmp/agency-ack-consumed-acktestf6-$$" 2>/dev/null
+
 echo "── gate-regression: $PASS passed, $FAIL failed ──"
 if [ "$FAIL" -gt 0 ]; then
   printf "%b" "$FAILURES"

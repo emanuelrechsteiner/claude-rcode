@@ -1,11 +1,10 @@
 ---
 description: "Stage 5 alias — Launch: release, deployment, and production operations (ship and run). Thin wrapper around /team-lead with the Stage forced."
+disable-model-invocation: true
 argument-hint: <the directive to this team> [--overnight]
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
-  - TaskCreate
-  - TaskUpdate
   - Read
   - Write
   - Edit

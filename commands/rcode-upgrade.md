@@ -1,5 +1,6 @@
 ---
-description: "Upgrade a R.Code-managed project's deployed rails to the current global framework version. Compares .rcode/config.json framework_version against ~/.claude/rcode/VERSION, migrates the config (adds a missing tracker field, never touching historical fields), three-way-diffs the installed rules (incl. legacy torvaldsen-*.md renames), verifies the CLAUDE.md rule imports, and proposes each change behind a per-file y/n — never clobbering project-customized rules. Local-only: no GitHub mutations, no pushes; commits only after one explicit y/n."
+description: "Upgrades R.Code rails to the current global version: config tracker field (history untouched), three-way rule diff, legacy torvaldsen renames, CLAUDE.md imports. Customized rules kept; per-change and commit y/n; local only, never pushes. Use when framework_version lags the global VERSION."
+disable-model-invocation: true
 allowed-tools:
   - Read
   - Write
@@ -204,7 +205,7 @@ Present the classification as a one-table summary before any prompting, so the u
 
 ## Step 5: PROPOSE PER FILE (y/n each — never batch-clobber)
 
-**OUTDATED-UNMODIFIED and NEW files** — for each, show the unified diff (for NEW: "new file, [N] lines, purpose: [one-liner from its header]") and ask a per-file y/n. Lead with the recommendation (per `recommend-on-ask.md`): "Recommended: apply — your copy is unmodified from version [base], this only picks up upstream changes."
+**OUTDATED-UNMODIFIED and NEW files** — for each, show the unified diff (for NEW: "new file, [N] lines, purpose: [one-liner from its header]") and ask a per-file y/n. Lead with the recommendation (per `~/.claude/rules/foundation.md`, "Asking and acting"): "Recommended: apply — your copy is unmodified from version [base], this only picks up upstream changes."
 
 **CUSTOMIZED files** — NEVER overwrite by default. Show BOTH diffs: project-vs-base (= the project's deliberate customization) and base-vs-current (= what upstream changed). Then ask, with keep as the recommended first option:
 

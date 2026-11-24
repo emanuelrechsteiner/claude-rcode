@@ -1,6 +1,6 @@
 ---
 name: navigate-mode
-description: Codebase navigation primitives for fast orientation. Bundles canned scripts to locate entry points, list routes, list state stores, and surface recently-touched hot files. Use instead of ad-hoc grep when answering "where is X" / "how is this wired" questions. Triggers on "where is", "find entry point", "list routes", "list stores", "show me the routes", "hot files", "what's the main file", "navigate", "navigation", "orient me", "wo ist", "einstiegspunkt", "wo liegt".
+description: "Fast codebase orientation with four primitives: find the entry point, list routes, list state stores, and show hot files from recent git history. Use for where-is or how-is-this-wired questions instead of ad-hoc grep. Not for deep semantic questions: use Read or Grep."
 context: fork
 model: haiku
 allowed-tools: Bash, Read, Grep, Glob

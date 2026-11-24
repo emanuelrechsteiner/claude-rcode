@@ -10,7 +10,7 @@
 # --kind/--project/--prefix, superseded ordering, ## Mentions, descriptions/tokens/sections, usage log.
 #
 # MECHANICS — synthetic HOME and knowledge dir under mktemp -d; the REAL script and the REAL hook are
-# called with /bin/bash (rules/testing-quality.md "Verify Via the Same Code Path"). Never touches the
+# called with /bin/bash (rules/slop-prevention.md "Verification principles": "Verify Via the Same Code Path"). Never touches the
 # real ~/.claude. All values are invented. bash 3.2 compatible.
 # Usage: /bin/bash scripts/tests/knowledge-lookup-regression.sh
 # check() evals its condition lazily: single-quoted conditions are expanded at eval time.
@@ -253,6 +253,39 @@ if [ -n "$LOC_DE" ]; then
 else
   SKIP=$((SKIP + 1))
   echo "  NOTE: no de_DE UTF-8 locale installed (locale -a); the decimal-comma ranking case is NOT exercised"
+fi
+
+# ---- locale: fused output is byte-safe under a UTF-8 locale (IMP-267) ----------------------------
+# Two or more keyword sets are fused through `cut -f5-`; hit texts are cut at 640 BYTES. Under de_DE.UTF-8
+# a byte cut through a multibyte character (or a stray invalid byte) made cut fail with "Illegal byte
+# sequence" and the lookup printed nothing. Fixtures: a 2-byte and a 4-byte character placed across the
+# 640-byte boundary, and a note with a lone \351 byte. Every note holds the keyword on its first line.
+echo "-- lookup: fused output under a UTF-8 locale (IMP-267) --"
+if [ -z "$LOC_DE" ]; then
+  SKIP=$((SKIP + 1))
+  echo "  NOTE: no de_DE UTF-8 locale installed (locale -a); the UTF-8 fused-output cases are NOT exercised"
+else
+  UK="$T/utf-lib"; mkdir -p "$UK/mirror/rules"
+  w "$UK/mirror/rules/split2.md" "zqfusetok $(rep x 629)$UML tail after a two-byte character"   # bytes 1-10 prefix, 629 x -> ä at 640
+  w "$UK/mirror/rules/split4.md" "zqfusetok $(rep x 628)$EMO tail after a four-byte character"  # emoji at 639-642: cut at 640 splits it
+  w "$UK/mirror/rules/stray.md" "$(printf 'zqfusetok stray \351 byte in a note')"
+  w "$UK/mirror/rules/plain.md" "zqfusetok plain"
+  UTF_C="$T/utf-c.out"; UTF_DE="$T/utf-de.out"; UTF_DE_ERR="$T/utf-de.err"
+  KNOWLEDGE_LOOKUP_LOG=0 HOME="$H" CLAUDE_KNOWLEDGE_DIR="$UK" LC_ALL=C /bin/bash "$LK" zqfusetok --alt zqfusetok >"$UTF_C" 2>"$T/utf-c.err" </dev/null; RC_C=$?
+  KNOWLEDGE_LOOKUP_LOG=0 HOME="$H" CLAUDE_KNOWLEDGE_DIR="$UK" LC_ALL="$LOC_DE" /bin/bash "$LK" zqfusetok --alt zqfusetok >"$UTF_DE" 2>"$UTF_DE_ERR" </dev/null; RC=$?
+  check "fused search under $LOC_DE exits 0 with empty stderr (C run rc=$RC_C)" "rc=$RC err=$(cat "$UTF_DE_ERR")" 'test "$RC" -eq 0 -a "$RC_C" -eq 0 -a ! -s "$UTF_DE_ERR"'
+  check "fused search under $LOC_DE lists all four notes, incl. the stray-byte note" "blocks=$(grep -c '^== ' "$UTF_DE")" 'test "$(grep -c "^== " "$UTF_DE")" -eq 4 && has "== rules/stray.md" "$UTF_DE"'
+  check "fused output under $LOC_DE is byte-identical to the C-locale run" "$(cmp "$UTF_C" "$UTF_DE" 2>&1 | head -n 1)" 'cmp -s "$UTF_C" "$UTF_DE"'
+  # German capital umlauts fold to their lowercase (the pre-IMP-267 de_DE behaviour, kept byte-safe in lf())
+  UU="$T/umlaut-lib"; mkdir -p "$UU/mirror/rules"
+  w "$UU/mirror/rules/umlaut-up.md" "Übersicht der Regeln"
+  w "$UU/mirror/rules/umlaut-lo.md" "übersicht der Regeln"
+  for uq in Übersicht übersicht; do
+    for ul in C "$LOC_DE"; do
+      KNOWLEDGE_LOOKUP_LOG=0 HOME="$H" CLAUDE_KNOWLEDGE_DIR="$UU" LC_ALL="$ul" /bin/bash "$LK" "$uq" >"$OUT" 2>"$ERR" </dev/null; RC=$?
+      check "umlaut query '$uq' under $ul finds both the capital and the lowercase note" "rc=$RC out=$(cat "$OUT")" 'test "$RC" -eq 0 && hdr "== rules/umlaut-up.md  [1/1]  (rule)" && hdr "== rules/umlaut-lo.md  [1/1]  (rule)"'
+    done
+  done
 fi
 
 summary

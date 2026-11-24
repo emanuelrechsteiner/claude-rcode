@@ -41,7 +41,7 @@ ballow() { allow "$1" "$(bash_json "$2" "${3:-/tmp}")"; }
 echo "── File tools: block ──"
 for rel in rules/foo.md agents/x.md skills/a/b/SKILL.md commands/c.md hooks/h.sh rcode/s/x.md \
     scheduled-tasks/t/SKILL.md CLAUDE.md settings.json settings.framework.json settings.local.json \
-    scripts/lib/secret-patterns.sh cockpit/a.js output-styles/o.md templates/t.tpl; do
+    scripts/lib/secret-patterns.sh cockpit/a.js output-styles/o.md templates/t.tpl docs/reference/tools.md; do
     block "live $rel" "$(file_json "$L/$rel")" "$(basename "$rel")"
 done
 block "dotdot normalization" "$(file_json "$L/rules/../hooks/x/../h.sh")" "h.sh"
@@ -57,7 +57,7 @@ block "symlinked live dir" "$(file_json "$WORK/livelink/rules/s.md")" "s.md"
 
 echo "── File tools: allow ──"
 for p in "$L/rules/id.local.md" "$L/global-observation/x.log" "$L/projects/p/memory/m.md" "$L/plans/p.md" \
-    "$SHOP/rules/foo.md" "$L/rules/../../workshop/rules/a.md"; do allow "allow ${p#$WORK/}" "$(file_json "$p")"; done
+    "$SHOP/rules/foo.md" "$SHOP/docs/reference/tools.md" "$L/rules/../../workshop/rules/a.md"; do allow "allow ${p#$WORK/}" "$(file_json "$p")"; done
 
 echo "── Bash: write forms blocked ──"
 bblock "redirect >"        "echo hi > $L/rules/a.md" a.md
@@ -81,6 +81,7 @@ bblock "sh -ec"            "sh -ec \"cp x $L/rules/a.md\"" a.md
 bblock "heredoc into bash" $'bash <<EOF\necho x > '"$L"$'/rules/a.md\nEOF' a.md
 bblock "cp -r into live root"   "cp -r $SHOP/hooks $L/" hooks
 bblock "cp onto dir root"       "cp x $L/hooks" hooks
+bblock "docs redirect into live" "echo hi > $L/docs/FRAMEWORK-REFERENCE.md" FRAMEWORK-REFERENCE.md
 echo "── Bash: reproduced bypasses 1-5 and parser items ──"
 bblock "1 apostrophe in comment" $'# it\'s the live install\ncp x '"$L"$'/rules/a.md' a.md
 bblock "2 fd redirect 2>/dev/null" "cp /w/a.md $L/rules/a.md 2>/dev/null" a.md
@@ -103,7 +104,7 @@ bblock "git -C live stash"     "git -C $L stash" "stash"
 echo "── Bash: reads / data / deploy allowed ──"
 for c in "cat $L/rules/a.md" "grep -rn foo $L/rules" "jq . $L/settings.json" "git -C $L log --oneline" \
     "git -C $L status" "git -C $L diff" "git -C $L show HEAD" "git -C $L rev-parse HEAD" "git -C $L fetch" \
-    "echo \"redirect > $L/rules/a.md\"" "cat $L/rules/a.md 2>/dev/null" "echo hi > $SHOP/rules/a.md" \
+    "echo \"redirect > $L/rules/a.md\"" "cat $L/rules/a.md 2>/dev/null" "echo hi > $SHOP/rules/a.md" "echo hi > $SHOP/docs/FRAMEWORK-REFERENCE.md" \
     "cp $L/rules/a.md $SHOP/rules/a.md" "echo hi > $L/rules/x.local.md" "echo hi > $L/global-observation/x.log" \
     "echo hi > $L/projects/p/memory/m.md" "echo hi > $L/plans/p.md" "claude-deploy config" \
     "bash scripts/deploy-to-live.sh config" "bash $SHOP/scripts/deploy-to-live.sh all" "git status"; do
@@ -129,6 +130,38 @@ run_hook "$(file_json "$L/rules/t.md")" CLAUDE_GATE_TESTMODE=1; [[ $RC == 0 ]] &
 grep -q "testmode-exempt" "$CLAUDE_GOVERNING_LOG" && ok "testmode logged" || red "testmode not logged"
 run_hook "not json at all" A=1; [[ $RC == 0 && "$ERR" == *NOTE* ]] && ok "bad JSON fails open with NOTE" || red "bad JSON rc=$RC"
 grep -q "decision=failopen" "$CLAUDE_GOVERNING_LOG" && ok "failopen logged" || red "failopen not logged"
+
+echo "── IMP-274: TMPDIR is optional, degraded analysis fails closed ──"
+run_hook "$(file_json "$L/rules/tmp.md")" TMPDIR="$WORK/no-such-dir"
+[[ $RC == 2 && "$ERR" == *"two-location rule"* ]] && ok "missing TMPDIR: live write still blocked" || red "missing TMPDIR rc=$RC: $ERR"
+run_hook "$(bash_json "ls /tmp")" TMPDIR="$WORK/no-such-dir"; [[ $RC == 0 ]] && ok "missing TMPDIR: harmless command allowed" || red "missing TMPDIR harmless rc=$RC: $ERR"
+grep -q "classifier crashed" "$CLAUDE_GOVERNING_LOG" && red "missing TMPDIR was logged as a classifier crash" || ok "missing TMPDIR is no classifier crash"
+STUB="$WORK/stub"; mkdir -p "$STUB"; printf '#!/bin/sh\necho boom >&2\nexit 3\n' >"$STUB/python3"; chmod +x "$STUB/python3"
+run_hook "$(file_json "$L/rules/crash.md")" PATH="$STUB:$PATH"
+[[ $RC == 2 && "$ERR" == *"two-location rule"* && "$ERR" == *"classifier crashed: boom"* ]] && ok "classifier crash, live path named: blocked" || red "crash+live rc=$RC: $ERR"
+run_hook "$(bash_json "git -C $L checkout -- rules/a.md")" PATH="$STUB:$PATH"; [[ $RC == 2 ]] && ok "classifier crash, git write in live: blocked" || red "crash+git rc=$RC: $ERR"
+run_hook "$(bash_json "ls /tmp")" PATH="$STUB:$PATH"; [[ $RC == 0 && "$ERR" == *NOTE* ]] && ok "classifier crash, no live path: allowed with NOTE" || red "crash harmless rc=$RC: $ERR"
+grep -q "decision=analysis-failed" "$CLAUDE_GOVERNING_LOG" && ok "analysis-failed logged" || red "analysis-failed not logged"
+run_hook "$(bash_json "echo x > rules/a.md" "$L")" PATH="$STUB:$PATH"; [[ $RC == 2 ]] && ok "classifier crash, cwd inside live, relative governed path: blocked" || red "crash+cwd rc=$RC: $ERR"
+run_hook "$(bash_json "cd $L && echo x > rules/a.md")" PATH="$STUB:$PATH"; [[ $RC == 2 ]] && ok "classifier crash, live and governed name apart: blocked" || red "crash+apart rc=$RC: $ERR"
+run_hook "$(bash_json "ls" "$L")" PATH="$STUB:$PATH"; [[ $RC == 0 ]] && ok "classifier crash, cwd inside live, harmless command: allowed" || red "crash+cwd harmless rc=$RC: $ERR"
+TP=$(jq -nc --arg t "$L/projects/p/s.jsonl" '{tool_name:"Bash",tool_input:{command:"git checkout -b feature"},cwd:"/tmp",transcript_path:$t}')
+run_hook "$TP" PATH="$STUB:$PATH"; [[ $RC == 0 ]] && ok "classifier crash, transcript_path in live is no evidence: allowed" || red "crash+transcript rc=$RC: $ERR"
+NOJQ="$WORK/nojq"; mkdir -p "$NOJQ"; printf '#!/bin/sh\nexit 1\n' >"$NOJQ/jq"; chmod +x "$NOJQ/jq"
+J=$(file_json "$L/hooks/nojq.sh")
+run_hook "$J" PATH="$NOJQ:$PATH"; [[ $RC == 2 && "$ERR" == *"No override token"* ]] && ok "unusable jq, live path named: blocked without token" || red "nojq rc=$RC: $ERR"
+
+echo "── IMP-274: unparsed commands and quoting forms ──"
+bblock "parse-fail: relative write after cd into live" "cd $L && echo 'oops > rules/a.md" "governed path"
+bblock "parse-fail: cwd inside live" "echo 'oops > rules/a.md" "governed path" "$L"
+ballow "parse-fail without any live reference" "echo 'oops > /tmp/x"
+bblock "ANSI-C quoted target" "echo x > \$'$L/rules/a.md'" a.md
+N0=$(grep -c "decision=parse-fail" "$CLAUDE_GOVERNING_LOG")
+ballow "ANSI-C string with an escaped quote" "echo \$'it\\'s fine' > /tmp/x"
+ballow "heredoc, dotted delimiter, apostrophe in body" $'cat <<\'E.O.F\'\nit\'s > '"$L"$'/rules/a.md\nE.O.F'
+N1=$(grep -c "decision=parse-fail" "$CLAUDE_GOVERNING_LOG")
+[[ "$N0" == "$N1" ]] && ok "both forms parse without a parse-fail" || red "parse-fail count rose from $N0 to $N1"
+bblock "heredoc with a dotted delimiter fed to bash" $'bash <<E.O.F\necho x > '"$L"$'/rules/a.md\nE.O.F' a.md
 
 echo ""
 echo "GREEN=$GREEN RED=$RED of $((GREEN + RED))"

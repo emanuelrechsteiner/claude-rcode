@@ -80,7 +80,7 @@ TEXT (often empty) — adapter handles this gracefully.
 ANTHROPIC_API_KEY=sk-... python3 ~/.claude/skills/historical-signals-v2/scripts/cluster_prompts.py
 ```
 
-Sequential Haiku 4.5 classification of all prompts (text_length > 20) into 10
+Sequential Haiku classification of all prompts (measured on Haiku 4.5; re-measure on Haiku 5.5) (text_length > 20) into 10
 categories. Updates `prompts.cluster_label`. Skippable; the structural analyses
 work without it.
 
@@ -103,7 +103,7 @@ See `scripts/schema.sql` for full DDL.
 - **Extra sources heavily overlap active sessions** via session_id dedup (e.g. ~1274 input files may collapse to ~290 unique sessions)
 - **Prompts.ts is nullable** — older session formats omit timestamps on user/last-prompt entries
 - **Cursor v2_ai_percentage is ~98.5% NULL in real data** — Cursor's scorer doesn't populate most commits
-- **Cluster_label has ~11.5% UNCLEAR rate** — Haiku rebels when prompt content contains its own instructions; UNCLEAR also captures Claude Code's auto-compaction "create a detailed summary" system prompts that the extractor incorrectly treats as user input
+- **Cluster_label has ~11.5% UNCLEAR rate** (measured on Haiku 4.5; re-measure on Haiku 5.5) — Haiku rebels when prompt content contains its own instructions; UNCLEAR also captures Claude Code's auto-compaction "create a detailed summary" system prompts that the extractor incorrectly treats as user input
 - **Same-session deduplication is destructive** — if you need to track which JSONL file contributed which sessions, that information is lost after the second copy is ingested (only the most-recent jsonl_path is stored)
 
 ## Adding a new analysis

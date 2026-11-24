@@ -2,6 +2,7 @@
 name: research-agent
 description: "Documentation and technology research specialist. Use for: researching APIs, frameworks, best practices, troubleshooting solutions, competitive analysis. Fast research, with the ability to materialize its findings as a new report file at a path the dispatcher names — never edits existing files."
 model: haiku
+effort: medium
 tools:
   - Glob
   - Grep

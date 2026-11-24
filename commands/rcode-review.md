@@ -1,7 +1,8 @@
 ---
 description: "Perform comprehensive review with scope verification, convention compliance, and architectural consistency checks. Tracker-aware: reviews a GitHub PR or a local branch diff."
+disable-model-invocation: true
 argument-hint: "<PR-number | unit-id-or-branch>"
-model: claude-fable-5-1[1m]
+model: fable
 allowed-tools:
   - Task
   - Read

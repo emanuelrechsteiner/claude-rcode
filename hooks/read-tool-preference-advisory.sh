@@ -1,4 +1,8 @@
 #!/bin/bash
+# Unregistered 2026-11-10 (context diet): this script's only output was a stderr NOTE with exit 0 (or a log line);
+# per code.claude.com/docs/en/hooks.md PreToolUse output on exit 0 never reaches the model. 78 NOTE-SHOWN entries in read-tool-advisory.log over 90 days by 2026-11-10, none of which reached the model.
+# Script kept for history and its regression suite; re-registration needs a
+# visible mechanism (exit 2 or additionalContext).
 # read-tool-preference-advisory.sh — IMP-157 (2026-08-24), second half
 # ─────────────────────────────────────────────────────────────────────────────
 # PreToolUse hook, matcher "Bash". Replaces the cat/head/tail file-read BLOCK
@@ -11,7 +15,7 @@
 # none of those; blocking it there was a category error (tool-STYLE
 # preference enforced as a safety property), measured at 9 confirmed false
 # blocks across 8 sessions over two months. But the underlying preference
-# (tool-discipline.md Rule 2 — dedicated Read/Grep tools cache better and
+# (dedicated Read/Grep tools cache better and
 # are cheaper on repeat access) is still real, and this framework's own
 # Auto-Mode system reminder tells the agent the OPPOSITE ("read files with
 # cat, head, or sed -n ... rather than using the dedicated Read tool") — so
@@ -85,6 +89,6 @@ LOG="${CLAUDE_READ_ADVISORY_LOG:-$HOME/.claude/global-observation/read-tool-advi
 mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
 printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "NOTE-SHOWN" "$COMMAND" >> "$LOG" 2>/dev/null || true
 
-echo "NOTE: this framework's Auto Mode instructs reading with cat/head/sed -n instead of the Read tool — rules/tool-discipline.md Rule 2 prefers Read/Grep the other way round (no longer a blocker since IMP-157: that was a category error at the CRITICAL floor). Both paths work; Read/Grep are cheaper on large files and repeated access. This note appears at most once per session." >&2
+echo "NOTE: this framework's Auto Mode instructs reading with cat/head/sed -n instead of the Read tool — the Read/Grep preference points the other way round (no longer a blocker since IMP-157: that was a category error at the CRITICAL floor). Both paths work; Read/Grep are cheaper on large files and repeated access. This note appears at most once per session." >&2
 
 exit 0

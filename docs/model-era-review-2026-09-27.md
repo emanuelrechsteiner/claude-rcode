@@ -2,6 +2,7 @@
 Status: ACTIVE
 Last Updated: 2026-09-27
 Purpose: Four-point model-era review (IMP-080 trigger) for the Claude 5.x family, done as IMP-220
+Superseded for model facts and dispatch policy by `docs/model-era-review-2026-10-12.md` (Haiku 5.5, IMP-255).
 -->
 
 # Model-Era Review: Claude 5.x (2026-09-27, IMP-220)

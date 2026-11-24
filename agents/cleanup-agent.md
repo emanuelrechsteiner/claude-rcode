@@ -2,6 +2,7 @@
 name: cleanup-agent
 description: "Code cleanup specialist. Use for: dead code detection, debug artifact removal, unused import cleanup, EOF character validation. Fast detection and optional auto-fix."
 model: haiku
+effort: low
 tools:
   - Bash
   - Read
@@ -127,7 +128,7 @@ Report findings in this structure:
 - Medium priority issues: Y
 - Auto-fixable: Z
 
-Would you like me to auto-fix the safe issues?
+Report the findings and the count of auto-fixable issues to the dispatcher. Do not ask the user; the dispatcher decides whether to apply the safe fixes.
 ```
 
 ## Auto-Fix Rules

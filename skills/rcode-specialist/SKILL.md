@@ -1,6 +1,6 @@
 ---
 name: rcode-specialist
-description: "Expert knowledge of the R.Code framework and its config repo, distilled into token-efficient reference sheets: project workflow, git history, improvement ledger, hooks and gates, scripts and deploy, vault and publishing, skills and agents, decisions, open defects. Load before working on or inside R.Code, the framework workshop, hooks, deploy, publishing, or the ledger."
+description: "Router to R.Code framework sheets: workflow, history, ledger, hooks and gates, scripts and deploy, vault and publishing, skills and agents, decisions, open defects. Use before working inside R.Code, the framework workshop, hooks, deploy, publishing or the ledger; load one sheet per task."
 ---
 
 # R.Code specialist: router
@@ -44,6 +44,7 @@ Unsure: start with `references/open-defects.md` (what not to trust), then the sh
 10. Publishing is disabled by default (`PUBLISH_DISABLED=1`); one run at a time, a human pushes.
 11. Ledger write-back is proposed-only; a human promotes. First line of any completion report: `Done: yes` or `Done: no — missing: ...`.
 12. Shell is zsh: write `${var}:` never `$var:`.
+13. Rules after the 2026-11-23 rebuild: always loaded are `rules/foundation.md`, `rules/agency-bands.md`, `rules/slop-prevention.md` and `rules/workflow-git.md`; the long forms live under `docs/reference/`. Rules deleted that day are archived in `docs/archive/rules-2026-11-23/`. Sheet statements about rules and hook registrations older than that day are history unless marked as current.
 
 ## Freshness
 

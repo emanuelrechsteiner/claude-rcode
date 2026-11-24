@@ -1,6 +1,6 @@
 ---
 name: parallel-dispatch
-description: "Orchestrate N parallel write-mode sub-agents safely. Validates disjoint file sets, pre-claims locks per agent, dispatches parallel Agent calls in ONE message, synthesizes results. Use when you need true parallelism with write access — e.g. refactor 5 routes simultaneously, add tests to 4 different modules in parallel, migrate N components at once. Triggers on 'parallel dispatch', 'parallel refactor', 'run agents in parallel', 'fan out work', 'parallel ausführen', 'mehrere agents gleichzeitig', 'parallel abarbeiten', 'gleichzeitig refactoren', 'arbeit auffächern', 'agents parallel starten'."
+description: "Runs several independent write-mode sub-agents in parallel on disjoint file sets: verifies no overlap, pre-claims file locks per agent, dispatches in one message and synthesizes the results. Use for parallel edits such as refactoring 5 routes or adding tests to 4 modules; not for pipelined work."
 ---
 
 # Parallel Dispatch (Multi-Agent Write Coordination)
@@ -96,6 +96,7 @@ If any claim fails (returns 2), abort the whole dispatch and report which file i
 
 Build N Agent tool calls in ONE message (not sequential). Each call:
 - `subagent_type`: from the plan
+- `model` and `effort`: from the plan, on every call (`rules/foundation.md`)
 - `description`: short
 - `prompt`: starts with the unit's task + lists claimed files + instruction "You may ONLY edit these files. Other files are locked by other agents."
 - `run_in_background`: optional — true if you want to continue working while they run
@@ -200,7 +201,7 @@ Conflicts come from two branches touching the same lines — not from worktrees.
 
 ### Protect main
 
-Branch protection on the target repo: **PR required, no direct pushes, green CI as merge gate.** Doubly important with autonomous agents — none may push straight to main. (Merges to trunk remain ESCALATE-band per `workflow-git.md` / `excessive-agency-gate.md`.)
+Branch protection on the target repo: **PR required, no direct pushes, green CI as merge gate.** Doubly important with autonomous agents — none may push straight to main. (Merges to trunk remain ESCALATE-band per `workflow-git.md` / `hooks/excessive-agency-gate.sh`.)
 
 > Caveat: multi-human worktree flow is mature; multiple autonomous agents on one repo is young and fast-moving — check current worktree support in the specific agent tool before relying on it.
 
@@ -237,7 +238,7 @@ Don't use this lightly — it removes the safety net.
 
 ## Cost considerations
 
-- N parallel Sonnet agents cost N × single-agent cost. Don't over-decompose.
+- N parallel agents (haiku default) cost N × single-agent cost. Don't over-decompose.
 - Wall time benefit: ~Nx speedup vs sequential
 - Token cost: same as sequential (each agent has its own context)
 - Sweet spot: 3-6 parallel agents on related but independent work
@@ -246,7 +247,7 @@ Don't use this lightly — it removes the safety net.
 
 | Mode | Detection | Recovery |
 |------|-----------|----------|
-| Agent crashes mid-edit | SubagentStop with stop_reason ≠ end_turn | Lock TTL (30min) auto-expires, then can be claimed |
+| Agent crashes mid-edit | SubagentStop with stop_reason ≠ end_turn | Lock expires after its TTL (3600 s in Step 3; script default 1800 s) and can then be claimed |
 | Lock conflict during plan | claim returns exit 2 | Refuse dispatch, report conflict |
 | Agent edits outside its fileset | parallel-lock-check.sh denies | Agent receives JSON-deny, must respect or escalate |
 | Lock leak | release-all on SubagentStop | Manual: `bash ~/.claude/scripts/parallel-claim.sh cleanup` |

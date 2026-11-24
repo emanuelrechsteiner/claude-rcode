@@ -1,7 +1,8 @@
 ---
 name: documentation-agent
-description: "Daily-Docs routine specialist — produces the daily logbook entry covering yesterday's activity, then syncs to Notion. For targeted ad-hoc documentation (READMEs, ADRs, API docs, JSDoc) use the `documentation` skill instead — this subagent exists specifically because the Daily-Docs routine needs Notion MCP tools that benefit from context isolation."
-model: sonnet
+description: "Daily-Docs routine: writes yesterday's logbook entry from commits and signals, then syncs it to Notion. Not for ad-hoc docs such as READMEs, ADRs, API docs or JSDoc; use the documentation skill for those."
+model: haiku
+effort: medium
 tools:
   - Read
   - Write

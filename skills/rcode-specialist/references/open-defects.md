@@ -21,16 +21,16 @@ Closed since study, no rows: ecc s5 #1,#2,#6,#7,#8 = IMP-239,240,241,242+243,244
 6|ops/decisions/2026-08-13-*.md:100|history scrub never run (v1.0.1 shipped private-repo URL x3, 8761f9a); decision still open|DV|-|L
 7|docs/adr/0003-*.md:126-142|accepted residuals: paraphrase gap, unencrypted vault, fail-open gate, cherry-pick skips hooks|DV|ADR 0003|L
 **hooks-gates**|||||
-8|rules/tool-discipline.md:10|rule: first touch JSON-denies; h/gateguard.sh:2 is a non-blocking note since IMP-044/045|DV|235:A1|S
+8|closed 2026-11-23 by rule deletion (was the former tool-discipline rule, line 10); gateguard unregistered|rule: first touch JSON-denies; h/gateguard.sh:2 is a non-blocking note since IMP-044/045|DV|235:A1|S
 9|rules/slop-prevention.md:63|names a PreToolUse type-error edit gate; none exists, only the Stop hook (broken, row 21)|DV|235:A2|M
 10|rules/fail-loud.md:35|security-audit.sh has no except:pass check or ALLOWED marker; *.pem/*.key unblocked (security.md:14)|DV|235:A3|M
-11|rules/agents-as-users.md:27|rule: SessionStart blocks YOLO; h/sandbox-guard.sh:34 only warns|DV|235:A4|S
+11|closed 2026-11-23 by rule deletion (was the former agents-as-users rule, line 27; text now in rules/security.md)|rule: SessionStart blocks YOLO; h/sandbox-guard.sh:34 only warns|DV|235:A4|S
 12|rules/agency-bands.md:93|rule: sha of data-stripped command; h/excessive-agency-gate.sh:112-125 (hash at :124-125) hashes it with quoted data|DV|235:A5|S
 13|h/excessive-agency-gate.sh:540|ACK sha is printed to the model; nothing mechanical ties it to a human y/n|DV|-|L
 14|h/excessive-agency-gate.sh:354|basename AUTO-PASS is dead code; h/guard-unsafe.sh:203 already blocks absolute non-temp rm -rf|DV|235:A6|S
 15|rules/agency-bands.md:114|rule: unparseable execute_sql asks; h/mcp-agency-gate.sh:46-67 asks only on an empty query|DV|235:A7|S
 16|h/excessive-agency-gate.sh:75|bash gate emits no SOFT-ACK (trunk commit, push, lint edit); no vercel --prod or PR-create arm|DV|-|M
-17|h/dispatch-specialist-check.sh:240|identical retry passes and counts as granted: "3rd grant always asks" is bypassable|DV|IMP-213|S
+17|h/dispatch-specialist-check.sh:240 (unregistered 2026-11-23, design §4)|identical retry passes and counts as granted: "3rd grant always asks" is bypassable|DV|IMP-213|S
 18|IDF:24-26|A8 planning-doc warn 80% vs 50%; A9 git-identity-enforce no-op placeholders; A10 security-findings-check|DV|235:A8-A10|S
 19|h/guard-unsafe.sh:22|silent fail-open on missing jq/script; also mcp-agency-gate:22, file-protection:9, parallel-lock-check:31|DV|-|M
 20|h/tests/|no suite: mcp-agency-gate, gateguard, config-protection, git-identity-enforce, sandbox-guard|DV|-|M
@@ -70,7 +70,7 @@ Closed since study, no rows: ecc s5 #1,#2,#6,#7,#8 = IMP-239,240,241,242+243,244
 47|IDF:32-33|trunk commit and PR creation: SOFT-ACK in agency-bands, forbidden/ESCALATE in workflow-git|DV|235:B1,B2|S
 48|CLAUDE.md:66|'92% = failure' vs local 90% margin (context-engineering.md:21); MAX_THINKING_TOKENS acts on Haiku only|DV|235:B8|S
 49|IDF:34-45|rule conflicts B3-B7, B9-B14: PR target, network posture, tool-discipline wording, bypass table, BRAINSTORM|DV|235:B3-B14|M
-50|IDF:51-57|C1-C7: comments cite text that never existed or moved, e.g. autonomy-arbiter.md (excessive-agency-gate.sh:16)|DV|235:C1-C7|S
+50|IDF:51-57|C1-C7: comments cite text that never existed or moved, e.g. the former autonomy-arbiter rule (excessive-agency-gate.sh:16; skill pointers fixed 2026-11-23)|DV|235:C1-C7|S
 51|README.md:33,173,177|says 172 improvements (ledger: 190), 28 suites (38 exist), all green before release (publish.sh runs none)|DV|-|S
 52|research/ecc-vs-rcode.md:26,85|always-loaded size: 148,930 (:85), 150,244 and 146.4k only in ledger IMP-236; 106,835 = derived 96,811+10,024 (:26) leaves ~42k unexplained|DV|IMP-236|M
 ## Questions only the owner can answer

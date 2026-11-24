@@ -21,6 +21,8 @@ Feature: <feature-id>
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
+When the session supplies its own attribution lines, use those as the trailer.
+
 ### Example
 
 ```

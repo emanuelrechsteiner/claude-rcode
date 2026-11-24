@@ -1,6 +1,11 @@
+---
+paths:
+  - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,swift,go,rs,java,kt,kts,rb,php,vue,svelte,astro,sh,bash,zsh,c,h,cc,cpp,hpp,cs,m,mm,dart,gd,lua,ex,exs,scala,sql,prisma,html,css,scss}"
+---
+
 # Code Quality Rules
 
-> Universal code standards. Applies to all languages and frameworks.
+> Universal code standards. Applies to all languages and frameworks. Path-scoped: loads when a source file is read or edited.
 
 ## TypeScript Standards
 

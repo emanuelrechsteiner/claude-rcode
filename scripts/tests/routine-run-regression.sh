@@ -48,6 +48,13 @@ cat > "$STUB" <<'STUBEOF'
 #!/bin/bash
 printf '%s\n' "$@" > "$STUB_ARGV_FILE"
 cat > "$STUB_STDIN_FILE"
+# STUB_ENV_FILE: record what the runner set for goal tracking (IMP-289).
+if [ -n "${STUB_ENV_FILE:-}" ]; then printf '%s\n' "${CLAUDE_GOAL_TRACKING:-unset}" > "$STUB_ENV_FILE"; fi
+# STUB_LOG_FILE: play the SKILL's own run-log step (one ok line, ts = now).
+if [ -n "${STUB_LOG_FILE:-}" ]; then
+  mkdir -p "$(dirname "$STUB_LOG_FILE")"
+  jq -nc '{ts: (now | floor), status: "ok"}' >> "$STUB_LOG_FILE"
+fi
 exit "${STUB_EXIT_CODE:-0}"
 STUBEOF
 chmod +x "$STUB"
@@ -68,14 +75,16 @@ setup_task daily-docs
 ARGV_A="$ROOT/argv-a.txt"; STDIN_A="$ROOT/stdin-a.txt"
 CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_BIN="$STUB" \
   STUB_ARGV_FILE="$ARGV_A" STUB_STDIN_FILE="$STDIN_A" STUB_EXIT_CODE=0 \
+  STUB_LOG_FILE="$CDIR/global-observation/daily-docs-log.jsonl" STUB_ENV_FILE="$ROOT/env-a.txt" \
   bash "$RUNNER" daily-docs >/dev/null 2>&1
 RC=$?
 check "stdinform/exit0" 0 "$RC"
+check "stdinform/goal-tracking-switched-off-for-the-routine" 0 "$(cat "$ROOT/env-a.txt" 2>/dev/null)"
 if [ -f "$STDIN_A" ] && cmp -s "$SKILL" "$STDIN_A"; then ok; else
   bad "stdinform/stdin-byte-exact" "STDIN differs from $SKILL (or is missing)"
 fi
 check "stdinform/argv-exact" \
-  "$(printf '%s\n' -p --model sonnet --dangerously-skip-permissions)" \
+  "$(printf '%s\n' -p --model haiku --dangerously-skip-permissions)" \
   "$([ -f "$ARGV_A" ] && cat "$ARGV_A")"
 check "stdinform/argv-does-not-start-with-dashdashdash" 0 \
   "$([ -f "$ARGV_A" ] && head -1 "$ARGV_A" | grep -c '^---')"
@@ -91,8 +100,11 @@ CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_B" CLAUDE_BIN
   bash "$RUNNER" nightly-observation >/dev/null 2>&1
 RC=$?
 check "claudefail/exit1" 1 "$RC"
+check "modelmap/nightly-observation-real-argv-haiku" \
+  "$(printf '%s\n' -p --model haiku --dangerously-skip-permissions)" \
+  "$([ -f "$ARGV_B" ] && cat "$ARGV_B")"
 check "claudefail/log-line" 1 \
-  "$(jq -sr '[.[] | select(.note == "runner: claude exited 1 for nightly-observation")] | length' \
+  "$(jq -sr '[.[] | select((.note // "") | startswith("runner: claude exited 1 for nightly-observation; stderr tail: (empty)"))] | length' \
      "$LOG_DIR_B/nightly-obs-log.jsonl" 2>/dev/null)"
 rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-nightly-observation" 2>/dev/null
 
@@ -169,6 +181,282 @@ check "dryrun-proof-fail/exit0-despite-FAIL" 0 "$RC"
 check "dryrun-proof-fail/reports-FAIL" 1 \
   "$(printf '%s\n' "$DRYOUT_F" | grep -c 'FAIL — invocation shape')"
 rm -rf "$CDIR"
+
+# ── H) Per-task model map (IMP-255): daily-docs runs haiku, weekly-improve
+#      runs opus. Dry-run echo and real run both use the mapped value. ────────
+setup_task daily-docs
+DRYOUT_H1=$(CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ROOT/argv-h1.txt" STUB_STDIN_FILE="$ROOT/stdin-h1.txt" \
+  bash "$RUNNER" daily-docs --dry-run 2>&1)
+check "modelmap/daily-dryrun-echo-haiku" 1 \
+  "$(printf '%s\n' "$DRYOUT_H1" | grep -c -- '--model haiku --dangerously-skip-permissions < ')"
+rm -rf "$CDIR"
+
+setup_task weekly-improve
+DRYOUT_H2=$(CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ROOT/argv-h2.txt" STUB_STDIN_FILE="$ROOT/stdin-h2.txt" \
+  bash "$RUNNER" weekly-improve --dry-run 2>&1)
+check "modelmap/weekly-dryrun-echo-opus" 1 \
+  "$(printf '%s\n' "$DRYOUT_H2" | grep -c -- '--model opus --dangerously-skip-permissions < ')"
+check "modelmap/weekly-dryrun-no-sonnet" 0 \
+  "$(printf '%s\n' "$DRYOUT_H2" | grep -c 'model sonnet')"
+ARGV_H="$ROOT/argv-h.txt"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ARGV_H" STUB_STDIN_FILE="$ROOT/stdin-h.txt" STUB_EXIT_CODE=0 \
+  bash "$RUNNER" weekly-improve >/dev/null 2>&1
+check "modelmap/weekly-real-argv-opus" \
+  "$(printf '%s\n' -p --model opus --dangerously-skip-permissions)" \
+  "$([ -f "$ARGV_H" ] && cat "$ARGV_H")"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-weekly-improve" 2>/dev/null
+
+# ── I) claude exits 0 but the routine wrote no run-log line -> runner logs
+#      the gap and exits 1 (IMP-075: silence must never look like success) ──
+setup_task daily-docs
+LOG_DIR_I="$ROOT/logs-i"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_I" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ROOT/argv-i.txt" STUB_STDIN_FILE="$ROOT/stdin-i.txt" STUB_EXIT_CODE=0 \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "silent-exit0/exit1" 1 "$RC"
+check "silent-exit0/log-line" 1 \
+  "$(jq -sr '[.[] | select((.note // "") | contains("wrote no run-log line"))] | length' "$LOG_DIR_I/daily-docs-log.jsonl" 2>/dev/null)"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" 2>/dev/null
+
+# ── J) claude exits 0 and the routine wrote its own line -> exit 0 and the
+#      runner adds NO error line of its own ───────────────────────────────────
+setup_task daily-docs
+LOG_DIR_J="$ROOT/logs-j"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_J" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ROOT/argv-j.txt" STUB_STDIN_FILE="$ROOT/stdin-j.txt" STUB_EXIT_CODE=0 \
+  STUB_LOG_FILE="$LOG_DIR_J/daily-docs-log.jsonl" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "routine-wrote-line/exit0" 0 "$RC"
+check "routine-wrote-line/no-runner-error-line" 0 \
+  "$(jq -sr '[.[] | select(has("note"))] | length' "$LOG_DIR_J/daily-docs-log.jsonl" 2>/dev/null)"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" 2>/dev/null
+
+# ── K) claude exits 3 with 5 stderr lines -> exit code propagated, the note
+#      carries exactly the last 3 stderr lines (truncated, jq-escaped) ───────
+setup_task daily-docs
+STUB_K="$ROOT/claude-stub-stderr.sh"
+cat > "$STUB_K" <<'STUBEOF'
+#!/bin/bash
+cat > /dev/null
+for n in 1 2 3 4 5; do echo "stderr-line-$n" >&2; done
+exit 3
+STUBEOF
+chmod +x "$STUB_K"
+LOG_DIR_K="$ROOT/logs-k"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_K" CLAUDE_BIN="$STUB_K" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "stderr-tail/exit-propagated" 3 "$RC"
+NOTE_K="$(jq -sr '.[-1].note // ""' "$LOG_DIR_K/daily-docs-log.jsonl" 2>/dev/null)"
+check "stderr-tail/last-3-lines" 1 \
+  "$(printf '%s' "$NOTE_K" | grep -c 'stderr tail: stderr-line-3 | stderr-line-4 | stderr-line-5$')"
+check "stderr-tail/older-lines-excluded" 0 "$(printf '%s' "$NOTE_K" | grep -c 'stderr-line-1')"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" 2>/dev/null
+
+# ── L) SIGTERM during a run (launchd stop/timeout) -> runner logs the signal,
+#      exits 1 and releases its lock. bash runs the trap after claude ends. ──
+setup_task daily-docs
+STUB_L="$ROOT/claude-stub-sleep.sh"
+cat > "$STUB_L" <<'STUBEOF'
+#!/bin/bash
+cat > /dev/null
+sleep 2
+exit 0
+STUBEOF
+chmod +x "$STUB_L"
+LOG_DIR_L="$ROOT/logs-l"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_L" CLAUDE_BIN="$STUB_L" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1 &
+RUNNER_PID=$!
+sleep 1
+kill -TERM "$RUNNER_PID" 2>/dev/null
+wait "$RUNNER_PID"
+RC=$?
+check "sigterm/exit1" 1 "$RC"
+check "sigterm/log-line" 1 \
+  "$(jq -sr '[.[] | select((.note // "") | contains("terminated by SIGTERM"))] | length' "$LOG_DIR_L/daily-docs-log.jsonl" 2>/dev/null)"
+check "sigterm/lock-released" 0 "$([ -d "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" ] && echo 1 || echo 0)"
+rm -rf "$CDIR"
+
+# ── M) lock left behind by a dead holder (SIGKILL, power cut) -> reclaimed,
+#      logged, and the run proceeds ──────────────────────────────────────────
+setup_task daily-docs
+LOCK_M="${TMPDIR:-/tmp}/claude-routine-lock-daily-docs"
+rm -f "$LOCK_M/pid"; rmdir "$LOCK_M" 2>/dev/null; mkdir "$LOCK_M"
+( exit 0 ) & DEAD_PID=$!; wait "$DEAD_PID"
+echo "$DEAD_PID" > "$LOCK_M/pid"
+LOG_DIR_M="$ROOT/logs-m"; ARGV_M="$ROOT/argv-m.txt"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_M" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ARGV_M" STUB_STDIN_FILE="$ROOT/stdin-m.txt" STUB_EXIT_CODE=0 \
+  STUB_LOG_FILE="$LOG_DIR_M/daily-docs-log.jsonl" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "stale-lock/run-proceeds-exit0" 0 "$RC"
+check "stale-lock/claude-called" 1 "$([ -f "$ARGV_M" ] && echo 1 || echo 0)"
+check "stale-lock/reclaim-logged" 1 \
+  "$(jq -sr '[.[] | select((.note // "") | contains("reclaimed stale lock"))] | length' "$LOG_DIR_M/daily-docs-log.jsonl" 2>/dev/null)"
+rm -rf "$CDIR"
+
+# ── N) lock held by a LIVE holder (this test shell's pid) -> still refused,
+#      claude not called, lock left untouched ─────────────────────────────────
+setup_task weekly-improve
+LOCK_N="${TMPDIR:-/tmp}/claude-routine-lock-weekly-improve"
+rm -f "$LOCK_N/pid"; rmdir "$LOCK_N" 2>/dev/null; mkdir "$LOCK_N"; echo $$ > "$LOCK_N/pid"
+ARGV_N="$ROOT/argv-n.txt"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$ROOT/logs-n" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ARGV_N" STUB_STDIN_FILE="$ROOT/stdin-n.txt" STUB_EXIT_CODE=0 \
+  bash "$RUNNER" weekly-improve >/dev/null 2>&1
+RC=$?
+check "live-holder/exit1" 1 "$RC"
+check "live-holder/claude-not-called" 0 "$([ -f "$ARGV_N" ] && echo 1 || echo 0)"
+check "live-holder/lock-kept" 1 "$([ -f "$LOCK_N/pid" ] && echo 1 || echo 0)"
+rm -f "$LOCK_N/pid"; rmdir "$LOCK_N" 2>/dev/null; rm -rf "$CDIR"
+
+# ── O) jq missing -> exit 2 AND a fixed log line in routine-run-errors.jsonl
+#      (the one exit path that previously wrote no line at all) ──────────────
+LOG_DIR_O="$ROOT/logs-o"
+env PATH=/bin CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_O" /bin/bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "no-jq/exit2" 2 "$RC"
+check "no-jq/errors-line" 1 \
+  "$(jq -sr '[.[] | select(.status == "error" and (.note | contains("jq not found")))] | length' "$LOG_DIR_O/routine-run-errors.jsonl" 2>/dev/null)"
+
+# ── P) stale lock reclaimed, routine writes NO line -> the runner's own
+#      "reclaimed stale lock" line (fresh numeric ts) must NOT count as the
+#      routine's line: the run still fails loud ───────────────────────────────
+setup_task daily-docs
+LOCK_P="${TMPDIR:-/tmp}/claude-routine-lock-daily-docs"
+rm -f "$LOCK_P/pid"; rmdir "$LOCK_P" 2>/dev/null; mkdir "$LOCK_P"
+( exit 0 ) & DEAD_P=$!; wait "$DEAD_P"
+echo "$DEAD_P" > "$LOCK_P/pid"
+LOG_DIR_P="$ROOT/logs-p"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_P" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ROOT/argv-p.txt" STUB_STDIN_FILE="$ROOT/stdin-p.txt" STUB_EXIT_CODE=0 \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "stale-no-line/exit1" 1 "$RC"
+check "stale-no-line/reclaim-logged" 1 \
+  "$(jq -sr '[.[] | select((.note // "") | contains("reclaimed stale lock"))] | length' "$LOG_DIR_P/daily-docs-log.jsonl" 2>/dev/null)"
+check "stale-no-line/reclaim-line-not-counted" 1 \
+  "$(jq -sr '[.[] | select((.note // "") | contains("wrote no run-log line"))] | length' "$LOG_DIR_P/daily-docs-log.jsonl" 2>/dev/null)"
+rm -rf "$CDIR"; rmdir "$LOCK_P" 2>/dev/null
+
+# ── Q1) ISO8601 timestamps (weekly-improve form). A pre-existing line from
+#      2020 AND a line the routine appends during the run with an old ISO ts
+#      must both be ignored -> the "wrote no run-log line" error still fires.
+#      (A raw `.ts >= n` compare sorts strings after numbers and passes both.) ──
+setup_task daily-docs
+LOG_DIR_Q1="$ROOT/logs-q1"; mkdir -p "$LOG_DIR_Q1"
+printf '%s\n' '{"ts":"2020-01-01T00:00:00Z","status":"ok","task":"daily-docs"}' > "$LOG_DIR_Q1/daily-docs-log.jsonl"
+STUB_Q1="$ROOT/claude-stub-iso-old.sh"
+cat > "$STUB_Q1" <<'STUBEOF'
+#!/bin/bash
+cat > /dev/null
+jq -nc '{ts: "2020-01-02T00:00:00Z", status: "ok"}' >> "$STUB_LOG_FILE"
+exit 0
+STUBEOF
+chmod +x "$STUB_Q1"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_Q1" CLAUDE_BIN="$STUB_Q1" \
+  STUB_LOG_FILE="$LOG_DIR_Q1/daily-docs-log.jsonl" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "iso-old/exit1" 1 "$RC"
+check "iso-old/error-fires" 1 \
+  "$(jq -sr '[.[] | select((.note // "") | contains("wrote no run-log line"))] | length' "$LOG_DIR_Q1/daily-docs-log.jsonl" 2>/dev/null)"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" 2>/dev/null
+
+# ── Q2) routine appends a FRESH ISO8601 line during the run -> passes ───────
+setup_task daily-docs
+LOG_DIR_Q2="$ROOT/logs-q2"
+STUB_Q2="$ROOT/claude-stub-iso-fresh.sh"
+cat > "$STUB_Q2" <<'STUBEOF'
+#!/bin/bash
+cat > /dev/null
+mkdir -p "$(dirname "$STUB_LOG_FILE")"
+jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{ts: $ts, status: "ok"}' >> "$STUB_LOG_FILE"
+exit 0
+STUBEOF
+chmod +x "$STUB_Q2"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_Q2" CLAUDE_BIN="$STUB_Q2" \
+  STUB_LOG_FILE="$LOG_DIR_Q2/daily-docs-log.jsonl" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "iso-fresh/exit0" 0 "$RC"
+check "iso-fresh/no-runner-error-line" 0 \
+  "$(jq -sr '[.[] | select(has("note"))] | length' "$LOG_DIR_Q2/daily-docs-log.jsonl" 2>/dev/null)"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" 2>/dev/null
+
+# ── R1) one TRUNCATED line in the log from an earlier write -> the check
+#      still reads the file and passes on the routine's fresh line ───────────
+setup_task daily-docs
+LOG_DIR_R1="$ROOT/logs-r1"; mkdir -p "$LOG_DIR_R1"
+printf '%s\n' '{"ts":17' > "$LOG_DIR_R1/daily-docs-log.jsonl"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_R1" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ROOT/argv-r1.txt" STUB_STDIN_FILE="$ROOT/stdin-r1.txt" STUB_EXIT_CODE=0 \
+  STUB_LOG_FILE="$LOG_DIR_R1/daily-docs-log.jsonl" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "truncated-old/exit0" 0 "$RC"
+check "truncated-old/no-parse-error" 0 \
+  "$(jq -Rr 'fromjson? // empty | select((.note // "") | contains("could not be read"))' "$LOG_DIR_R1/daily-docs-log.jsonl" 2>/dev/null | grep -c .)"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" 2>/dev/null
+
+# ── R2) truncated line and the routine wrote nothing -> the plain
+#      "wrote no run-log line" error, NOT a parse-failure error ───────────────
+setup_task daily-docs
+LOG_DIR_R2="$ROOT/logs-r2"; mkdir -p "$LOG_DIR_R2"
+printf '%s\n' '{"ts":17' > "$LOG_DIR_R2/daily-docs-log.jsonl"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_R2" CLAUDE_BIN="$STUB" \
+  STUB_ARGV_FILE="$ROOT/argv-r2.txt" STUB_STDIN_FILE="$ROOT/stdin-r2.txt" STUB_EXIT_CODE=0 \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1
+RC=$?
+check "truncated-none/exit1" 1 "$RC"
+check "truncated-none/plain-error" 1 \
+  "$(jq -Rr 'fromjson? // empty | select((.note // "") | contains("wrote no run-log line")) | .note' "$LOG_DIR_R2/daily-docs-log.jsonl" 2>/dev/null | grep -c .)"
+rm -rf "$CDIR"; rmdir "${TMPDIR:-/tmp}/claude-routine-lock-daily-docs" 2>/dev/null
+
+# ── S) two runners reclaim the SAME dead-pid lock with a deterministic
+#      interleaving (runner A pauses after reading the dead pid; runner B
+#      reclaims and starts claude; A resumes). Exactly one may run claude. ────
+setup_task daily-docs
+LOCK_S="${TMPDIR:-/tmp}/claude-routine-lock-daily-docs"
+rm -f "$LOCK_S/pid"; rmdir "$LOCK_S" 2>/dev/null; mkdir "$LOCK_S"
+( exit 0 ) & DEAD_S=$!; wait "$DEAD_S"
+echo "$DEAD_S" > "$LOCK_S/pid"
+LOG_DIR_S="$ROOT/logs-s"; CALLS_S="$ROOT/calls-s.txt"; : > "$CALLS_S"
+STUB_S="$ROOT/claude-stub-race.sh"
+cat > "$STUB_S" <<'STUBEOF'
+#!/bin/bash
+cat > /dev/null
+printf 'call\n' >> "$STUB_CALLS_FILE"
+sleep 3
+jq -nc '{ts: (now | floor), status: "ok"}' >> "$STUB_LOG_FILE"
+exit 0
+STUBEOF
+chmod +x "$STUB_S"
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_S" CLAUDE_BIN="$STUB_S" \
+  STUB_CALLS_FILE="$CALLS_S" STUB_LOG_FILE="$LOG_DIR_S/daily-docs-log.jsonl" \
+  CLAUDE_ROUTINE_TEST_RECLAIM_PAUSE=2 \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1 &
+PID_A=$!
+sleep 0.5
+CLAUDE_ROUTINE_CLAUDE_DIR="$CDIR" CLAUDE_ROUTINE_LOG_DIR="$LOG_DIR_S" CLAUDE_BIN="$STUB_S" \
+  STUB_CALLS_FILE="$CALLS_S" STUB_LOG_FILE="$LOG_DIR_S/daily-docs-log.jsonl" \
+  bash "$RUNNER" daily-docs >/dev/null 2>&1 &
+PID_B=$!
+wait "$PID_A"; RC_A=$?
+wait "$PID_B"; RC_B=$?
+check "reclaim-race/claude-called-once" 1 "$(wc -l < "$CALLS_S" | tr -d ' ')"
+OK_A=0; OK_B=0
+[ "$RC_A" = 0 ] && OK_A=1
+[ "$RC_B" = 0 ] && OK_B=1
+check "reclaim-race/exactly-one-success" 1 "$((OK_A + OK_B))"
+rm -rf "$CDIR"; rmdir "$LOCK_S" 2>/dev/null
 
 rm -rf "$ROOT"
 

@@ -5,17 +5,8 @@
 # checks on all files edited in this session, instead of running them
 # per-edit (which was burning ~5-30s × N edits in post-edit-validate.sh).
 #
-# Adapted from ECC's stop-format-typecheck.js + post-edit-accumulator.js
-# pattern. Race-free because the only check fires sequentially at Stop.
-#
-# Architecture:
-#   1. Read queue file written by observation-capture.sh accumulator
-#   2. Dedupe + filter to existing files only
-#   3. Group by project root (nearest tsconfig.json / package.json / pyproject.toml)
-#   4. Skip if last batched run was < 60s ago (rate limit)
-#   5. Run language-appropriate checks with bounded retries (max 3)
-#   6. Emit findings as additionalContext via JSON output
-#   7. Truncate queue file (start fresh for next turn)
+# Adapted from ECC's stop-format-typecheck.js + post-edit-accumulator.js (sequential at Stop).
+# Flow: read queue → dedupe → group by project root → rate limit (60s) → checks → findings → truncate.
 #
 # Bypass: CLAUDE_STOP_BATCH_OFF=1
 # Force-run regardless of rate-limit: CLAUDE_STOP_BATCH_FORCE=1
@@ -24,8 +15,11 @@ set -u
 [ "${CLAUDE_STOP_BATCH_OFF:-0}" = "1" ] && exit 0
 
 INPUT=$(cat 2>/dev/null || true)
+# Visible failure without jq: plain printf, so the finding needs no jq itself.
+report_not_run() { printf '{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":"## Layer 2 — Batched Quality Report\\n\\n🔴 **Batched checks did not run** — %s."}}\n' "$1"; }
+command -v jq >/dev/null 2>&1 || { report_not_run "jq is missing, so no tsc/eslint/ruff/line-limit check ran (install jq)"; exit 0; }
 SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
-[ -n "$SESSION_ID" ] || exit 0
+[ -n "$SESSION_ID" ] || { report_not_run "the Stop input has no readable session_id, so the edit queue cannot be found"; exit 0; }
 
 QUEUE="/tmp/claude-edit-queue-${SESSION_ID}.txt"
 [ -f "$QUEUE" ] || exit 0
@@ -65,6 +59,37 @@ BUDGET_TOTAL=270
 BUDGET_PER_GROUP=90
 START_TIME=$NOW
 
+# Time bound: `timeout` or Homebrew `gtimeout`. Neither → NOT run unbounded (the Stop
+# budget must hold); run_check reports "did not run" per project instead.
+TIMEOUT_CMD=""
+for c in timeout gtimeout; do command -v "$c" >/dev/null 2>&1 && { TIMEOUT_CMD="$c"; break; }; done
+
+# run_check <label> <dir> <finding-regex> <skip-regex|""> <cmd...>
+# Runs <cmd> in <dir> under the time bound with its REAL exit status (no pipe to head).
+# Sets CHECK_STATE (clean|finding|skipped) and CHECK_OUT:
+#   exit 0 → clean · non-zero + finding-regex → finding · skip-regex → skipped (silent, pre-existing)
+#   anything else (timeout, crash, not found, no timeout tool) → one "did not run" line
+run_check() {
+    local label="$1" dir="$2" find_re="$3" skip_re="$4" rc first shown
+    shift 4
+    CHECK_OUT=""; CHECK_STATE="clean"
+    shown=$(printf '%s' "$dir" | sed "s|$HOME|~|")
+    if [ -z "$TIMEOUT_CMD" ]; then
+        first="neither timeout nor gtimeout is installed (brew install coreutils); not run unbounded"
+    else
+        CHECK_OUT=$(cd "$dir" && "$TIMEOUT_CMD" "$BUDGET_PER_GROUP" "$@" 2>&1)
+        rc=$?
+        [ "$rc" -eq 0 ] && return 0
+        if [ "$rc" -ne 124 ] && [ -n "$skip_re" ] && printf '%s\n' "$CHECK_OUT" | grep -qE "$skip_re"; then CHECK_STATE="skipped"; return 0; fi
+        if [ "$rc" -ne 124 ] && printf '%s\n' "$CHECK_OUT" | grep -qE "$find_re"; then CHECK_STATE="finding"; return 0; fi
+        first=$(printf '%s\n' "$CHECK_OUT" | grep -m1 . || true)
+        [ "$rc" -eq 124 ] && first="timed out after ${BUDGET_PER_GROUP}s"
+        first="${first:-exit $rc, no output}"
+    fi
+    printf "⏱ **%s did not run** in %s: %s\n" "$label" "$shown" "$first" >> "$FINDINGS"
+    CHECK_STATE="skipped"
+}
+
 # === Group by project root ===
 # Find nearest package.json / tsconfig.json / pyproject.toml going up from each file.
 # Group key = absolute path to project root.
@@ -86,11 +111,8 @@ done < "$TMP_DEDUPED"
 FINDINGS=$(mktemp)
 
 # === Line-limit check (cheap, do for ALL files first) ===
-# IMP-050: threshold lowered 400→250 (env-configurable via CLAUDE_LINE_LIMIT) +
-# breaches recorded to a refactor-queue the Stop-nudge surfaces. NOTE: we deliberately
-# do NOT auto-spawn a refactor agent — a Stop/PostToolUse hook cannot safely launch an
-# unattended LLM session (that step is HELD per IMP-050). The queue below is the hook
-# point a future opt-in launcher could drain.
+# IMP-050: threshold 250 (CLAUDE_LINE_LIMIT); breaches go to a refactor-queue, no
+# auto-spawned refactor agent (HELD per IMP-050: a Stop hook must not launch an LLM).
 LIMIT=${CLAUDE_LINE_LIMIT:-250}
 REFACTOR_QUEUE="$HOME/.claude/global-observation/refactor-queue.jsonl"
 LONG_FILES=""
@@ -106,9 +128,7 @@ while read -r f; do
     lines=$(wc -l < "$f" 2>/dev/null || echo 0)
     if [ "$lines" -gt "$LIMIT" ]; then
         LONG_COUNT=$((LONG_COUNT + 1))
-        # IMP-082 dedupe: one queue record PER FILE with a breach counter, not one
-        # per breach — the append-only form re-queued the same file up to 7x
-        # (write-only backlog, 136 records / 78 files, nothing draining it).
+        # IMP-082 dedupe: one queue record per file with a breach counter.
         if [ -f "$REFACTOR_QUEUE" ] && grep -qF "\"file\":\"$f\"" "$REFACTOR_QUEUE" 2>/dev/null; then
             TMPQ=$(mktemp)
             jq -c --arg f "$f" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson l "$lines" \
@@ -131,16 +151,9 @@ if [ -n "$LONG_FILES" ]; then
     printf "🟡 **Line-limit** — %d file(s) over %d lines (per code-quality.md); queued for refactor:\n%b%b\n" "$LONG_COUNT" "$LIMIT" "$LONG_FILES" "$EXTRA" >> "$FINDINGS"
 fi
 
-# === Command-contract lint (IMP-089 closed-loop wiring, 2026-07-15;
-#     extended scope 2026-09-23, M20/§5/A4, R.Code rework unit U9) ===
-# If this session touched any file under ~/.claude/commands/ OR the wider
-# R.Code artifact set (~/.claude/rcode/, ~/.claude/skills/rcode-*,
-# ~/.claude/skills/scope-check/), run the deterministic
-# command-contract-lint.sh with --root "$HOME/.claude" — this turns on the
-# extended-scope checks (C4-widened, C6-C9) alongside the original M,1-5
-# ones — and surface failures as a WARNING. Stop hooks report, they don't
-# block — a failing lint here is a nudge to fix the marker/frontmatter/
-# repo-relative-path issue, not a gate.
+# === Command-contract lint (IMP-089; extended scope 2026-09-23) ===
+# Runs when this session touched ~/.claude/commands/, rcode/ or the rcode-*/scope-check
+# skills. Failures are a WARNING, never a block (Stop hooks report, they don't gate).
 COMMANDS_DIR="$HOME/.claude/commands"
 LINT_SCRIPT="$HOME/.claude/scripts/command-contract-lint.sh"
 if { grep -qF "$COMMANDS_DIR/" "$TMP_DEDUPED" 2>/dev/null \
@@ -148,26 +161,22 @@ if { grep -qF "$COMMANDS_DIR/" "$TMP_DEDUPED" 2>/dev/null \
      || grep -qF "$HOME/.claude/skills/rcode-" "$TMP_DEDUPED" 2>/dev/null \
      || grep -qF "$HOME/.claude/skills/scope-check/" "$TMP_DEDUPED" 2>/dev/null; } \
    && [ -f "$LINT_SCRIPT" ]; then
-    # C0/C22/C27/C36 (2026-09-23): the lint's own extended-scope O(lines)
-    # subprocess-forking bug (fixed in command-contract-lint.sh itself) had
-    # made this synchronous Stop-hook call take 45s-2m36s — same time-budget
-    # discipline as the tsc/eslint/ruff calls below (report on timeout,
-    # never block; Stop hooks report, they don't block per this file's own
-    # header comment).
-    lint_out=$(timeout $BUDGET_PER_GROUP bash "$LINT_SCRIPT" --root "$HOME/.claude" "$COMMANDS_DIR" 2>&1)
-    lint_status=$?
-    if [ "$lint_status" -eq 124 ]; then
-        printf "⏱ **command-contract-lint** — timed out after %ss (commands/rcode/skills touched this session); treat as unverified, not a pass.\n" "$BUDGET_PER_GROUP" >> "$FINDINGS"
-    elif [ "$lint_status" -ne 0 ]; then
-        printf "🟡 **command-contract-lint** — commands/rcode/skills touched this session, linter FAILED:\n\`\`\`\n%s\n\`\`\`\n" "$lint_out" >> "$FINDINGS"
+    # Time-bounded like the tsc/eslint/ruff calls below (the lint once took minutes).
+    run_check command-contract-lint "$HOME/.claude" "." "" bash "$LINT_SCRIPT" --root "$HOME/.claude" "$COMMANDS_DIR"
+    if [ "$CHECK_STATE" = "finding" ]; then
+        printf "🟡 **command-contract-lint** — commands/rcode/skills touched this session, linter FAILED:\n\`\`\`\n%s\n\`\`\`\n" "$CHECK_OUT" >> "$FINDINGS"
     fi
 fi
 
 # === Per-group typecheck + lint with bounded retries ===
 if [ -f "$TMP_GROUPED" ]; then
-    GROUPS=$(awk -F'|' '{print $1}' "$TMP_GROUPED" | sort -u)
+    # CHECK_GROUPS, not the old name: that is bash's built-in group-id array; assigning
+    # to it is silently ignored, so the loop never saw the project roots.
+    CHECK_GROUPS=$(awk -F'|' '{print $1}' "$TMP_GROUPED" | sort -u)
 
-    for group in $GROUPS; do
+    # fd 3: line-by-line loop; word-splitting would break on spaces in project paths.
+    while IFS= read -r group <&3; do
+        [ -n "$group" ] || continue
         # Time budget check — bail if we're close to the limit
         ELAPSED=$(( $(date +%s) - START_TIME ))
         if [ "$ELAPSED" -gt $((BUDGET_TOTAL - 30)) ]; then
@@ -177,10 +186,10 @@ if [ -f "$TMP_GROUPED" ]; then
 
         # === TypeScript / JavaScript ===
         if [ -f "$group/tsconfig.json" ]; then
-            tsc_out=$(cd "$group" && timeout $BUDGET_PER_GROUP npx -y --no-install tsc --noEmit 2>&1 | head -30 || echo "(tsc skipped — not installed)")
-            if [ -n "$tsc_out" ] && echo "$tsc_out" | grep -qE "error TS"; then
-                err_count=$(echo "$tsc_out" | grep -cE "error TS" || true)
-                printf "🔴 **TypeScript errors** in %s (%d errors):\n\`\`\`\n%s\n\`\`\`\n" "$(echo "$group" | sed "s|$HOME|~|")" "$err_count" "$(echo "$tsc_out" | head -15)" >> "$FINDINGS"
+            run_check tsc "$group" "error TS" "" npx -y --no-install tsc --noEmit
+            if [ "$CHECK_STATE" = "finding" ]; then
+                err_count=$(printf '%s\n' "$CHECK_OUT" | grep -cE "error TS" || true)
+                printf "🔴 **TypeScript errors** in %s (%d errors):\n\`\`\`\n%s\n\`\`\`\n" "$(printf '%s' "$group" | sed "s|$HOME|~|")" "$err_count" "$(printf '%s\n' "$CHECK_OUT" | head -15)" >> "$FINDINGS"
             fi
         fi
 
@@ -192,14 +201,14 @@ if [ -f "$TMP_GROUPED" ]; then
             done
             if [ "$has_eslint" = "1" ]; then
                 # Lint only the files actually edited (faster than whole project)
-                group_files=$(awk -F'|' -v g="$group" '$1==g {print $2}' "$TMP_GROUPED" | grep -E '\.(ts|tsx|js|jsx)$' | tr '\n' ' ')
-                if [ -n "$group_files" ]; then
-                    eslint_out=$(cd "$group" && timeout $BUDGET_PER_GROUP npx -y --no-install eslint $group_files --max-warnings 0 2>&1 | head -20 || echo "")
-                    if [ -n "$eslint_out" ] && ! echo "$eslint_out" | grep -qiE "(not installed|no files)"; then
-                        err_count=$(echo "$eslint_out" | grep -cE "(error|warning)" || true)
-                        if [ "$err_count" -gt 0 ]; then
-                            printf "🟡 **ESLint findings** in %s (%d issues):\n\`\`\`\n%s\n\`\`\`\n" "$(echo "$group" | sed "s|$HOME|~|")" "$err_count" "$(echo "$eslint_out" | head -10)" >> "$FINDINGS"
-                        fi
+                # One array element per path (no word-splitting); `--` ends eslint's options.
+                group_files=()
+                while IFS= read -r f; do group_files+=("$f"); done < <(awk -F'|' -v g="$group" '$1==g {print $2}' "$TMP_GROUPED" | grep -E '\.(ts|tsx|js|jsx)$')
+                if [ "${#group_files[@]}" -gt 0 ]; then
+                    run_check ESLint "$group" "[0-9]+:[0-9]+ +(error|warning) |[0-9]+ problems?" "[Nn]o files" npx -y --no-install eslint --max-warnings 0 -- "${group_files[@]}"
+                    if [ "$CHECK_STATE" = "finding" ]; then
+                        err_count=$(printf '%s\n' "$CHECK_OUT" | grep -cE "(error|warning)" || true)
+                        printf "🟡 **ESLint findings** in %s (%d issues):\n\`\`\`\n%s\n\`\`\`\n" "$(printf '%s' "$group" | sed "s|$HOME|~|")" "$err_count" "$(printf '%s\n' "$CHECK_OUT" | head -10)" >> "$FINDINGS"
                     fi
                 fi
             fi
@@ -207,15 +216,16 @@ if [ -f "$TMP_GROUPED" ]; then
 
         # === Python ruff ===
         if [ -f "$group/pyproject.toml" ] || [ -f "$group/ruff.toml" ] || [ -f "$group/.ruff.toml" ]; then
-            group_py=$(awk -F'|' -v g="$group" '$1==g {print $2}' "$TMP_GROUPED" | grep '\.py$' | tr '\n' ' ')
-            if [ -n "$group_py" ] && command -v ruff >/dev/null 2>&1; then
-                ruff_out=$(cd "$group" && timeout $BUDGET_PER_GROUP ruff check $group_py 2>&1 | head -20 || echo "")
-                if [ -n "$ruff_out" ] && ! echo "$ruff_out" | grep -qE "^All checks passed"; then
-                    printf "🟡 **Ruff findings** in %s:\n\`\`\`\n%s\n\`\`\`\n" "$(echo "$group" | sed "s|$HOME|~|")" "$(echo "$ruff_out" | head -10)" >> "$FINDINGS"
+            py_files=()
+            while IFS= read -r f; do py_files+=("$f"); done < <(awk -F'|' -v g="$group" '$1==g {print $2}' "$TMP_GROUPED" | grep '\.py$')
+            if [ "${#py_files[@]}" -gt 0 ]; then
+                run_check ruff "$group" ":[0-9]+:[0-9]+: [A-Z]+[0-9]+ |Found [0-9]+ error" "" ruff check -- "${py_files[@]}"
+                if [ "$CHECK_STATE" = "finding" ]; then
+                    printf "🟡 **Ruff findings** in %s:\n\`\`\`\n%s\n\`\`\`\n" "$(printf '%s' "$group" | sed "s|$HOME|~|")" "$(printf '%s\n' "$CHECK_OUT" | head -10)" >> "$FINDINGS"
                 fi
             fi
         fi
-    done
+    done 3<<< "$CHECK_GROUPS"
 fi
 
 # === Emit findings as additionalContext ===

@@ -11,7 +11,7 @@
 # does not.
 #
 # Background + measurements: IMP-104/105 in global-observation/improvement-ledger.json
-# Rule doc: rules/mcp-tool-usage.md -> "## Serena" (maintenance knowledge: PART 3 below)
+# Reference doc: ~/.claude/docs/reference/tools.md -> "## Serena" (maintenance knowledge: PART 3 below)
 #
 # -----------------------------------------------------------------------------
 # PART 1 — MCP registration (NOT in this file, but in ~/.claude.json)
@@ -206,7 +206,7 @@ web_dashboard_open_on_launch: false
 #     because of this.
 
 # -----------------------------------------------------------------------------
-# PART 3 — Moved out of rules/mcp-tool-usage.md (IMP-218, 2026-09-24)
+# PART 3 — Moved out of the former mcp-tool-usage rule (IMP-218, 2026-09-24)
 # -----------------------------------------------------------------------------
 #
 # Wording of the rule through 2026-09-24; only the paragraphs not already
@@ -238,15 +238,16 @@ web_dashboard_open_on_launch: false
 # - **`hooks/serena-post-tool.sh`** (PostToolUse, same matcher) feeds the native
 #   post-edit chain (`auto-format`, `post-edit-validate` with propagated findings,
 #   `observation-capture` → signals.jsonl) and records Serena READS with an explicit
-#   `relative_path` into the read tracker, so a later native `Edit` passes
-#   `pretool-auto-read`.
+#   `relative_path` into the read tracker. The read-before-edit hook that consumed
+#   that tracker, `pretool-auto-read`, was retired on 2026-11-23.
 # - Regression: `hooks/tests/serena-gate-regression.sh` (37 cases, incl.
 #   secret-through-the-Serena-door → block, and gate-without-inspectors → deny).
 #
-# **Known residual gaps (documented, not hidden):** `gateguard.sh` /
-# `pretool-auto-read.sh` (read-before-edit) and `controller-first-mutation-gate.sh`
-# are NOT delegated — Serena's symbolic workflow reads symbols before editing by
-# construction; revisit if the gate log shows abuse. The N−1 reference files of an
+# **Known residual gaps (documented, not hidden):** Serena writes pass the Serena
+# write gate only. `gateguard.sh` and `pretool-auto-read.sh` are retired (2026-11-23),
+# so no hook checks that a file was read first: read a file before it is changed
+# through Serena. (`controller-first-mutation-gate.sh`, formerly listed here, was retired
+# on 2026-11-10: docs/adr/0011-controller-first-mutation-gate-retired.md.) The N−1 reference files of an
 # approved `rename_symbol` are not individually inspected or logged.
 #
 # From "### mcp__serena__replace_content — RE-ENABLED behind the gate (2026-08-05)":
@@ -258,7 +259,7 @@ web_dashboard_open_on_launch: false
 #
 # --- Addendum (counter-check IMP-218): four original passages that would
 # otherwise appear in neither the rule nor this template — verbatim from
-# HEAD:rules/mcp-tool-usage.md.
+# archived at docs/archive/rules-2026-11-23/mcp-tool-usage.md (the former rule).
 #
 # stays excluded AND gate-denied. Memory names with `/` or `..` (incl. Serena's
 # `global/` prefix) are denied — path-escape from `.serena/memories/`.

@@ -1,6 +1,6 @@
 ---
 name: testing-suite
-description: Quality assurance specialist ensuring 90%+ test coverage. Creates unit tests with Vitest, E2E tests with Playwright, and visual tests with Storybook. Use when writing tests, validating code quality, checking test coverage, or ensuring accessibility compliance. Triggers on "test", "testing", "unit test", "E2E", "coverage", "Vitest", "Playwright", "Storybook", "QA", "quality assurance", "accessibility", "WCAG", "tests schreiben", "testabdeckung", "coverage checken", "testsuite", "unit tests anlegen", "e2e tests", "regressionstest", "barrierefreiheit", "a11y", "snapshot test", "integration test".
+description: "QA specialist for tests: unit tests with Vitest, E2E tests with Playwright, Storybook visual tests and accessibility checks (WCAG 2.1 AA), targeting 80%+ line coverage (branch 75%+, function 80%+). Use when writing tests, checking coverage or validating code quality or accessibility."
 allowed-tools: Read, Glob, Grep, Bash(npm test:*), Bash(npm run test:*), Bash(npx vitest:*), Bash(npx playwright:*)
 ---
 
@@ -27,7 +27,7 @@ During task execution:
 - **Performance tests** for critical paths
 
 ### 2. Quality Assurance Standards
-- **Ensure 90%+ code coverage** across all modules
+- **Meet the coverage targets in `rules/testing-quality.md`** (line ≥80%, branch ≥75%, function ≥80%) across all modules
 - **Test edge cases** and error scenarios thoroughly
 - **Verify accessibility compliance** (WCAG 2.1 AA)
 - **Check responsive behavior** across devices
@@ -99,16 +99,16 @@ export default meta;
 ## Coverage Requirements
 
 ```typescript
-// vitest.config.ts - Enforce 90%+ coverage
+// vitest.config.ts - Enforce the coverage floors of rules/testing-quality.md
 export default defineConfig({
   test: {
     coverage: {
       thresholds: {
         global: {
-          branches: 90,
-          functions: 90,
-          lines: 90,
-          statements: 90
+          branches: 75,
+          functions: 80,
+          lines: 80,
+          statements: 80
         }
       }
     }
@@ -118,7 +118,7 @@ export default defineConfig({
 
 ## Quality Gates Checklist
 
-- [ ] 90%+ Coverage: All code paths tested
+- [ ] Coverage floors met (line 80%+, branch 75%+, function 80%+): All code paths tested
 - [ ] Zero Flaky Tests: Consistent test execution
 - [ ] Performance Benchmarks: Tests complete in <60s
 - [ ] Accessibility Tests: WCAG 2.1 AA compliance

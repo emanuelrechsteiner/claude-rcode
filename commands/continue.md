@@ -100,7 +100,7 @@ non-`/issue` writer omits it too:
   there is no `**Last step:**` field** — do not guess which of the above
   applies. Report the newest agent-log entry's content (who wrote it, when,
   what it says) and ask the user how to proceed, per
-  `~/.claude/rules/recommend-on-ask.md` (lead with a recommendation — e.g.
+  `~/.claude/rules/foundation.md`, "Asking and acting" (lead with a recommendation — e.g.
   "this looks like a `/phase-gate` entry — resume with `/status-sync`?").
   Skip A2–A5 below in this case.
 
